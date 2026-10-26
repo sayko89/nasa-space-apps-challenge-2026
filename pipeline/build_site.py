@@ -44,6 +44,110 @@ import sys
 
 import numpy as np
 
+
+def _has_non_ascii(path: str) -> bool:
+    return any(ord(ch) > 127 for ch in path)
+
+
+def _ascii_safe_gdal_env() -> None:
+    """
+    Windows + ASCII dışı kullanıcı yolu (ör. C:\\Users\\NİTRO) düzeltmesi.
+
+    rasterio'nun Windows paketindeki GDAL/PROJ/libcurl, site-packages altındaki
+    gdal_data, proj_data ve certifi sertifika dosyasını açar. Yol ASCII dışı
+    karakter içerince bu kütüphaneler dosyayı açamaz; üstelik GDAL'ın hata
+    mesajı cp1254 ile kodlandığı için rasterio onu UTF-8 çözerken
+    UnicodeDecodeError ile çöker ve asıl hata gizlenir.
+
+    Çözüm: bu dosyaları bir kez ASCII bir klasöre kopyalayıp ortam
+    değişkenlerini oraya yönlendirmek. rasterio import edilmeden ÖNCE
+    çalışmalı: rasterio GDAL_DATA/PROJ_DATA ortam değişkenlerine öncelik verir
+    ve sertifika yolunu os.environ.setdefault ile ayarlar.
+
+    MM_FORCE_ASCII_WORKAROUND=1 → test için Windows dışında da çalıştırır.
+    MM_GDAL_ENV_DIR=<yol>       → kopya klasörünü değiştirir.
+    """
+    import importlib.util
+    import shutil
+
+    forced = os.environ.get("MM_FORCE_ASCII_WORKAROUND") == "1"
+    if os.name != "nt" and not forced:
+        return
+
+    spec = importlib.util.find_spec("rasterio")  # paketi çalıştırmadan konumunu bulur
+    if spec is None or not spec.origin:
+        return
+    pkg_dir = os.path.dirname(spec.origin)
+
+    sources = {}  # ortam değişkeni → (kaynak yol, hedef ad)
+    for sub, env in (("gdal_data", "GDAL_DATA"), ("proj_data", "PROJ_DATA")):
+        p = os.path.join(pkg_dir, sub)
+        if os.path.isdir(p) and env not in os.environ and (forced or _has_non_ascii(p)):
+            sources[env] = (p, sub)
+    try:
+        import certifi
+        ca = certifi.where()
+        if (os.path.isfile(ca) and "GDAL_CURL_CA_BUNDLE" not in os.environ
+                and (forced or _has_non_ascii(ca))):
+            sources["GDAL_CURL_CA_BUNDLE"] = (ca, "cacert.pem")
+    except ImportError:
+        pass
+
+    tmp = os.environ.get("TEMP", "")
+    need_tmp = "CPL_TMPDIR" not in os.environ and (forced or _has_non_ascii(tmp))
+    if not sources and not need_tmp:
+        return
+
+    candidates = [os.environ.get("MM_GDAL_ENV_DIR")]
+    drive = os.environ.get("SystemDrive", "C:")
+    candidates += [os.path.join(drive + os.sep, "ProgramData", "martian-map", "gdal-env"),
+                   os.path.join(drive + os.sep, "martian-map-gdal-env")]
+    base = None
+    for c in candidates:
+        if not c or _has_non_ascii(c):
+            continue
+        try:
+            os.makedirs(c, exist_ok=True)
+            probe = os.path.join(c, ".write-test")
+            with open(probe, "w", encoding="ascii") as f:
+                f.write("ok")
+            os.remove(probe)
+            base = c
+            break
+        except OSError:
+            continue
+    if base is None:
+        print("  ! ASCII bir çalışma klasörü oluşturulamadı. Çözüm: Python sanal ortamını "
+              "ASCII bir yolda kurun (bkz. pipeline/README hata bölümü).")
+        return
+
+    for env, (src, name) in sources.items():
+        dst = os.path.join(base, name)
+        try:
+            if os.path.isdir(src):
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            else:
+                shutil.copyfile(src, dst)
+        except OSError as e:
+            print(f"  ! {name} kopyalanamadı ({e}); {env} değiştirilmedi.")
+            continue
+        os.environ[env] = dst
+        if env == "PROJ_DATA":
+            os.environ.setdefault("PROJ_LIB", dst)          # PROJ < 9.1
+        if env == "GDAL_CURL_CA_BUNDLE":
+            os.environ.setdefault("PROJ_CURL_CA_BUNDLE", dst)
+            os.environ.setdefault("CURL_CA_BUNDLE", dst)
+    if need_tmp:
+        t = os.path.join(base, "tmp")
+        os.makedirs(t, exist_ok=True)
+        os.environ["CPL_TMPDIR"] = t
+    # Kimlik doğrulama gerekmiyor; curl'ün ~/.netrc aramasını kapat (ev dizini de ASCII dışı)
+    os.environ.setdefault("GDAL_HTTP_NETRC", "NO")
+    print(f"  ASCII dışı yol algılandı → GDAL/PROJ/sertifika dosyaları {base} altından kullanılıyor")
+
+
+_ascii_safe_gdal_env()
+
 try:
     import rasterio
     from rasterio.crs import CRS
@@ -283,7 +387,20 @@ def build(args) -> dict:
 
 
 def main(argv=None):
-    build(parse_args(argv))
+    try:
+        build(parse_args(argv))
+    except UnicodeDecodeError:
+        # GDAL'ın cp1254 kodlu hata mesajını rasterio UTF-8 çözemedi: asıl hata
+        # gizlendi. Neredeyse her zaman ASCII dışı bir dosya yolundan kaynaklanır.
+        sys.exit(
+            "\nGDAL bir hata verdi ama mesajı okunamadı (Windows + ASCII dışı yol, ör. 'NİTRO').\n"
+            "Çözüm: sanal ortamı ASCII bir klasörde kurup oradan çalıştırın:\n"
+            "  py -m venv C:\\mmvenv\n"
+            "  C:\\mmvenv\\Scripts\\python -m pip install -r pipeline\\requirements.txt\n"
+            "  C:\\mmvenv\\Scripts\\python pipeline\\build_site.py\n"
+            "Hâlâ olursa dosyayı tarayıcıdan indirip --src ile ASCII bir yoldan verin "
+            "(ör. C:\\mmdata\\jezero_dtm.tif)."
+        )
 
 
 if __name__ == "__main__":
