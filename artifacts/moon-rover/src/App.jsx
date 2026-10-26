@@ -13,6 +13,7 @@ import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from 
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
 import { buildReturnToHomePath } from './utils/returnToHomeController';
 import { planRoutes, warmPlanner, plannerUsesWorker } from './utils/plannerClient';
+import { sunPosition, msAtLtst } from './utils/marsTime';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
@@ -109,7 +110,17 @@ export default function App() {
   const [waypoints, setWaypoints]   = useState([]);
   const [routes, setRoutes]         = useState(null); // { SAFE:{path,stats}, ECO:{path,stats}, ... }
   const [activeRoute, setActiveRoute] = useState('AUTO');
-  const [sunAngleDeg, setSunAngleDeg] = useState(45);
+  const [sunAngleState, setSunAngleDeg] = useState(45);
+  // DEM: EVA start time drives the sun (Mars24). Default: today, 09:00 LTST at the site.
+  const siteCenter = SITE.meta?.center;
+  const [evaStartMs, setEvaStartMs] = useState(() =>
+    IS_DEM && siteCenter ? msAtLtst(Date.now(), 9, siteCenter.lon_deg_east) : null);
+  const sun = useMemo(() => (IS_DEM && siteCenter && evaStartMs != null)
+    ? sunPosition(evaStartMs, siteCenter.lat_deg, siteCenter.lon_deg_east) : null,
+  [evaStartMs, siteCenter]);
+  // Existing consumers (scene light, illumination) use an azimuth in degrees
+  const sunAngleDeg = sun ? Math.round(sun.azimuthDeg * 10) / 10 : sunAngleState;
+  const sunElevationDeg = sun ? sun.elevationDeg : undefined;
   const [wireframe, setWireframe]   = useState(false);
   const [cameraMode, setCameraMode] = useState('follow');
   const [routeLog, setRouteLog]     = useState([`[${ts()}] Ready. Add waypoints and press PLAN PATH.`]);
@@ -273,7 +284,8 @@ export default function App() {
 
     setTimeout(async () => {
       try {
-        const planned = await planRoutes(waypoints, getMaps(), sunAngleDeg, learningModel.getExperienceMap());
+        const planned = await planRoutes(waypoints, getMaps(), sunAngleDeg, learningModel.getExperienceMap(),
+          evaStartMs != null ? { startMs: evaStartMs } : {});
         // Waypoints changed / re-planned meanwhile → drop this stale result
         if (mySeq !== planSeqRef.current) return;
         setRoutes(planned);
@@ -301,7 +313,7 @@ export default function App() {
         if (mySeq === planSeqRef.current) setIsPlanning(false);
       }
     }, 30);
-  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel]);
+  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel, evaStartMs]);
 
   // ---- Rover control ----
   const handleStartRover = useCallback(() => {
@@ -499,6 +511,16 @@ export default function App() {
     }
   }, [dustMode, isRoving, showToast, addLog, setActiveRoute]);
 
+  // DEM: EVA start changed → refresh lighting stats by re-planning in the background
+  const lastStartRef = useRef(evaStartMs);
+  useEffect(() => {
+    if (!IS_DEM || evaStartMs === lastStartRef.current) return;
+    lastStartRef.current = evaStartMs;
+    if (!routes || waypoints.length < 2) return;
+    const id = setTimeout(() => handlePlanPath(), 400);   // debounce slider drags
+    return () => clearTimeout(id);
+  }, [evaStartMs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Re-plan when sun angle changes significantly (10° threshold)
   const lastSunRef = useRef(sunAngleDeg);
   useEffect(() => {
@@ -547,6 +569,7 @@ export default function App() {
             cameraMode={cameraMode}
             wireframe={wireframe}
             sunAngleDeg={sunAngleDeg}
+            sunElevationDeg={sunElevationDeg}
             learningModel={learningModel}
             dustHazard={dustHazard}
             ponrPoint={routes?.[activeRoute]?.stats?.ponrPoint || null}
@@ -586,6 +609,7 @@ export default function App() {
         onPlanPath={handlePlanPath}
         isPlanning={isPlanning}
         sunAngleDeg={sunAngleDeg}   setSunAngleDeg={setSunAngleDeg}
+        sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs}
         cameraMode={cameraMode}     setCameraMode={setCameraMode}
         wireframe={wireframe}       setWireframe={setWireframe}
         onStartRover={handleStartRover}

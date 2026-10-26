@@ -19,6 +19,15 @@ import {
 const SCENE_SCALE = Math.max(1, TERRAIN_SIZE / 100);
 const MARKER_SCALE = IS_DEM ? Math.max(1, SCENE_SCALE * 0.15) : 1;
 const MARS_SKY = '#c9a27e';
+// Sky tint by sun elevation (visual only): night → twilight → day
+function marsSky(elDeg) {
+  if (!Number.isFinite(elDeg)) return MARS_SKY;
+  const day = new THREE.Color(MARS_SKY), dusk = new THREE.Color('#4a4a5e'), night = new THREE.Color('#07080d');
+  if (elDeg >= 10) return MARS_SKY;
+  if (elDeg >= 0) return '#' + dusk.clone().lerp(day, elDeg / 10).getHexString();
+  if (elDeg >= -8) return '#' + night.clone().lerp(dusk, (elDeg + 8) / 8).getHexString();
+  return '#' + night.getHexString();
+}
 import { useRoverController } from '../three/roverController';
 import { ROUTE_COLORS } from '../utils/constants';
 
@@ -602,11 +611,20 @@ function WaypointMarker({ pos, idx, total }) {
 
 // ---- Sun (follows the rover so the local shadow box stays sharp anywhere) ----
 const _ORIGIN = new THREE.Vector3(0, 0, 0);
-function SunLight({ roverRef, sunAngleDeg }) {
+// sunElevationDeg (DEM): real Mars24 elevation; otherwise the legacy fixed height.
+function SunLight({ roverRef, sunAngleDeg, sunElevationDeg }) {
   const lightRef = useRef();
   const target = useMemo(() => new THREE.Object3D(), []);
   const sunRad = (sunAngleDeg * Math.PI) / 180;
-  const sx = Math.sin(sunRad) * 75, sz = -Math.cos(sunRad) * 75, sy = 68;
+  let sx = Math.sin(sunRad) * 75, sz = -Math.cos(sunRad) * 75, sy = 68;
+  let intensity = IS_DEM ? 1.6 : 1.9;
+  if (Number.isFinite(sunElevationDeg)) {
+    const el = Math.max(sunElevationDeg, 1) * Math.PI / 180;   // keep the light above the horizon
+    const R = 100;
+    sx = Math.sin(sunRad) * Math.cos(el) * R; sz = -Math.cos(sunRad) * Math.cos(el) * R; sy = Math.sin(el) * R;
+    // Fade out through twilight; night ≈ off
+    intensity = 1.6 * Math.max(0, Math.min(1, (sunElevationDeg + 2) / 12));
+  }
   useFrame(() => {
     const c = roverRef.current ? roverRef.current.position : _ORIGIN;
     if (lightRef.current) lightRef.current.position.set(c.x + sx, c.y + sy, c.z + sz);
@@ -619,7 +637,7 @@ function SunLight({ roverRef, sunAngleDeg }) {
       <directionalLight
         ref={lightRef}
         target={target}
-        intensity={IS_DEM ? 1.6 : 1.9}
+        intensity={intensity}
         color={IS_DEM ? '#fff1e0' : '#fffaf2'}
         castShadow
         shadow-mapSize-width={2048}
@@ -679,7 +697,7 @@ export default function MoonScene({
   roverState, setRoverState, pathRef,
   routes, activeRoute,
   waypoints,
-  cameraMode, wireframe, sunAngleDeg,
+  cameraMode, wireframe, sunAngleDeg, sunElevationDeg,
   learningModel,
   dustHazard,
   ponrPoint,
@@ -696,15 +714,15 @@ export default function MoonScene({
         position: [roverState.x, roverState.y + 30, roverState.z - 24], fov: 46,
         near: IS_DEM ? 0.5 : 0.1, far: Math.max(800, TERRAIN_SIZE * 2.5),
       }}
-      style={{ background: IS_DEM ? MARS_SKY : '#000008' }}
+      style={{ background: IS_DEM ? marsSky(sunElevationDeg) : '#000008' }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
     >
       {IS_DEM ? (
         <>
           {/* Mars: gündüz gökyüzü saçılması → sıcak ambient + mesafe pusu (görsel) */}
-          <color attach="background" args={[MARS_SKY]} />
-          <fog attach="fog" args={[MARS_SKY, TERRAIN_SIZE * 0.2, TERRAIN_SIZE * 1.2]} />
-          <ambientLight intensity={0.38} color="#e0b088" />
+          <color attach="background" args={[marsSky(sunElevationDeg)]} />
+          <fog attach="fog" args={[marsSky(sunElevationDeg), TERRAIN_SIZE * 0.2, TERRAIN_SIZE * 1.2]} />
+          <ambientLight intensity={0.06 + 0.32 * Math.max(0, Math.min(1, ((sunElevationDeg ?? 45) + 6) / 16))} color="#e0b088" />
           <hemisphereLight args={['#e8c09a', '#5a3420', 0.25]} />
         </>
       ) : (
@@ -717,7 +735,7 @@ export default function MoonScene({
       )}
 
       {/* Sun */}
-      <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} />
+      <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />
 
       <Terrain wireframe={wireframe} />
       <Rocks />

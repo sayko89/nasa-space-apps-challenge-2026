@@ -5,9 +5,11 @@
  */
 
 import {
-  TERRAIN_SIZE, GRID_RES, getTerrainHeight, CRATERS, IS_DEM,
+  TERRAIN_SIZE, GRID_RES, getTerrainHeight, CRATERS, IS_DEM, SITE,
   buildHeightMap, buildSlopeMap,
 } from '../three/terrainGenerator.js';
+import { sunPosition, sunriseSunset } from './marsTime.js';
+import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
 import { param, MODE_WEIGHTS } from '../config/marswalkProfile.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile } from './walkback.js';
@@ -71,13 +73,20 @@ class MinHeap {
 // ---- Illumination Map ----
 let _illumCache = {};
 
-export function buildIlluminationMap(sunAngleDeg, hMap) {
-  const key = Math.round(sunAngleDeg);
+// elevationDeg (optional, DEM/Mars24): real sun elevation + cast shadows.
+// Without it the original fixed-elevation (ly = 0.8) model is used unchanged.
+export function buildIlluminationMap(sunAngleDeg, hMap, elevationDeg) {
+  const real = Number.isFinite(elevationDeg);
+  const key = real ? `${sunAngleDeg.toFixed(1)}_${elevationDeg.toFixed(1)}` : Math.round(sunAngleDeg);
   if (_illumCache[key]) return _illumCache[key];
 
   const illum = new Float32Array(GRID_RES * GRID_RES);
+  if (real && elevationDeg <= 0) { _illumCache[key] = illum; return illum; }   // night
   const sunRad = (sunAngleDeg * Math.PI) / 180;
-  const lx = Math.sin(sunRad), lz = -Math.cos(sunRad), ly = 0.80;
+  const elRad = real ? elevationDeg * Math.PI / 180 : 0;
+  const lx = real ? Math.sin(sunRad) * Math.cos(elRad) : Math.sin(sunRad);
+  const lz = real ? -Math.cos(sunRad) * Math.cos(elRad) : -Math.cos(sunRad);
+  const ly = real ? Math.sin(elRad) : 0.80;
   const lLen = Math.sqrt(lx*lx + ly*ly + lz*lz);
   const nlx = lx/lLen, nly = ly/lLen, nlz = lz/lLen;
   const cellSize = TERRAIN_SIZE / (GRID_RES - 1);
@@ -90,6 +99,10 @@ export function buildIlluminationMap(sunAngleDeg, hMap) {
       const nLen = Math.sqrt(nx*nx+ny*ny+nz*nz);
       illum[row*GRID_RES+col] = Math.max(0, (nx/nLen)*nlx + (ny/nLen)*nly + (nz/nLen)*nlz);
     }
+  }
+  if (real) {
+    const sh = shadowMask(hMap, GRID_RES, CELL_SIZE, sunAngleDeg, elevationDeg);
+    for (let i = 0; i < illum.length; i++) if (sh[i]) illum[i] = 0;
   }
   _illumCache[key] = illum;
   return illum;
@@ -445,7 +458,41 @@ const cellIndexAt = (x, z) => { const { col, row } = worldToGrid(x, z); return r
  * margin ≥ 0), never farther than the radial limit from the start, and no
  * terrain cell on the path steeper than the walkable limit.
  */
-function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps) {
+/**
+ * Lighting along the route for an EVA starting at startMs (Mars24 sun at the
+ * time each point is actually walked) + whether the crew is home by sunset.
+ * Informational — not part of GO (no Mars EVA lighting rule was found).
+ */
+function computeLightStats(path, elapsedS, returnS, startMs, hMap) {
+  const c = SITE.meta?.center;
+  if (!c || !Number.isFinite(startMs)) return null;
+  const hmax = heightMax(hMap);
+  const half = TERRAIN_SIZE / 2;
+  let shadowT = 0, darkT = 0;
+  for (let i = 1; i < path.length; i++) {
+    const dt = elapsedS[i] - elapsedS[i - 1];
+    const t = startMs + elapsedS[i] * 1000;
+    const sp = sunPosition(t, c.lat_deg, c.lon_deg_east);
+    if (sp.elevationDeg <= 0) { darkT += dt; continue; }
+    if (isShadowedAt(hMap, GRID_RES, CELL_SIZE, half, path[i][0], path[i][2], sp.azimuthDeg, sp.elevationDeg, hmax)) shadowT += dt;
+  }
+  const total = elapsedS[elapsedS.length - 1] || 1;
+  const homeMs = startMs + (elapsedS[elapsedS.length - 1] + returnS) * 1000;
+  const ss = sunriseSunset(startMs, c.lat_deg, c.lon_deg_east);
+  const startSun = sunPosition(startMs, c.lat_deg, c.lon_deg_east);
+  return {
+    startMs, homeMs,
+    startElevationDeg: startSun.elevationDeg,
+    shadowFrac: shadowT / total,          // outbound walking time in terrain shadow
+    darkFrac: darkT / total,              // outbound walking time with the sun below the horizon
+    sunriseMs: ss?.riseMs ?? null,
+    sunsetMs: ss?.setMs ?? null,
+    startsInDaylight: startSun.elevationDeg > 0,
+    homeBySunset: ss ? (startMs >= ss.riseMs && homeMs <= ss.setMs) : null,
+  };
+}
+
+function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap) {
   const base = computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, null, 0);
   if (!base) return null;
   const out = pathWalkStats(path, getTerrainHeight);
@@ -496,6 +543,7 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     ponrIdx: wb.ponrIdx,
     ponrPoint: wb.ponrIdx >= 0 ? path[wb.ponrIdx] : null,
     marginS: wb.margin,
+    light: computeLightStats(path, wb.elapsed, backS, startMs, hMap),
     checks,
     go: checks.budget && checks.radial && checks.slope,
   };
@@ -504,6 +552,7 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
 // opts.home: {x,z} the walk-back "home" (habitat). Defaults to waypoints[0];
 // return-to-home planning passes the real home so the cached maps stay valid.
 // opts.modes: subset of modes to plan (DEM only), e.g. ['SAFE'] for return-to-home.
+// opts.startMs: EVA start (UTC ms) for the Mars24 lighting analysis (DEM only).
 export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg = 45, experienceMap = null, opts = {}) {
   if (!waypoints || waypoints.length < 2) throw new Error('Need at least 2 waypoints');
 
@@ -520,7 +569,7 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
       const edge = { hMap, climbPenaltyS: w.climbPenaltyS };
       const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge);
       const path = smoothPath(rawPath);
-      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps) };
+      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap) };
     }
     return result;
   }

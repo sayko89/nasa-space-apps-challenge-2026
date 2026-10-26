@@ -57,11 +57,12 @@ export function getSlopeMap() { ensureMaps(); return _slopeMap; }
 export function getCraterMask() { ensureMaps(); return _craterMask; }
 
 /** Draw a heatmap to a canvas element (also exported as generateHeatmapCanvas for compatibility) */
-export function generateHeatmapCanvas(canvas, type, sunAngle, experienceMap) {
-  return drawHeatmap(canvas, type, experienceMap, sunAngle);
+export function generateHeatmapCanvas(canvas, type, sunAngle, experienceMap, sunElevation) {
+  return drawHeatmap(canvas, type, experienceMap, sunAngle, sunElevation);
 }
 
-export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
+// sunElevation (optional, DEM): real Mars24 sun elevation → lambert + cast shadows
+export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45, sunElevation) {
   ensureMaps();
   const ctx = canvas.getContext('2d');
   const W = canvas.width;
@@ -115,7 +116,7 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
     case 'Illumination': {
       // Same sun-direction model used for route illumination costing (pathfinder.js),
       // so this view reflects the actual sun angle set via the sun dial.
-      paramMap = buildIlluminationMap(sunAngle, _heightMap);
+      paramMap = buildIlluminationMap(sunAngle, _heightMap, sunElevation);
       maxVal = 1;
       break;
     }

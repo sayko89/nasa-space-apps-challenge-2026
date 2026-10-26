@@ -89,6 +89,22 @@ nokta**dır ve 3D sahnede/mini haritada kırmızı işaretle gösterilir. GO kar
 bu payın rota boyunca hiç negatife düşmemesini şart koşar. `EVA Range` ısı
 haritası gidip-dönülebilen bölgeyi gösterir.
 
+### 5. Koşullar: Mars güneşi ve gölgeler
+
+DEM modunda panelde **Mars Time** bölümü var: tarih + EVA başlangıcının yerel gerçek
+güneş saati (LTST). Güneş konumu NASA GISS **Mars24** algoritmasıyla hesaplanır
+(Allison & McEwen 2000); 3D ışık, gökyüzü ve `Illumination` ısı haritası (arazi
+gölgeleri dahil) bundan gelir. Doğrulama: USGS `plio` test değerleri (GISS örneği),
+`marstime` referansı ile 60 rastgele anda birebir uyum, azimut için bağımsız vektör
+geometrisi testi (`tests/marsTime.test.mjs`).
+
+Rota kartları, rotanın **yürüneceği saatteki** güneşe göre gölgede/karanlıkta geçen
+süre oranını ve gün batımından önce eve dönülüp dönülmediğini gösterir. Bu bilgi
+GO kararına katılmaz (Mars için kaynaklı bir gün ışığı kuralı bulunamadı).
+
+Sınırlar: gölgeyi yalnızca site grid'indeki arazi düşürür (~20 km uzaktaki krater
+duvarı modellenmez); doğuş/batış disk merkezine göre, kırılma yok.
+
 Testler: `node --test artifacts/moon-rover/tests/*.test.mjs`
 - Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
 - Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.

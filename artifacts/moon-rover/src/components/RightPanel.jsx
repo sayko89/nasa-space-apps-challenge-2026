@@ -14,6 +14,8 @@ import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { generateHeatmapCanvas } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
 import { MODE_WEIGHTS, MARSWALK_PROFILE } from '../config/marswalkProfile';
+import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
+import { SITE } from '../three/terrainGenerator';
 
 const HALF = TERRAIN_SIZE / 2;
 const PW   = 218;  // panel width
@@ -273,6 +275,47 @@ function SunDial({ angle, onChange }) {
   );
 }
 
+// ---- Mars time (DEM): EVA start drives the Mars24 sun ----
+const fmtLtst = (h) => { const m = Math.round(h * 60) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+const SEASONS_N = ['Kuzey ilkbaharı', 'Kuzey yazı', 'Kuzey sonbaharı', 'Kuzey kışı'];
+const COMPASS = ['K','KKD','KD','DKD','D','DGD','GD','GGD','G','GGB','GB','BGB','B','BKB','KB','KKB'];
+
+function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
+  const c = SITE.meta?.center;
+  if (!c || !sun || evaStartMs == null) return null;
+  const lon = c.lon_deg_east;
+  const cur = ltstOf(j2000tt(evaStartMs), lon);
+  const ss = sunriseSunset(evaStartMs, c.lat_deg, lon);
+  const utcDate = new Date(evaStartMs).toISOString().slice(0, 10);
+  const setDate = (iso) => {
+    if (!iso) return;
+    const noonUtc = Date.parse(`${iso}T12:00:00Z`);
+    if (Number.isFinite(noonUtc)) setEvaStartMs(msAtLtst(noonUtc, cur, lon));
+  };
+  const row = { display: 'flex', justifyContent: 'space-between', fontSize: 7.5, color: 'rgba(160,200,160,0.8)', lineHeight: 1.6 };
+  const v = { color: '#e8e0c8' };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+        <input type="date" value={utcDate} onChange={e => setDate(e.target.value)}
+          style={{ flex: 1, background: '#0a140a', color: '#aaffaa', border: '1px solid #234423', fontSize: 9, fontFamily: 'monospace', padding: '2px 4px' }} />
+        <span style={{ color: '#FFD700', fontSize: 13, fontWeight: 'bold' }}>{fmtLtst(cur)}</span>
+      </div>
+      <input type="range" min={0} max={23.75} step={0.25} value={Math.round(cur * 4) / 4}
+        onChange={e => setEvaStartMs(msAtLtst(evaStartMs, Number(e.target.value), lon))} style={{ width: '100%' }} />
+      <div style={{ color: '#554433', fontSize: 7, margin: '1px 0 4px' }}>EVA BAŞLANGICI — YEREL GERÇEK GÜNEŞ SAATİ (LTST)</div>
+      <div style={row}><span>Sol (MSD)</span><span style={v}>{Math.floor(sun.msd)}</span></div>
+      <div style={row}><span>Mevsim</span><span style={v}>Ls {sun.ls.toFixed(1)}° · {SEASONS_N[Math.floor(sun.ls / 90) % 4]}</span></div>
+      <div style={row}><span>Güneş</span><span style={{ color: sun.elevationDeg > 0 ? '#FFD700' : '#8899cc' }}>
+        {sun.elevationDeg > 0 ? `${sun.elevationDeg.toFixed(1)}° yükseklik` : `ufkun ${(-sun.elevationDeg).toFixed(1)}° altında`}
+        {' · '}{COMPASS[Math.round(sun.azimuthDeg / 22.5) % 16]} {sun.azimuthDeg.toFixed(0)}°</span></div>
+      {ss && <div style={row}><span>Doğuş / batış</span><span style={v}>{fmtLtst(ss.riseLtst)} / {fmtLtst(ss.setLtst)} LTST</span></div>}
+      <div style={row}><span>UTC</span><span style={v}>{new Date(evaStartMs).toISOString().slice(0, 16).replace('T', ' ')}</span></div>
+      <div style={{ color: '#4a6a4a', fontSize: 6.5, marginTop: 2 }}>Mars24 (NASA GISS) · Allison &amp; McEwen 2000</div>
+    </div>
+  );
+}
+
 // ---- Route Analysis ----
 const ROUTE_DESC = {
   SAFE: s => `Low-risk path. Avoids craters + shadows. Avg hazard=${(s.avgHazard||0).toFixed(3)}, slip=${(s.avgSlip||0).toFixed(3)}, slope=${(s.avgSlopeAngle||0).toFixed(1)}°.`,
@@ -316,6 +359,15 @@ function MarswalkStats({ mode, s }) {
         {' · '}Tırmanış {s.climbM.toFixed(0)} m · İniş {s.descentM.toFixed(0)} m
         {' · '}Başlangıca uzaklık <span style={{color:fail(s.checks.radial)}}>{(s.maxRadialM/1000).toFixed(2)}</span> / {P.maxRadialDistanceKm.value} km
       </div>
+      {s.light && (
+        <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55,marginTop:1}}>
+          Işık (gidiş): gölgede <span style={{color:'#e8c890'}}>%{(s.light.shadowFrac*100).toFixed(0)}</span>
+          {s.light.darkFrac > 0 && <> · <span style={{color:'#8899cc'}}>karanlıkta %{(s.light.darkFrac*100).toFixed(0)}</span></>}
+          {' · '}{s.light.homeBySunset === null ? 'gün doğumu/batımı yok'
+            : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>gün batımından önce evde</span>
+            : <span style={{color:'#ffaa55'}}>⚠ gün ışığında tamamlanmıyor</span>}
+        </div>
+      )}
       <div style={{color:'rgba(100,150,100,0.75)',fontSize:7,marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
     </>
   );
@@ -370,7 +422,7 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
 }
 
 // ---- Heatmap ----
-function HeatmapViewer({ sunAngle, learningModel }) {
+function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
   const ref=useRef(null);
   const [sel,setSel]=useState('Hazard Score');
   const [open,setOpen]=useState(false);
@@ -385,8 +437,8 @@ function HeatmapViewer({ sunAngle, learningModel }) {
   useEffect(()=>{
     if (!ref.current) return;
     const experienceMap = sel === 'Experience' ? learningModel?.getExperienceMap?.() : undefined;
-    generateHeatmapCanvas(ref.current,sel,sunAngle,experienceMap);
-  }, [sel,sunAngle,tick,learningModel]);
+    generateHeatmapCanvas(ref.current,sel,sunAngle,experienceMap,sunElevation);
+  }, [sel,sunAngle,sunElevation,tick,learningModel]);
   return (
     <div>
       <Label>Parameter Heatmap</Label>
@@ -694,6 +746,7 @@ export default function RightPanel({
   onPlanPath,
   isPlanning = false,
   sunAngleDeg, setSunAngleDeg,
+  sun = null, evaStartMs = null, setEvaStartMs = () => {},
   cameraMode, setCameraMode,
   wireframe, setWireframe,
   onStartRover, onStopRover, isRoving,
@@ -817,7 +870,12 @@ export default function RightPanel({
           </Row>
         </Sect>
 
-        {/* Sun */}
+        {/* Sun — DEM: Mars24 time controls; procedural: manual dial */}
+        {IS_DEM && sun ? (
+        <Sect label="Mars Time">
+          <MarsTimePanel sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs} />
+        </Sect>
+        ) : (
         <Sect label="Sun Direction">
           <div style={{display:'flex',gap:7,alignItems:'center'}}>
             <SunDial angle={sunAngleDeg} onChange={setSunAngleDeg}/>
@@ -831,6 +889,7 @@ export default function RightPanel({
             </div>
           </div>
         </Sect>
+        )}
 
         {/* Route selector + start */}
         <Sect label="Select Route">
@@ -960,7 +1019,7 @@ export default function RightPanel({
         </Sect>
 
         {/* Heatmap */}
-        <HeatmapViewer sunAngle={sunAngleDeg} learningModel={learningModel}/>
+        <HeatmapViewer sunAngle={sunAngleDeg} sunElevation={sun?.elevationDeg} learningModel={learningModel}/>
 
         {/* Image processing proof panel */}
         <ProcessingMapPreview
