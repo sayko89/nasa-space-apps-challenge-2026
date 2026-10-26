@@ -1,5 +1,5 @@
 """build_geology.py sentetik shapefile testleri:  python -m unittest discover pipeline/tests"""
-import io, json, math, os, sys, tempfile, unittest, zipfile
+import io, json, math, os, struct, sys, tempfile, unittest, zipfile
 
 import numpy as np
 import shapefile
@@ -33,7 +33,22 @@ def make_zip(prj=PRJ):
     w.poly([rect(-51, -31, 51, 31), rect(-11, -11, 11, 11, cw=False)]); w.record("Q1", "Aeolian bedforms large", "Crater floor fractured 1")
     w.poly([rect(60, -20, 100, 20)]); w.record("Q1", "", "Crater floor fractured rough")
     w.poly([rect(5000, 5000, 5100, 5100)]); w.record("Q2", "Far away", "Far away")  # pencere dışı
+    w.null(); w.record("Q3", "Null shape", "Null shape")                              # null kayıt
     w.close()
+    shp_b = bytearray(shp.getvalue())
+    # Gerçek arşivdeki gibi: tip=Polygon ama 0 parça / 0 nokta (pyshp 3.x bunda hata veriyor)
+    body = struct.pack("<i4dii", 5, 0, 0, 0, 0, 0, 0)
+    shp_b += struct.pack(">ii", 99, len(body) // 2) + body
+    shp_b[24:28] = struct.pack(">i", len(shp_b) // 2)
+    shp = io.BytesIO(bytes(shp_b))
+    dbf_b = bytearray(dbf.getvalue())
+    nrec, hlen, rlen = struct.unpack("<IHH", dbf_b[4:12])
+    rec = b" " + b"Q4".ljust(20) + b"Empty poly".ljust(60) + b"Empty poly".ljust(60)
+    assert len(rec) == rlen
+    dbf_b[4:8] = struct.pack("<I", nrec + 1)
+    end = hlen + nrec * rlen
+    dbf_b = dbf_b[:end] + rec + b"\x1a"
+    dbf = io.BytesIO(bytes(dbf_b))
     zb = io.BytesIO()
     with zipfile.ZipFile(zb, "w") as z:
         for ext, b in ((".shp", shp), (".shx", shx), (".dbf", dbf)):
@@ -72,6 +87,7 @@ class GeologyTest(unittest.TestCase):
                 exp_s = "Aeolian bedforms large" if in_a else ""
                 self.assertEqual((su[s[r, c]], bu[b[r, c]]), (exp_s, exp_b), (r, c, x, y))
         self.assertNotIn("Far away", bu)
+        self.assertNotIn("Null shape", bu); self.assertNotIn("Empty poly", bu)
         self.assertEqual(out["source"]["license"], "CC-BY-4.0")
         self.assertEqual(sum(u["cells"] for u in out["bedrock"]["summary"]), N * N)
 

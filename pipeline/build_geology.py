@@ -49,10 +49,7 @@ import zipfile
 
 import numpy as np
 
-try:
-    import shapefile  # pyshp
-except ImportError:  # pragma: no cover
-    sys.exit("pyshp gerekli: pip install -r pipeline/requirements.txt")
+import struct
 
 ZIP_URL = ("https://authors.library.caltech.edu/api/records/a7qs5-xhq84/files/"
            "11214_2020_739_MOESM3_ESM.zip/content")
@@ -113,16 +110,70 @@ def get_zip(args) -> bytes:
     return data
 
 
-def open_shapefile(zbytes: bytes) -> tuple[shapefile.Reader, str]:
+# ---- Minimal ESRI shapefile okuyucu (yalnızca Polygon/PolygonZ/PolygonM + DBF) ----
+# pyshp sürümleri boş (0 noktalı) poligon kayıtlarında farklı davranıyor (3.x hata
+# fırlatıyor; bu arşivde böyle kayıtlar var). Biçim basit olduğundan kendimiz okuyoruz:
+# ESRI Shapefile Technical Description (1998).
+POLY_TYPES = (5, 15, 25)
+
+
+def parse_shp(data: bytes):
+    """Her kayıt için (parts, points[Nx2]) ya da None (null/boş/poligon olmayan)."""
+    if len(data) < 100 or struct.unpack(">i", data[:4])[0] != 9994:
+        raise ValueError("geçersiz .shp başlığı")
+    out, off = [], 100
+    while off + 8 <= len(data):
+        _num, clen = struct.unpack(">ii", data[off:off + 8])
+        body = data[off + 8: off + 8 + 2 * clen]
+        off += 8 + 2 * clen
+        if len(body) < 4:
+            out.append(None); continue
+        st = struct.unpack("<i", body[:4])[0]
+        if st not in POLY_TYPES or len(body) < 44:
+            out.append(None); continue
+        nparts, npts = struct.unpack("<ii", body[36:44])
+        if nparts <= 0 or npts <= 0:
+            out.append(None); continue
+        parts = list(struct.unpack(f"<{nparts}i", body[44:44 + 4 * nparts]))
+        p0 = 44 + 4 * nparts
+        pts = np.frombuffer(body, dtype="<f8", count=2 * npts, offset=p0).reshape(npts, 2)
+        out.append((parts, pts))
+    return out
+
+
+def parse_dbf(data: bytes, encoding="latin-1"):
+    """dBase III: (alan adları, kayıt listesi[str])."""
+    nrec, hlen, rlen = struct.unpack("<IHH", data[4:12])
+    fields, off = [], 32
+    while data[off] != 0x0D:
+        name = data[off:off + 11].split(b"\0", 1)[0].decode("ascii")
+        fields.append((name, data[off + 16]))
+        off += 32
+    recs = []
+    for r in range(nrec):
+        base = hlen + r * rlen
+        pos, row = base + 1, []          # ilk bayt: silinme işareti
+        for _name, ln in fields:
+            row.append(data[pos:pos + ln].decode(encoding, "replace").strip())
+            pos += ln
+        recs.append(row)
+    return [f[0] for f in fields], recs
+
+
+def open_shapefile(zbytes: bytes):
+    """Döner: (shapes, field_names, records, prj)."""
     zf = zipfile.ZipFile(io.BytesIO(zbytes))
     names = {os.path.basename(n): n for n in zf.namelist() if not n.endswith("/")}
-    need = [SHP_STEM + e for e in (".shp", ".shx", ".dbf", ".prj")]
+    need = [SHP_STEM + e for e in (".shp", ".dbf", ".prj")]
     missing = [n for n in need if n not in names]
     if missing:
         sys.exit(f"Arşivde eksik dosya: {missing}")
-    rd = lambda e: io.BytesIO(zf.read(names[SHP_STEM + e]))  # noqa: E731
-    prj = zf.read(names[SHP_STEM + ".prj"]).decode("latin-1")
-    return shapefile.Reader(shp=rd(".shp"), shx=rd(".shx"), dbf=rd(".dbf"), encoding="latin-1"), prj
+    rd = lambda e: zf.read(names[SHP_STEM + e])  # noqa: E731
+    shapes = parse_shp(rd(".shp"))
+    fields, recs = parse_dbf(rd(".dbf"))
+    if len(shapes) != len(recs):
+        sys.exit(f".shp {len(shapes)} kayıt, .dbf {len(recs)} kayıt — uyuşmuyor")
+    return shapes, fields, recs, rd(".prj").decode("latin-1")
 
 
 def check_prj(prj: str) -> None:
@@ -186,8 +237,7 @@ def rle(a: np.ndarray) -> list[list[int]]:
     return [[int(flat[s]), int(e - s)] for s, e in zip(starts, ends)]
 
 
-def build_grids(reader: shapefile.Reader, n: int, cell: float, lat0: float, lon0: float):
-    fields = [f[0] for f in reader.fields[1:]]
+def build_grids(shapes, fields, recs, n: int, cell: float, lat0: float, lon0: float):
     for need in ("SurfUName", "BedrkUName"):
         if need not in fields:
             sys.exit(f"DBF'de '{need}' alanı yok: {fields}")
@@ -197,16 +247,17 @@ def build_grids(reader: shapefile.Reader, n: int, cell: float, lat0: float, lon0
     owner = np.full((n, n), -1, dtype=np.int32)
     s_units, b_units = [""], [""]
     used = 0
-    for i, sr in enumerate(reader.iterShapeRecords()):
-        shp, rec = sr.shape, sr.record
-        if shp.shapeType not in (shapefile.POLYGON, shapefile.POLYGONZ, shapefile.POLYGONM) or not shp.points:
+    skipped_empty = 0
+    for i, (shp, rec) in enumerate(zip(shapes, recs)):
+        if shp is None:
+            skipped_empty += 1
             continue
-        pts = np.asarray(shp.points, dtype=float)
+        parts, pts = shp
         x, y = local_xy(pts[:, 0], pts[:, 1], lat0, lon0)
         if x.max() < -h or x.min() > h or y.max() < -h or y.min() > h:
             continue
         xy = np.column_stack([x, y])
-        bounds = list(shp.parts) + [len(pts)]
+        bounds = list(parts) + [len(pts)]
         rings = [xy[a:b] for a, b in zip(bounds[:-1], bounds[1:]) if b - a >= 4]
         m = rasterize_even_odd(rings, n, cell)
         if not m.any():
@@ -219,6 +270,8 @@ def build_grids(reader: shapefile.Reader, n: int, cell: float, lat0: float, lon0
         if bname not in b_units: b_units.append(bname)
         surf[m] = s_units.index(sname); bed[m] = b_units.index(bname); owner[m] = i
         used += 1
+    if skipped_empty:
+        print(f"  {skipped_empty} boş/null poligon kaydı atlandı")
     if len(s_units) > 255 or len(b_units) > 255:
         sys.exit("255'ten fazla birim — uint8 yetmez")
     return surf, bed, s_units, b_units, used, int((owner < 0).sum())
@@ -243,10 +296,10 @@ def build(args) -> dict:
     if abs(meta.get("projection", {}).get("mars_radius_m", R_MARS) - R_MARS) > 1:
         sys.exit("Site yarıçapı shapefile küresiyle (3396190 m) aynı değil")
 
-    reader, prj = open_shapefile(get_zip(args))
+    shapes, fields, recs, prj = open_shapefile(get_zip(args))
     check_prj(prj)
-    print(f"[2/4] {len(reader)} poligon; {n}×{n} grid, {cell} m (merkez {lat0}°K {lon0}°D)")
-    surf, bed, s_units, b_units, used, empty = build_grids(reader, n, cell, lat0, lon0)
+    print(f"[2/4] {len(shapes)} poligon; {n}×{n} grid, {cell} m (merkez {lat0}°K {lon0}°D)")
+    surf, bed, s_units, b_units, used, empty = build_grids(shapes, fields, recs, n, cell, lat0, lon0)
     print(f"[3/4] {used} poligon pencereyle kesişti; {empty} hücre haritalanmamış")
 
     out = {
