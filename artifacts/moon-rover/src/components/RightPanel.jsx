@@ -13,6 +13,7 @@ import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { generateHeatmapCanvas } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
+import { MODE_WEIGHTS, MARSWALK_PROFILE } from '../config/marswalkProfile';
 
 const HALF = TERRAIN_SIZE / 2;
 const PW   = 218;  // panel width
@@ -271,6 +272,39 @@ const ROUTE_DESC = {
   AUTO: s => `Balanced route. Hazard=${(s.avgHazard||0).toFixed(3)}, illum=${(s.avgIllumination||0).toFixed(3)}, dist=${(s.distance||0).toFixed(1)}m.`,
 };
 
+// ---- Marswalk (DEM) stats card body ----
+function fmtHM(sec) {
+  const m = Math.round(sec / 60);
+  return `${Math.floor(m / 60)} sa ${String(m % 60).padStart(2, '0')} dk`;
+}
+function MarswalkStats({ mode, s }) {
+  const P = MARSWALK_PROFILE;
+  const fail = (ok) => ok ? '#88dd99' : '#ff6655';
+  return (
+    <>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
+        <span style={{color:'rgba(160,200,160,0.8)',fontSize:7.5}}>
+          Gidiş <b style={{color:'#e8e0c8'}}>{fmtHM(s.walkTimeS)}</b>
+          {'  '}Gidiş-dönüş <b style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</b>
+        </span>
+        <span style={{
+          fontSize:7.5, fontWeight:'bold', padding:'1px 5px', borderRadius:3,
+          color: s.go ? '#0a1a0a' : '#fff', background: s.go ? '#44dd66' : '#cc3322',
+        }}>{s.go ? 'GO' : 'NO-GO'}</span>
+      </div>
+      <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55}}>
+        EVA bütçesi: <span style={{color:fail(s.checks.budget)}}>%{(s.budgetFrac*100).toFixed(0)}</span> / {P.evaDurationH.value} sa
+        {' · '}Maks. eğim: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {P.maxWalkableSlopeDeg.value}°
+        <br/>
+        Dik zemin (&gt;{s.steepDeg.toFixed(0)}°): <span style={{color:'#e8c890'}}>%{(s.steepFrac*100).toFixed(0)}</span>
+        {' · '}Tırmanış {s.climbM.toFixed(0)} m · İniş {s.descentM.toFixed(0)} m
+        {' · '}Başlangıca uzaklık <span style={{color:fail(s.checks.radial)}}>{(s.maxRadialM/1000).toFixed(2)}</span> / {P.maxRadialDistanceKm.value} km
+      </div>
+      <div style={{color:'rgba(100,150,100,0.75)',fontSize:7,marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
+    </>
+  );
+}
+
 function RouteAnalysis({ routes, activeRoute, onSelect }) {
   if (!routes) return (
     <div style={{fontSize:8,color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
@@ -300,7 +334,8 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
               </div>
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:8}}>{s.distance.toFixed(1)}m</span>}
             </div>
-            {s && (
+            {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} />}
+            {s && s.walkTimeS === undefined && (
               <>
                 <div style={{color:'rgba(160,200,160,0.7)',fontSize:7.5,marginBottom:2}}>
                   Risk: <span style={{color:'#ffcc44'}}>{s.riskPercent.toFixed(1)}%</span>

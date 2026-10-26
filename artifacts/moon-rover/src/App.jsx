@@ -7,7 +7,7 @@ import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } fro
 import RightPanel from './components/RightPanel';
 import { planAllRoutes, clearPathCache, getHazardAtPoint, isWallAt } from './utils/pathfinder';
 import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
-import { param, placeholderParams } from './config/marswalkProfile';
+import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
@@ -75,12 +75,21 @@ function SiteBadge() {
   }
   const m = SITE.meta;
   const ph = placeholderParams();
+  const as = assumptionParams();
   return (
     <div style={{ ...base, background:'rgba(20,10,6,0.82)', border:'1px solid rgba(232,168,120,0.35)', color:'#e8c4a8' }}>
       TERRAIN: {m.source?.title || 'DTM'} · {m.grid.cell_m} m grid · {Math.round(m.grid.span_m)} m alan<br/>
       MERKEZ: {m.center.lat_deg.toFixed(4)}°N {m.center.lon_deg_east.toFixed(4)}°E ·
       {' '}yükseklik {m.elevation_m.min.toFixed(0)}…{m.elevation_m.max.toFixed(0)} m<br/>
       {m.source?.doi && <a href={m.source.doi} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>{m.source.doi}</a>}
+      EVA: eğim ≤{MARSWALK_PROFILE.maxWalkableSlopeDeg.value}° · düz zemin {MARSWALK_PROFILE.levelWalkSpeedKmh.value} km/h ·
+      {' '}≤{MARSWALK_PROFILE.evaDurationH.value} sa · ≤{MARSWALK_PROFILE.maxRadialDistanceKm.value} km —{' '}
+      <a href={MARSWALK_PROFILE.maxWalkableSlopeDeg.url} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>NASA xEVA ConOps</a>
+      {as.length > 0 && <> · varsayım: {as.join(', ')}</>}
+      <div style={{color:'#ffaa55', marginTop:3}}>
+        ⚠ Bu değerler Ay için yazılmış; Mars için iyimser.{' '}
+        <a href={MARS_CAVEAT.url} target="_blank" rel="noreferrer" style={{color:'#ffcc88'}} title={MARS_CAVEAT.note}>Neden?</a>
+      </div>
       {ph.length > 0 && (
         <div style={{color:'#ffaa55', marginTop:3}}>
           ⚠ Kaynağı bağlanmamış parametre: {ph.join(', ')} (geçici değer)
@@ -264,7 +273,11 @@ export default function App() {
         };
         for (const [mode, r] of Object.entries(planned)) {
           const s = r.stats;
-          addLog(`${mode}: ${r.path.length} pts, ${s?.distance.toFixed(1)}m, risk ${s?.riskPercent.toFixed(0)}%`);
+          if (s?.walkTimeS !== undefined) {
+            addLog(`${mode}: ${s.distance.toFixed(0)}m, gidiş ${(s.walkTimeS/60).toFixed(0)}dk, gidiş-dönüş ${(s.roundTripS/60).toFixed(0)}dk, maks ${s.maxSlopeDeg.toFixed(1)}° → ${s.go ? 'GO' : 'NO-GO'}`);
+          } else {
+            addLog(`${mode}: ${r.path.length} pts, ${s?.distance.toFixed(1)}m, risk ${s?.riskPercent.toFixed(0)}%`);
+          }
         }
         addLog('Select route and press START ROVER.');
       } catch (err) {

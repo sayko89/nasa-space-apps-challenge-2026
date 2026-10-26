@@ -8,7 +8,8 @@ import {
   TERRAIN_SIZE, GRID_RES, getTerrainHeight, CRATERS, IS_DEM,
   buildHeightMap, buildSlopeMap,
 } from '../three/terrainGenerator.js';
-import { param } from '../config/marswalkProfile.js';
+import { param, MODE_WEIGHTS } from '../config/marswalkProfile.js';
+import { walkTimeS, maxSpeedMs, pathWalkStats, reverseWalkTimeS } from './walkModel.js';
 
 const HALF = TERRAIN_SIZE / 2;
 
@@ -189,7 +190,12 @@ function buildCostMap(mode, slopeMap, craterMask, illumMap, experienceMap) {
 
 // ---- A* Core ----
 // Returns null if goal is a wall (no path possible).
-function aStar(sr, sc, er, ec, costMap) {
+// `edge` (DEM only): { hMap, climbPenaltyS } → step cost = walking time [s]
+// of the edge (direction-dependent, walkModel.js) × costMap[nk] multiplier
+// (+ climb penalty). Heuristic = straight-line distance / max model speed,
+// a lower bound on every step (multipliers ≥ 1), so A* stays optimal.
+// Without `edge` the original unitless cell-cost behaviour is unchanged.
+function aStar(sr, sc, er, ec, costMap, edge = null) {
   const N = GRID_RES;
   const ek = er*N+ec;
 
@@ -210,7 +216,8 @@ function aStar(sr, sc, er, ec, costMap) {
     actualEr = br; actualEc = bc;
   }
 
-  const h = (r,c) => Math.sqrt((r-actualEr)**2+(c-actualEc)**2);
+  const invVmax = edge ? CELL_SIZE / maxSpeedMs() : 1;
+  const h = (r,c) => Math.sqrt((r-actualEr)**2+(c-actualEc)**2) * invVmax;
   const gScore = new Float32Array(N*N).fill(Infinity);
   const cameFrom = new Int32Array(N*N).fill(-1);
   const visited = new Uint8Array(N*N);
@@ -243,7 +250,15 @@ function aStar(sr, sc, er, ec, costMap) {
       if (visited[nk]) continue;
       if (wall[nk]) continue; // Skip walls entirely
       const diag = dr!==0&&dc!==0;
-      const tg = gScore[k] + (diag?1.414:1.0)*costMap[nk];
+      let step;
+      if (edge) {
+        const dh = edge.hMap[nk] - edge.hMap[k];
+        step = walkTimeS(diag ? CELL_SIZE * Math.SQRT2 : CELL_SIZE, dh) * costMap[nk];
+        if (dh > 0 && edge.climbPenaltyS) step += edge.climbPenaltyS * dh;
+      } else {
+        step = (diag?1.414:1.0)*costMap[nk];
+      }
+      const tg = gScore[k] + step;
       if (tg < gScore[nk]) {
         gScore[nk]=tg; cameFrom[nk]=k;
         open.push({ f:tg+h(nr,nc), row:nr, col:nc });
@@ -369,12 +384,12 @@ function computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, experi
 }
 
 // ---- Chain Pathfinding ----
-function chainAStar(waypoints, costMap) {
+function chainAStar(waypoints, costMap, edge = null) {
   const fullPath = [];
   for (let i=0; i<waypoints.length-1; i++) {
     const { col:sc, row:sr } = worldToGrid(waypoints[i].x, waypoints[i].z);
     const { col:ec, row:er } = worldToGrid(waypoints[i+1].x, waypoints[i+1].z);
-    const seg = aStar(sr,sc,er,ec, costMap);
+    const seg = aStar(sr,sc,er,ec, costMap, edge);
     if (i===0) fullPath.push(...seg);
     else fullPath.push(...seg.slice(1));
   }
@@ -386,8 +401,98 @@ function chainAStar(waypoints, costMap) {
 // slopeMap/craterMask) from LearningModel.getExperienceMap() — see
 // buildCostMap()'s experience-penalty term. Omit/pass null to plan without it
 // (existing callers keep their old behaviour unchanged).
+// ---- DEM (Marswalk) planning ----
+// Per-cell multiplier for a mode's slope aversion: 1 + k·(slopeDeg/limit)².
+// Walls stay 1e9 (never entered anyway — aStar skips wall cells).
+function buildDemMultMap(mode, slopeMap) {
+  const w = MODE_WEIGHTS[mode] || MODE_WEIGHTS.AUTO;
+  const wall = getWallMap();
+  const limit = param('maxWalkableSlopeDeg');
+  const mult = new Float32Array(GRID_RES * GRID_RES);
+  for (let i = 0; i < mult.length; i++) {
+    if (wall[i]) { mult[i] = 1e9; continue; }
+    const deg = Math.atan(slopeMap ? slopeMap[i] : 0) * 180 / Math.PI;
+    const r = deg / limit;
+    mult[i] = 1 + w.slopeAversion * r * r;
+  }
+  return mult;
+}
+
+/**
+ * Physical route stats for a Marswalk. All times use the same walk model in
+ * every mode, so modes are directly comparable. Round trip = walk back along
+ * the same path (uphill/downhill swap). GO requires: round trip within the EVA
+ * budget, never farther than the radial limit from the start, and no terrain
+ * cell on the path steeper than the walkable limit.
+ */
+function computeDemStats(path, slopeMap, craterMask, illumMap, costMap) {
+  const base = computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, null, 0);
+  if (!base) return null;
+  const out = pathWalkStats(path, getTerrainHeight);
+  const backS = reverseWalkTimeS(path, getTerrainHeight);
+  // Max slope alone is dominated by unavoidable spots (e.g. a steep endpoint),
+  // so also report the share of path length on "steep" ground (> 75% of the
+  // walkable limit — a display threshold, not a sourced value).
+  const steepDeg = 0.75 * param('maxWalkableSlopeDeg');
+  let maxSlopeDeg = 0, maxRadialM = 0, steepLen = 0, totLen = 0;
+  const [sx, , sz] = path[0];
+  for (let i = 0; i < path.length; i++) {
+    const p = path[i];
+    const { col, row } = worldToGrid(p[0], p[2]);
+    const deg = Math.atan(slopeMap?.[row * GRID_RES + col] ?? 0) * 180 / Math.PI;
+    if (deg > maxSlopeDeg) maxSlopeDeg = deg;
+    const r = Math.hypot(p[0] - sx, p[2] - sz);
+    if (r > maxRadialM) maxRadialM = r;
+    if (i > 0) {
+      const seg = Math.hypot(p[0] - path[i - 1][0], p[2] - path[i - 1][2]);
+      totLen += seg;
+      if (deg > steepDeg) steepLen += seg;
+    }
+  }
+  const budgetS = param('evaDurationH') * 3600;
+  const roundTripS = out.timeS + backS;
+  const checks = {
+    budget: roundTripS <= budgetS,
+    radial: maxRadialM <= param('maxRadialDistanceKm') * 1000,
+    slope: maxSlopeDeg <= param('maxWalkableSlopeDeg'),
+  };
+  return {
+    ...base,
+    distance: out.horizM,
+    walkTimeS: out.timeS,
+    returnTimeS: backS,
+    roundTripS,
+    budgetS,
+    budgetFrac: roundTripS / budgetS,
+    climbM: out.climbM,
+    descentM: out.descentM,
+    maxSlopeDeg,
+    steepDeg,
+    steepFrac: totLen > 0 ? steepLen / totLen : 0,
+    maxRadialM,
+    checks,
+    go: checks.budget && checks.radial && checks.slope,
+  };
+}
+
 export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg = 45, experienceMap = null) {
   if (!waypoints || waypoints.length < 2) throw new Error('Need at least 2 waypoints');
+
+  if (IS_DEM) {
+    // Sun angle / learned experience don't enter the DEM cost (yet) — the
+    // cost is physical walking time. Cache key is mode-only.
+    const result = {};
+    for (const mode of ['SAFE','ECO','FAST','AUTO']) {
+      const cacheKey = `DEM_${mode}`;
+      if (!_costCache[cacheKey]) _costCache[cacheKey] = buildDemMultMap(mode, slopeMap);
+      const w = MODE_WEIGHTS[mode] || MODE_WEIGHTS.AUTO;
+      const edge = { hMap, climbPenaltyS: w.climbPenaltyS };
+      const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge);
+      const path = smoothPath(rawPath);
+      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey]) };
+    }
+    return result;
+  }
 
   const illumMap = hMap ? buildIlluminationMap(sunAngleDeg, hMap) : null;
 
@@ -423,6 +528,9 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
   }
   return result;
 }
+
+/** Test-only access to internals (tests/marswalk.test.mjs). Not used by the app. */
+export const _internals = { aStar, buildDemMultMap, CELL_SIZE };
 
 export function clearPathCache() { _costCache = {}; _illumCache = {}; _wallMap = null; }
 

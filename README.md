@@ -55,7 +55,31 @@ DTM Mosaic*, [doi:10.5066/P9REJ9JN](https://doi.org/10.5066/P9REJ9JN); Fergason 
 
 - Krater listesi ve rastgele kaya/enkaz yok; arazi tamamen veriden gelir.
 - Geçilmez bölgeler eğim eşiğinden türetilir (`src/config/marswalkProfile.js`).
-  Eşik şu an **geçici** değer; NASA EVA kaynağı bağlanana kadar arayüzde uyarı gösterilir.
+
+### 3. Marswalk modeli (fiziksel maliyet)
+
+Rota maliyeti artık **yürüme süresi [s]**. A*'ın her kenarı, o kenarı yürümenin
+süresidir; yokuş yukarı ve aşağı farklıdır. Heuristic `mesafe / en yüksek hız`,
+yani kabul edilebilir: A* en kısa süreli yolu garanti eder (testle Dijkstra'ya karşı doğrulanır).
+
+| Parametre | Değer | Kaynak |
+|---|---|---|
+| Yürünebilir en dik eğim | 20° | NASA xEVA ConOps (EVA-EXP-0042 Rev B) §4.2.1.3 |
+| Düz zemin yürüme hızı | ~2 km/h (TBR) | aynı doküman §4.2.1.3.1.1 |
+| EVA süresi (plan bütçesi) | ≤ 8 sa | aynı doküman §4.1.4 |
+| Başlangıçtan en uzak mesafe | ≤ 2 km | aynı doküman §4.2.1.3.1 |
+| Eğimin hıza etkisi | Tobler (1993) şekli, düz zemin 2 km/h'ye ölçekli | **Varsayım** — NASA verisi bulunamadı |
+
+**Kısıt:** Bu değerler Ay için yazılmıştır. NASA'nın skafandrlı 10 km yürüme testi
+(NASA/TP-2009-214796) Mars yerçekiminde (3/8 g) geri yürüyüşü kabul edilemez bulmuştur;
+değerler Mars için iyimserdir. Arayüz bunu gösterir.
+
+Rota kartları her mod için gidiş ve gidiş-dönüş süresi, EVA bütçesi kullanımı,
+maksimum eğim, dik zemin payı, tırmanış/iniş ve **GO/NO-GO** kararını gösterir. Modlar
+(FAST / SAFE / ECO / AUTO) yalnızca yol seçimini etkileyen tercih ağırlıklarıdır;
+raporlanan süreler hepsinde aynı fiziksel modelle hesaplanır.
+
+Testler: `node --test artifacts/moon-rover/tests/*.test.mjs`
 - Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
 - Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.
 
