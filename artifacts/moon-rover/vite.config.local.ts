@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 export default defineConfig({
+  // Planner worker dinamik import kullanır → ES modül formatı gerekli
+  worker: { format: 'es' },
   base: "/",
   plugins: [
     react(),

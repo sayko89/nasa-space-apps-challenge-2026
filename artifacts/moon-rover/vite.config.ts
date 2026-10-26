@@ -14,6 +14,8 @@ if (Number.isNaN(port) || port <= 0) {
 const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
+  // Planner worker dinamik import kullanır → ES modül formatı gerekli
+  worker: { format: 'es' },
   base: basePath,
   plugins: [
     react(),

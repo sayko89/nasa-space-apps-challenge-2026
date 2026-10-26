@@ -692,6 +692,7 @@ export default function RightPanel({
   routes, activeRoute, setActiveRoute,
   waypoints, onAddWaypoint, onSetStartWaypoint, onRemoveLastWaypoint, onClearWaypoints,
   onPlanPath,
+  isPlanning = false,
   sunAngleDeg, setSunAngleDeg,
   cameraMode, setCameraMode,
   wireframe, setWireframe,
@@ -808,10 +809,10 @@ export default function RightPanel({
           </Row>
           <Row>
             <Btn onClick={onClearWaypoints} disabled={waypoints.length===0}>CLEAR ALL</Btn>
-            <Btn disabled={waypoints.length<2} onClick={onPlanPath}
+            <Btn disabled={waypoints.length<2 || isPlanning} onClick={onPlanPath}
               style={{flex:1.5,background:'rgba(0,65,0,0.55)',borderColor:'rgba(0,180,0,0.5)',
                 color:'#44ff88',fontWeight:'bold'}}>
-              PLAN PATH
+              {isPlanning ? 'PLANNING…' : 'PLAN PATH'}
             </Btn>
           </Row>
         </Sect>

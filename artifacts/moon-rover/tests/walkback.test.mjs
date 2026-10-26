@@ -99,3 +99,11 @@ test('dönüşü olmayan nokta: marjın ilk negatif olduğu nokta', () => {
   // Gidiş-dönüş = gidiş + varıştan en hızlı dönüş
   assert.ok(Math.abs(stats.roundTripS - stats.walkTimeS - stats.returnTimeS) < 1e-6);
 });
+
+test('opts.modes yalnızca istenen modu planlar; opts.home ev önbelleğini korur', () => {
+  const before = P.peekHomeMaps();
+  const r = P.planAllRoutes([world(120, 60), homeW], sm, cm, hm, 45, null, { home: homeW, modes: ['SAFE'] });
+  assert.deepEqual(Object.keys(r), ['SAFE']);
+  assert.ok(r.SAFE.path.length > 1);
+  assert.equal(P.peekHomeMaps(), before, 'gerçek ev verilince haritalar yeniden hesaplanmamalı');
+});

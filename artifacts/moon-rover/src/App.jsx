@@ -5,13 +5,14 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import RightPanel from './components/RightPanel';
-import { planAllRoutes, clearPathCache, getHazardAtPoint, isWallAt } from './utils/pathfinder';
+import { clearPathCache, getHazardAtPoint, isWallAt } from './utils/pathfinder';
 import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
 import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
 import { buildReturnToHomePath } from './utils/returnToHomeController';
+import { planRoutes, warmPlanner, plannerUsesWorker } from './utils/plannerClient';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
@@ -115,6 +116,11 @@ export default function App() {
   const [isRoving, setIsRoving]     = useState(false);
   const [resetKey, setResetKey]     = useState(0);
   const [toasts, setToasts]         = useState([]);
+  const [isPlanning, setIsPlanning] = useState(false);
+  const planSeqRef = useRef(0);   // stale-result guard for async planning
+
+  // Planner worker'ı açılışta ısıt (DEM): ilk PLAN PATH beklemesi kısalır
+  useEffect(() => { warmPlanner(); }, []);
 
   // ---- Dust Hazard State Machine ----
   // 'normal' | 'dust_placement_mode' | 'dust_present' | 'dust_interference_detected' | 'signal_lost' | 'stopped' | 'return_to_home'
@@ -225,6 +231,9 @@ export default function App() {
     addLog(`Start moved to (${pos.x.toFixed(0)}, ${pos.z.toFixed(0)}) — rover teleported.`);
   }, [getMaps, showToast, addLog]);
 
+  // Any waypoint edit invalidates an in-flight plan
+  useEffect(() => { planSeqRef.current++; setIsPlanning(false); }, [waypoints]);
+
   const removeLastWaypoint = useCallback(() => {
     setWaypoints(prev => prev.length > 0 ? prev.slice(0, -1) : prev);
     setRoutes(null);
@@ -256,13 +265,17 @@ export default function App() {
       showToast('Need at least 2 waypoints to plan a route.', 'warning');
       return;
     }
-    addLog(`Planning 4 routes through ${waypoints.length} waypoints...`);
+    addLog(`Planning 4 routes through ${waypoints.length} waypoints${plannerUsesWorker() ? ' (background)' : ''}...`);
     setRoutes(null);
+    setIsPlanning(true);
+    const mySeq = ++planSeqRef.current;
+    const t0 = performance.now();
 
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        const { sm: sm2, cm: cm2, hm: hm2 } = getMaps();
-        const planned = planAllRoutes(waypoints, sm2, cm2, hm2, sunAngleDeg, learningModel.getExperienceMap());
+        const planned = await planRoutes(waypoints, getMaps(), sunAngleDeg, learningModel.getExperienceMap());
+        // Waypoints changed / re-planned meanwhile → drop this stale result
+        if (mySeq !== planSeqRef.current) return;
         setRoutes(planned);
         pathRef.current = {
           ...pathRef.current,
@@ -279,10 +292,13 @@ export default function App() {
             addLog(`${mode}: ${r.path.length} pts, ${s?.distance.toFixed(1)}m, risk ${s?.riskPercent.toFixed(0)}%`);
           }
         }
-        addLog('Select route and press START ROVER.');
+        addLog(`Planned in ${((performance.now() - t0) / 1000).toFixed(1)} s. Select route and press START ROVER.`);
       } catch (err) {
+        if (mySeq !== planSeqRef.current) return;
         addLog(`[ERR] ${err.message}`);
         showToast(`Path planning failed: ${err.message}`, 'error');
+      } finally {
+        if (mySeq === planSeqRef.current) setIsPlanning(false);
       }
     }, 30);
   }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel]);
@@ -367,9 +383,11 @@ export default function App() {
       // Stage 2: plan and launch return route
       const home = homeWaypointRef.current || { ...DEFAULT_HOME };
       const roverPos = { x: roverState.x, z: roverState.z };
-      try {
+      (async () => { try {
         const maps = getMaps();
-        const returnPath = buildReturnToHomePath(roverPos, home, maps, sunAngleDeg, learningModel.getExperienceMap());
+        const returnPath = plannerUsesWorker()
+          ? (await planRoutes([roverPos, home], maps, sunAngleDeg, null, { home, modes: ['SAFE'] }))?.SAFE?.path
+          : buildReturnToHomePath(roverPos, home, maps, sunAngleDeg, learningModel.getExperienceMap());
         if (!returnPath || returnPath.length < 2) {
           throw new Error('No valid return path available');
         }
@@ -387,7 +405,7 @@ export default function App() {
       } catch (err) {
         addLog(`[ERR] Return To Home planning failed: ${err.message}`);
         showToast('Return To Home path unavailable. Rover remains in safe STOPPED state.', 'error', 7000);
-      }
+      } })();
     }, 260);
   }, [addLog, showToast, roverState.x, roverState.y, roverState.z, getMaps, sunAngleDeg, activeRoute, learningModel]);
 
@@ -566,6 +584,7 @@ export default function App() {
         onRemoveLastWaypoint={removeLastWaypoint}
         onClearWaypoints={clearWaypoints}
         onPlanPath={handlePlanPath}
+        isPlanning={isPlanning}
         sunAngleDeg={sunAngleDeg}   setSunAngleDeg={setSunAngleDeg}
         cameraMode={cameraMode}     setCameraMode={setCameraMode}
         wireframe={wireframe}       setWireframe={setWireframe}

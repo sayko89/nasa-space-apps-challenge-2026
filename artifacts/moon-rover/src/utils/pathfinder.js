@@ -432,6 +432,8 @@ export function getHomeMaps(homeX, homeZ, hMap) {
 }
 /** Last computed home maps (for the EVA Range heatmap), or null. */
 export function peekHomeMaps() { return _homeMaps; }
+/** Install home maps computed elsewhere (planner Web Worker → main thread). */
+export function setHomeMaps(maps) { _homeMaps = maps; }
 
 const cellIndexAt = (x, z) => { const { col, row } = worldToGrid(x, z); return row * GRID_RES + col; };
 
@@ -501,6 +503,7 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
 
 // opts.home: {x,z} the walk-back "home" (habitat). Defaults to waypoints[0];
 // return-to-home planning passes the real home so the cached maps stay valid.
+// opts.modes: subset of modes to plan (DEM only), e.g. ['SAFE'] for return-to-home.
 export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg = 45, experienceMap = null, opts = {}) {
   if (!waypoints || waypoints.length < 2) throw new Error('Need at least 2 waypoints');
 
@@ -510,7 +513,7 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
     const home = opts.home || waypoints[0];
     const homeMaps = getHomeMaps(home.x, home.z, hMap);
     const result = {};
-    for (const mode of ['SAFE','ECO','FAST','AUTO']) {
+    for (const mode of (opts.modes || ['SAFE','ECO','FAST','AUTO'])) {
       const cacheKey = `DEM_${mode}`;
       if (!_costCache[cacheKey]) _costCache[cacheKey] = buildDemMultMap(mode, slopeMap);
       const w = MODE_WEIGHTS[mode] || MODE_WEIGHTS.AUTO;
