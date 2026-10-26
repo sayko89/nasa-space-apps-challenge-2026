@@ -10,6 +10,7 @@ import {
 } from '../three/terrainGenerator.js';
 import { sunPosition, sunriseSunset } from './marsTime.js';
 import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
+import { evaWindowTemps } from './climate.js';
 import { param, MODE_WEIGHTS } from '../config/marswalkProfile.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile } from './walkback.js';
@@ -489,6 +490,8 @@ function computeLightStats(path, elapsedS, returnS, startMs, hMap) {
     sunsetMs: ss?.setMs ?? null,
     startsInDaylight: startSun.elevationDeg > 0,
     homeBySunset: ss ? (startMs >= ss.riseMs && homeMs <= ss.setMs) : null,
+    // Expected air temperature (MEDA ATS climatology, 1.45 m) over the whole EVA
+    air: SITE.climate ? evaWindowTemps(SITE.climate, startMs, homeMs, c.lon_deg_east) : null,
   };
 }
 

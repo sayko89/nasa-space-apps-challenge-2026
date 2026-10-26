@@ -24,6 +24,7 @@ export const site = {
   heights: null,        // Float32Array, heightOrigin çıkarılmış [m]
   heightOrigin: 0,      // mutlak yükseklik = heights[i] + heightOrigin
   meta: null,
+  climate: null,        // climate.json (MEDA ATS iklimolojisi) — isteğe bağlı
   loadError: null,
 };
 
@@ -112,7 +113,21 @@ export async function loadSite(name = DEFAULT_SITE) {
   site.heightOrigin = origin;
   site.meta = meta;
   site.loadError = null;
+  site.climate = await loadClimate(base);
   return site;
+}
+
+/** İsteğe bağlı climate.json (pipeline/build_climate.py). Yoksa/geçersizse null. */
+async function loadClimate(base) {
+  try {
+    const r = await fetch(base + 'climate.json', { cache: 'no-cache' });
+    if (!r.ok) return null;
+    const c = JSON.parse(await r.text());
+    if (c?.format !== 'martian-map-climate/1' || !Array.isArray(c.bins) || !(c.lsBinDeg > 0) || !(c.ltstStepH > 0)) return null;
+    return c;
+  } catch {
+    return null;      // SPA fallback HTML veya ağ hatası → iklim katmanı yok
+  }
 }
 
 /**

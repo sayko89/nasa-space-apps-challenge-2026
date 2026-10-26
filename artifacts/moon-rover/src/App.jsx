@@ -88,6 +88,10 @@ function SiteBadge() {
       {' '}≤{MARSWALK_PROFILE.evaDurationH.value} sa · ≤{MARSWALK_PROFILE.maxRadialDistanceKm.value} km —{' '}
       <a href={MARSWALK_PROFILE.maxWalkableSlopeDeg.url} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>NASA xEVA ConOps</a>
       {as.length > 0 && <> · varsayım: {as.join(', ')}</>}
+      {SITE.climate && <div>
+        HAVA: MEDA ATS türetilmiş sıcaklıklar — Hueso et al. 2024,{' '}
+        <a href={SITE.climate.source.doi} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>Zenodo</a>, CC BY 4.0
+      </div>}
       <div style={{color:'#ffaa55', marginTop:3}}>
         ⚠ Bu değerler Ay için yazılmış; Mars için iyimser.{' '}
         <a href={MARS_CAVEAT.url} target="_blank" rel="noreferrer" style={{color:'#ffcc88'}} title={MARS_CAVEAT.note}>Neden?</a>

@@ -15,6 +15,7 @@ import { generateHeatmapCanvas } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
 import { MODE_WEIGHTS, MARSWALK_PROFILE } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
+import { airTemp, diurnalCurve, K_TO_C } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
 
 const HALF = TERRAIN_SIZE / 2;
@@ -280,6 +281,31 @@ const fmtLtst = (h) => { const m = Math.round(h * 60) % 1440; return `${String(M
 const SEASONS_N = ['Kuzey ilkbaharı', 'Kuzey yazı', 'Kuzey sonbaharı', 'Kuzey kışı'];
 const COMPASS = ['K','KKD','KD','DKD','D','DGD','GD','GGD','G','GGB','GB','BGB','B','BKB','KB','KKB'];
 
+// Günlük sıcaklık eğrisi (MEDA ATS medyanı, p10–p90 bandı) + EVA başlangıç işareti
+function DiurnalTempChart({ bin, ltstH }) {
+  const W = 200, H = 54, padL = 22, padB = 10, padT = 4;
+  const n = bin.median.length;
+  const vals = [...bin.p10, ...bin.p90].filter(v => v != null).map(K_TO_C);
+  if (!vals.length) return null;
+  const lo = Math.floor(Math.min(...vals) / 10) * 10, hi = Math.ceil(Math.max(...vals) / 10) * 10;
+  const x = (i) => padL + (i / n) * (W - padL);
+  const y = (k) => padT + (1 - (K_TO_C(k) - lo) / (hi - lo)) * (H - padT - padB);
+  const line = (arr) => arr.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean).join(' ');
+  const band = [];
+  for (let i = 0; i < n; i++) if (bin.p90[i] != null) band.push(`${x(i).toFixed(1)},${y(bin.p90[i]).toFixed(1)}`);
+  for (let i = n - 1; i >= 0; i--) if (bin.p10[i] != null) band.push(`${x(i).toFixed(1)},${y(bin.p10[i]).toFixed(1)}`);
+  const mx = padL + (((ltstH % 24) + 24) % 24) / 24 * (W - padL);
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', marginTop: 3 }}>
+      <polygon points={band.join(' ')} fill="rgba(255,170,80,0.18)" />
+      <polyline points={line(bin.median)} fill="none" stroke="#ffaa55" strokeWidth="1.2" />
+      <line x1={mx} x2={mx} y1={padT} y2={H - padB} stroke="#FFD700" strokeWidth="1" strokeDasharray="2,2" />
+      {[lo, hi].map(v => <text key={v} x={padL - 2} y={v === hi ? padT + 6 : H - padB} textAnchor="end" fontSize="6.5" fill="#7a8a7a">{v}°</text>)}
+      {[0, 6, 12, 18].map(h => <text key={h} x={padL + h / 24 * (W - padL)} y={H - 1} fontSize="6" fill="#5a6a5a">{String(h).padStart(2, '0')}</text>)}
+    </svg>
+  );
+}
+
 function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
   const c = SITE.meta?.center;
   if (!c || !sun || evaStartMs == null) return null;
@@ -311,6 +337,21 @@ function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
         {' · '}{COMPASS[Math.round(sun.azimuthDeg / 22.5) % 16]} {sun.azimuthDeg.toFixed(0)}°</span></div>
       {ss && <div style={row}><span>Doğuş / batış</span><span style={v}>{fmtLtst(ss.riseLtst)} / {fmtLtst(ss.setLtst)} LTST</span></div>}
       <div style={row}><span>UTC</span><span style={v}>{new Date(evaStartMs).toISOString().slice(0, 16).replace('T', ' ')}</span></div>
+      {(() => {
+        const a = airTemp(SITE.climate, sun.ls, cur);
+        const bin = diurnalCurve(SITE.climate, sun.ls);
+        if (!a || !bin) return SITE.climate ? null : (
+          <div style={{ color: '#4a6a4a', fontSize: 6.5, marginTop: 2 }}>Hava sıcaklığı: climate.json yok (python pipeline/build_climate.py)</div>
+        );
+        return (
+          <>
+            <div style={row}><span>Hava (1.45 m)</span><span style={{ color: '#ffcc88' }}>
+              {K_TO_C(a.median).toFixed(0)} °C <span style={{ color: '#7a8a7a' }}>({K_TO_C(a.p10).toFixed(0)}…{K_TO_C(a.p90).toFixed(0)})</span></span></div>
+            <DiurnalTempChart bin={bin} ltstH={cur} />
+            <div style={{ color: '#4a6a4a', fontSize: 6.5 }}>MEDA ATS, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sol · medyan, %10–90</div>
+          </>
+        );
+      })()}
       <div style={{ color: '#4a6a4a', fontSize: 6.5, marginTop: 2 }}>Mars24 (NASA GISS) · Allison &amp; McEwen 2000</div>
     </div>
   );
@@ -366,6 +407,9 @@ function MarswalkStats({ mode, s }) {
           {' · '}{s.light.homeBySunset === null ? 'gün doğumu/batımı yok'
             : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>gün batımından önce evde</span>
             : <span style={{color:'#ffaa55'}}>⚠ gün ışığında tamamlanmıyor</span>}
+          {s.light.air && <><br/>Hava (1.45 m, EVA boyunca): <span style={{color:'#ffcc88'}}>
+            {K_TO_C(s.light.air.minMedian).toFixed(0)}…{K_TO_C(s.light.air.maxMedian).toFixed(0)} °C</span>
+            {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (uç: {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
         </div>
       )}
       <div style={{color:'rgba(100,150,100,0.75)',fontSize:7,marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>

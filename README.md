@@ -105,7 +105,28 @@ GO kararına katılmaz (Mars için kaynaklı bir gün ışığı kuralı bulunam
 Sınırlar: gölgeyi yalnızca site grid'indeki arazi düşürür (~20 km uzaktaki krater
 duvarı modellenmez); doğuş/batış disk merkezine göre, kırılma yok.
 
-Testler: `node --test artifacts/moon-rover/tests/*.test.mjs`
+### 5b. Hava sıcaklığı (Perseverance MEDA)
+
+```bash
+python pipeline/build_climate.py      # 22.7 MB indirir (bir kez), climate.json üretir (~185 KB)
+```
+
+Jezero'da 1.45 m'de ölçülen hava sıcaklıklarından (MEDA ATS, 5 dk ortalamalar,
+sol 16–700) 10°'lik Ls dilimi × 5 dk'lık LTST dilimi için medyan ve %10–90 değerleri
+çıkarılır. Mars Time paneli günlük eğriyi ve EVA başlangıcını, rota kartları EVA
+boyunca beklenen sıcaklık aralığını gösterir (bilgi amaçlı, GO'ya girmez).
+
+**Atıf (CC BY 4.0):** Hueso, R., Munguira, A., Sánchez-Lavega, A., de la Torre-Juárez, M.,
+Rodríguez-Manfredi, J. A., Lepinette, A., Vicente-Retortillo, Á., Lemmon, M. (2024).
+*Derived environmental temperatures at Jezero crater from Air Temperature Sensors'
+measurements on the Perseverance rover* (v2). Zenodo.
+[doi:10.5281/zenodo.11198655](https://doi.org/10.5281/zenodo.11198655) — Munguira et al. (2024), JGR Planets.
+
+Aynı paketteki gün batımı tablosu, Mars24 hesabını bağımsız doğrulamak için de
+kullanılır: 700 solda en büyük fark 0.25 dk.
+
+Testler: `node --test artifacts/moon-rover/tests/*.test.mjs` (climate.json üretildiyse
+gerçek veri bütünlüğü testi de çalışır)
 - Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
 - Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.
 
