@@ -11,9 +11,9 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
-import { generateHeatmapCanvas } from '../utils/heatmaps';
+import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
-import { MODE_WEIGHTS, MARSWALK_PROFILE } from '../config/marswalkProfile';
+import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
 import { airTemp, diurnalCurve, K_TO_C } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
@@ -22,12 +22,14 @@ const HALF = TERRAIN_SIZE / 2;
 const PW   = 218;  // panel width
 const MAP_S = 202; // mini-map px — fills panel width (218 - 8px×2 padding)
 
-const HEATMAP_OPTIONS = ['Elevation','Slope','Slope Angle','No-Go','EVA Range','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
+const HEATMAP_OPTIONS = ['Elevation','Slope','Slope Angle','No-Go','EVA Range',
+  ...(SITE.geology ? GEOLOGY_LAYERS : []),
+  'Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
 const HM_COLORS = {
   'Elevation':'#e8a878','No-Go':'#ff4466','EVA Range':'#66ddff',
   'Slope':'#aaddaa','Slope Angle':'#88ccff','Roughness':'#ffcc88',
   'Slip Risk':'#ff8844','Illumination':'#ffffaa','Hazard Score':'#ff6655','Traversability':'#44ffaa',
-  'Experience':'#cc66ff',
+  'Experience':'#cc66ff', 'Geology: Bedrock':'#d6a060', 'Geology: Surface':'#e8c070',
 };
 const WP_COLORS_2D = ['#22ff55','#ffcc22','#44ddff','#ff88ff','#ffaa33','#aaffaa'];
 
@@ -390,6 +392,7 @@ function MarswalkStats({ mode, s }) {
       </div>
       <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55}}>
         Toplam <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = bütçenin %{(s.budgetFrac*100).toFixed(0)}'i ({P.evaDurationH.value} sa)
+        {s.stopCount > 0 && <> · {s.stopCount} durakta {fmtHM(s.dwellTotalS)} örnekleme dahil</>}
         <br/>
         Geri dönüş payı (en düşük): <span style={{color:fail(s.checks.budget)}}>{Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'eve yol yok'}</span>
         {s.ponrIdx >= 0 && <span style={{color:'#ff6655'}}> · ⛔ dönüşü olmayan nokta: rotanın %{Math.round(s.ponrIdx / Math.max(1, s.marginS.length - 1) * 100)}'inde</span>}
@@ -413,6 +416,47 @@ function MarswalkStats({ mode, s }) {
         </div>
       )}
       <div style={{color:'rgba(100,150,100,0.75)',fontSize:7,marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
+    </>
+  );
+}
+
+// ---- Stage 6: science EVA (geology stops) ----
+function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }) {
+  return (
+    <>
+      <div style={{display:'flex',alignItems:'center',gap:5,fontSize:7.5,color:'#9ab89a',marginBottom:4}}>
+        <span>Durak süresi</span>
+        <input type="range" min={5} max={60} step={5} value={dwellMin}
+          onChange={e=>setDwellMin(Number(e.target.value))} style={{flex:1}}/>
+        <b style={{color:'#e8e0c8',width:34,textAlign:'right'}}>{dwellMin} dk</b>
+      </div>
+      <div style={{fontSize:6.5,color:'#7a6a4a',marginBottom:4}}>
+        Varsayım: kaynaklı durak süresi bulunamadı. Puan = farklı birim çeşitliliği
+        (ana kaya {SCIENCE_PARAMS.weights.bedrock}, yüzey {SCIENCE_PARAMS.weights.surface}, kontak {SCIENCE_PARAMS.weights.contact}) — tasarım tercihi.
+      </div>
+      <Btn disabled={busy || disabled} onClick={onPlan}
+        style={{width:'100%',background:'rgba(70,40,0,0.55)',borderColor:'rgba(230,150,60,0.6)',color:'#ffbb66',fontWeight:'bold'}}>
+        {busy ? 'SEARCHING…' : 'PLAN SCIENCE EVA'}
+      </Btn>
+      {science && (
+        <div style={{marginTop:5,fontSize:7.5,lineHeight:1.5,color:'#b8c8b0'}}>
+          <div>
+            {science.stops.length} durak / {science.candidates.length} aday ·
+            {' '}puan <b style={{color:'#ffcc66'}}>{science.score}</b>/{science.maxScore}
+            {' '}· plan {fmtHM(science.totalS)}
+          </div>
+          <ol style={{margin:'3px 0 0',paddingLeft:14,color:'#e0d0b0'}}>
+            {science.stops.map((st, i) => (
+              <li key={i} title={st.tags.join('\n')}>{st.label}</li>
+            ))}
+          </ol>
+          {science.candidates.length > science.stops.length && (
+            <div style={{color:'#7a8a7a',marginTop:2}}>
+              Elenen: {science.candidates.filter(c => !science.stops.some(st => st.idx === c.idx)).map(c => c.label).join('; ')}
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -510,9 +554,21 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
       </div>
       <canvas ref={ref} width={MAP_S} height={MAP_S}
         style={{width:MAP_S,height:MAP_S,display:'block',borderRadius:3,border:'1px solid rgba(80,120,60,0.3)'}}/>
+      {geologyLegend(sel) ? (
+        <div style={{fontSize:7,color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
+          {geologyLegend(sel).map(e => (
+            <div key={e.name} style={{display:'flex',alignItems:'center',gap:4}}>
+              <span style={{width:7,height:7,background:e.color,display:'inline-block',flexShrink:0}}/>
+              <span style={{flex:1}}>{e.name}</span><span>{e.pct.toFixed(1)}%</span>
+            </div>
+          ))}
+          <div style={{color:'#6a7a6a'}}>Stack et al. 2020 (CC BY 4.0)</div>
+        </div>
+      ) : (
       <div style={{display:'flex',justifyContent:'space-between',fontSize:7,color:'#558855',marginTop:2}}>
         <span>LOW</span><span style={{color:HM_COLORS[sel]}}>{sel.toUpperCase()}</span><span>HIGH</span>
       </div>
+      )}
     </div>
   );
 }
@@ -789,6 +845,8 @@ export default function RightPanel({
   waypoints, onAddWaypoint, onSetStartWaypoint, onRemoveLastWaypoint, onClearWaypoints,
   onPlanPath,
   isPlanning = false,
+  hasGeology = false, science = null, onPlanScience = () => {}, isPlanningScience = false,
+  scienceDwellMin = 20, setScienceDwellMin = () => {},
   sunAngleDeg, setSunAngleDeg,
   sun = null, evaStartMs = null, setEvaStartMs = () => {},
   cameraMode, setCameraMode,
@@ -891,6 +949,7 @@ export default function RightPanel({
                     background:i===0?'#22ff55':i===waypoints.length-1?'#ff4422':WP_COLORS_2D[i%WP_COLORS_2D.length]}}/>
                   <span style={{color:'#779977'}}>{i===0?'S':i===waypoints.length-1?'E':i}:</span>
                   <span style={{color:'#aaffaa'}}>{wp.x.toFixed(0)},{wp.z.toFixed(0)}</span>
+                  {wp.label && <span style={{color:'#ffbb66',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={wp.label}>⛏ {wp.label}</span>}
                 </div>
               ))}
             </div>
@@ -913,6 +972,13 @@ export default function RightPanel({
             </Btn>
           </Row>
         </Sect>
+
+        {hasGeology && (
+        <Sect label="Science EVA">
+          <SciencePanel science={science} onPlan={onPlanScience} busy={isPlanningScience || isPlanning}
+            dwellMin={scienceDwellMin} setDwellMin={setScienceDwellMin} disabled={isRoving} />
+        </Sect>
+        )}
 
         {/* Sun — DEM: Mars24 time controls; procedural: manual dial */}
         {IS_DEM && sun ? (

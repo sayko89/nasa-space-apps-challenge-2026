@@ -127,6 +127,45 @@ kullanılır: 700 solda en büyük fark 0.25 dk.
 
 Testler: `node --test artifacts/moon-rover/tests/*.test.mjs` (climate.json üretildiyse
 gerçek veri bütünlüğü testi de çalışır)
+
+### 6. Bilim durakları ve EVA optimizasyonu
+
+```bash
+python pipeline/build_geology.py      # 3.5 MB shapefile indirir (bir kez), geology.json üretir (~55 KB)
+python -m unittest discover pipeline/tests
+```
+
+Mars 2020 bilim ekibinin fotojeoloji haritası (yüzey + ana kaya birimleri) site
+grid'ine rasterleştirilir (çift-tek kuralı, hücre merkezinde örnek). **PLAN SCIENCE
+EVA** düğmesi:
+
+1. Her (yüzey, ana kaya) birim çifti için birimin *içindeki* (±2 hücre aynı birim)
+   ve evden gidiş-dönüşü en kısa hücreyi, her ana kaya kontağı için en yakın kontak
+   hücresini aday yapar (eve 20 m'den yakın, 2 km'den uzak, tek başına bütçeye
+   sığmayan adaylar elenir; en yakın 12 aday kalır).
+2. İkili yürüme sürelerini adaylardan Dijkstra ile hesaplar.
+3. Alt küme DP'si (Held–Karp) ile **kesin** en iyi durak kümesini ve sırasını bulur:
+   puan = örneklenen *farklı* etiketlerin toplamı (ana kaya 2, yüzey 1, kontak 3);
+   kısıt = yürüme + durak süreleri ≤ EVA bütçesi. Eşit puanda en kısa toplam süre.
+4. Durakları ev → duraklar → ev waypoint'lerine çevirip 4 modu planlar; durak
+   süresi walk-back marjına ve toplam süreye eklenir.
+
+**Varsayım / tasarım tercihi:** durak süresi (varsayılan 20 dk, panelden 5–60 dk)
+ve puan ağırlıkları kaynaklı değildir; arayüzde böyle etiketlenir.
+
+**Sınır:** 2 km'lik pencerede yalnızca 2 ana kaya birimi (Crater floor fractured 1 /
+rough) ve 5 yüzey birimi var; çeşitlilik bu haritanın çözünürlüğüyle sınırlı.
+
+**Atıf (CC BY 4.0):** Stack, K. M., Williams, N. R., Calef, F., et al. (2020).
+*Photogeologic Map of the Perseverance Rover Field Site in Jezero Crater Constructed
+by the Mars 2020 Science Team.* Space Science Reviews 216, 127.
+[doi:10.1007/s11214-020-00739-x](https://doi.org/10.1007/s11214-020-00739-x)
+(makale 18 Temmuz 2025 düzeltmesiyle CC BY 4.0). Veri: ek dosya
+`11214_2020_739_MOESM3_ESM.zip`.
+
+Doğrulama: optimizasyon 40 rastgele örnekte kaba kuvvetle aynı; rasterleştirme,
+shapefile'dan farklı bir algoritmayla (düğüm başına nokta-poligon testi) bağımsız
+hesaplanan birim alanları ve örnek hücrelerle karşılaştırılır (geology.json varsa).
 - Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
 - Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.
 

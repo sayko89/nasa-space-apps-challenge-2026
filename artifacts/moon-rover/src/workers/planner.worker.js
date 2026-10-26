@@ -4,6 +4,7 @@
  * Protokol (her mesajda `id`, yanıt aynı `id` ile döner):
  *   { type: 'init', site }                       → { ok: true, initMs }
  *   { type: 'plan', waypoints, sunAngleDeg, opts } → { routes, homeMaps, planMs }
+ *   { type: 'science', home, opts }               → { result, planMs }  (Aşama 6)
  *   hata durumunda                               → { error }
  *
  * Arazi modülleri sabitlerini import anında site verisinden okur, bu yüzden
@@ -47,6 +48,13 @@ self.onmessage = async (e) => {
       };
       const transfer = homeMaps ? [homeMaps.fromHome.buffer, homeMaps.toHome.buffer] : [];
       self.postMessage({ id, routes, homeMaps, planMs: performance.now() - t0 }, transfer);
+      return;
+    }
+    if (type === 'science') {
+      if (!P) throw new Error('planner worker not initialised');
+      const t0 = performance.now();
+      const result = P.planScience(e.data.home, maps.hm, e.data.opts || {});
+      self.postMessage({ id, result, planMs: performance.now() - t0 });
       return;
     }
     throw new Error(`unknown message type: ${type}`);

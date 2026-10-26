@@ -79,6 +79,24 @@ export const MODE_WEIGHTS = {
   AUTO: { slopeAversion: 1.5, climbPenaltyS: 20, status: 'design', desc: 'Dengeli' },
 };
 
+/**
+ * Bilim EVA'sı (Aşama 6). Kaynaklı bir durak süresi veya bilimsel değer ölçeği
+ * bulunamadı — hepsi tasarım tercihi/varsayım; arayüzde böyle etiketlenir.
+ *   dwellMin    : her durakta örnekleme/gözlem süresi [dk] (kullanıcı değiştirebilir)
+ *   weights     : farklı etiket başına puan (çeşitlilik); kontak = iki ana kaya biriminin sınırı
+ *   interiorR   : "birim içinde" sayılmak için her yönde aynı birimde olması gereken hücre sayısı
+ *   minHomeDistM: habitata bu mesafeden yakın hücreler durak adayı değildir
+ *   maxCandidates: kesin (Held–Karp) optimizasyona giren en yakın aday sayısı
+ */
+export const SCIENCE_PARAMS = {
+  dwellMin: 20,
+  weights: { bedrock: 2, surface: 1, contact: 3 },
+  interiorR: 2,
+  minHomeDistM: 20,
+  maxCandidates: 12,
+  status: 'design',
+};
+
 export const MARS_CAVEAT = {
   source: 'Norcross et al., NASA/TP-2009-214796, Feasibility of Performing a Suited 10-km Ambulation on the Moon',
   url: 'https://www.lpi.usra.edu/lunar/artemis/NorcrossEtAl_NASA-TP-2009-214796_EVA%20Walkback%20Test.pdf',

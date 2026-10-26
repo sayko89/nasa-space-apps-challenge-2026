@@ -7,7 +7,7 @@
  */
 
 import { IS_DEM, SITE } from '../three/terrainGenerator.js';
-import { planAllRoutes, setHomeMaps } from './pathfinder.js';
+import { planAllRoutes, setHomeMaps, planScience as planScienceSync } from './pathfinder.js';
 
 let worker = null;
 let readyPromise = null;
@@ -51,7 +51,7 @@ function ensureWorker() {
     const siteMsg = {
       mode: SITE.mode, name: SITE.name, gridRes: SITE.gridRes, cellM: SITE.cellM,
       sizeM: SITE.sizeM, heights: SITE.heights, heightOrigin: SITE.heightOrigin, meta: SITE.meta,
-      climate: SITE.climate,
+      climate: SITE.climate, geology: SITE.geology,
     };
     const r = await call('init', { site: siteMsg });
     // eslint-disable-next-line no-console
@@ -78,7 +78,7 @@ export async function planRoutes(waypoints, maps, sunAngleDeg, experienceMap, op
   if (plannerUsesWorker()) {
     try {
       await ensureWorker();
-      const plain = waypoints.map(w => ({ x: w.x, z: w.z }));
+      const plain = waypoints.map(w => (w.dwellS > 0 ? { x: w.x, z: w.z, dwellS: w.dwellS } : { x: w.x, z: w.z }));
       const r = await call('plan', { waypoints: plain, sunAngleDeg, opts });
       if (r.homeMaps) setHomeMaps(r.homeMaps);
       return r.routes;
@@ -89,4 +89,23 @@ export async function planRoutes(waypoints, maps, sunAngleDeg, experienceMap, op
     }
   }
   return planAllRoutes(waypoints, maps.sm, maps.cm, maps.hm, sunAngleDeg, experienceMap, opts);
+}
+
+/**
+ * Bilim EVA'sı (Aşama 6): durak seçimi + sırası. DEM + geology.json gerekir.
+ * @returns {Promise<object|null>} pathfinder.planScience çıktısı
+ */
+export async function planScience(home, maps, opts = {}) {
+  if (plannerUsesWorker()) {
+    try {
+      await ensureWorker();
+      const r = await call('science', { home: { x: home.x, z: home.z }, opts });
+      return r.result;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[planner] science on main thread:', err.message);
+      disabled = true;
+    }
+  }
+  return planScienceSync(home, maps.hm, opts);
 }

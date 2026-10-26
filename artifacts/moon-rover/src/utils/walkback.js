@@ -64,8 +64,9 @@ class IndexHeap {
  * @param {number} n  grid kenar düğüm sayısı
  * @param {number} cell  düğüm aralığı [m]
  * @param {'from'|'to'} direction  'from': ev→hücre, 'to': hücre→ev
+ * @param {number} [maxS=Infinity]  bu süreden uzak hücreler genişletilmez (Infinity kalır)
  */
-export function dijkstraTimes(homeIdx, hMap, wall, n, cell, direction) {
+export function dijkstraTimes(homeIdx, hMap, wall, n, cell, direction, maxS = Infinity) {
   const dist = new Float64Array(n * n).fill(Infinity);
   const done = new Uint8Array(n * n);
   const heap = new IndexHeap(1 << 16);
@@ -78,6 +79,7 @@ export function dijkstraTimes(homeIdx, hMap, wall, n, cell, direction) {
     if (done[k]) continue;
     done[k] = 1;
     const dk = dist[k];
+    if (dk > maxS) { dist[k] = Infinity; continue; }
     const r = (k / n) | 0, c = k - r * n;
     for (let d = 0; d < 8; d++) {
       const nr = r + DIRS[d][0], nc = c + DIRS[d][1];
@@ -110,8 +112,10 @@ export function homeTimeMaps(homeIdx, hMap, wall, n, cell) {
  * @param {(x,z)=>number} cellIndexAt  dünya → grid hücre indeksi
  * @param {Float64Array} toHome
  * @param {number} budgetS
+ * @param {Map<number,number>} [dwellAt]  rota indeksi → o noktada bekleme [s] (bilim durağı);
+ *        bekleme o noktanın geçen süresine eklenir (marj beklemeden SONRA ölçülür)
  */
-export function walkbackProfile(path, heightAt, cellIndexAt, toHome, budgetS) {
+export function walkbackProfile(path, heightAt, cellIndexAt, toHome, budgetS, dwellAt = null) {
   const nPts = path.length;
   const elapsed = new Float64Array(nPts);
   const margin = new Float64Array(nPts);
@@ -122,6 +126,7 @@ export function walkbackProfile(path, heightAt, cellIndexAt, toHome, budgetS) {
       elapsed[i] = elapsed[i - 1]
         + walkTimeS(Math.hypot(x1 - x0, z1 - z0), heightAt(x1, z1) - heightAt(x0, z0));
     }
+    if (dwellAt?.has(i)) elapsed[i] += dwellAt.get(i);
     const back = toHome[cellIndexAt(path[i][0], path[i][2])];
     margin[i] = budgetS - elapsed[i] - back;           // back=Infinity → -Infinity
     if (margin[i] < minMargin) { minMargin = margin[i]; minIdx = i; }

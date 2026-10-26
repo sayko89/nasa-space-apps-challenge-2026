@@ -3,7 +3,7 @@
  * Generates 2D canvas heatmaps for different terrain parameters.
  */
 
-import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS } from '../three/terrainGenerator.js';
+import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS, SITE } from '../three/terrainGenerator.js';
 import { buildIlluminationMap, hazardScore, getWallMap, peekHomeMaps } from './pathfinder.js';
 import { param } from '../config/marswalkProfile.js';
 
@@ -40,6 +40,24 @@ function divergingColor(t) {
   }
 }
 
+// Categorical geology palette (Stage 6). Code 0 = unmapped / no surface unit.
+const GEO_PALETTE = [[60, 55, 50], [214, 120, 64], [86, 140, 214], [120, 200, 110], [230, 200, 80],
+  [190, 110, 200], [90, 200, 200], [240, 140, 160], [160, 160, 90]];
+const GEO_LAYER = { 'Geology: Bedrock': 'bedrock', 'Geology: Surface': 'surface' };
+export const GEOLOGY_LAYERS = Object.keys(GEO_LAYER);
+
+/** Legend for a categorical geology layer: [{ name, color, pct }] (null if not geology). */
+export function geologyLegend(type) {
+  const layer = GEO_LAYER[type], g = SITE.geology;
+  if (!layer || !g) return null;
+  const grid = g[layer], units = layer === 'bedrock' ? g.bedrockUnits : g.surfaceUnits;
+  const cnt = new Array(units.length).fill(0);
+  for (const v of grid) cnt[v]++;
+  return units.map((u, k) => ({ name: u || (layer === 'surface' ? 'no surface unit' : 'unmapped'),
+    color: `rgb(${GEO_PALETTE[k % GEO_PALETTE.length].join(',')})`, pct: 100 * cnt[k] / grid.length }))
+    .filter(e => e.pct > 0);
+}
+
 let _heightMap = null;
 let _slopeMap = null;
 let _craterMask = null;
@@ -73,6 +91,19 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45, sunEleva
   // Build the parameter map
   let paramMap;
   let maxVal = 1;
+
+  const geoLayer = GEO_LAYER[type];
+  if (geoLayer) {
+    const grid = SITE.geology?.[geoLayer];
+    for (let py = 0; py < H; py++) for (let px2 = 0; px2 < W; px2++) {
+      const row = Math.floor((py / H) * GRID_RES), col = Math.floor((px2 / W) * GRID_RES);
+      const c = GEO_PALETTE[(grid ? grid[row * GRID_RES + col] : 0) % GEO_PALETTE.length];
+      const i = (py * W + px2) * 4;
+      px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = 220;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return;
+  }
 
   switch (type) {
     case 'Slope': {

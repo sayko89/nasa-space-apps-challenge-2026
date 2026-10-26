@@ -12,8 +12,10 @@
  * roverController gibi modüllerin modül seviyesindeki türetilmiş sabitleri de
  * ancak bu sırayla doğru başlar.
  *
- * Bu modülün başka hiçbir uygulama modülüne bağımlılığı yoktur.
+ * Tek bağımlılığı bağımlılıksız geology.js çözücüsüdür.
  */
+
+import { decodeGeology } from './geology.js';
 
 export const site = {
   mode: 'procedural',
@@ -25,6 +27,7 @@ export const site = {
   heightOrigin: 0,      // mutlak yükseklik = heights[i] + heightOrigin
   meta: null,
   climate: null,        // climate.json (MEDA ATS iklimolojisi) — isteğe bağlı
+  geology: null,        // geology.json çözülmüş (Stack et al. 2020) — isteğe bağlı
   loadError: null,
 };
 
@@ -114,6 +117,7 @@ export async function loadSite(name = DEFAULT_SITE) {
   site.meta = meta;
   site.loadError = null;
   site.climate = await loadClimate(base);
+  site.geology = await loadGeology(base, n);
   return site;
 }
 
@@ -127,6 +131,17 @@ async function loadClimate(base) {
     return c;
   } catch {
     return null;      // SPA fallback HTML veya ağ hatası → iklim katmanı yok
+  }
+}
+
+/** İsteğe bağlı geology.json (pipeline/build_geology.py). Yoksa/geçersizse null. */
+async function loadGeology(base, n) {
+  try {
+    const r = await fetch(base + 'geology.json', { cache: 'no-cache' });
+    if (!r.ok) return null;
+    return decodeGeology(JSON.parse(await r.text()), n);
+  } catch {
+    return null;
   }
 }
 

@@ -11,9 +11,10 @@ import {
 import { sunPosition, sunriseSunset } from './marsTime.js';
 import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
 import { evaWindowTemps } from './climate.js';
-import { param, MODE_WEIGHTS } from '../config/marswalkProfile.js';
+import { param, MODE_WEIGHTS, SCIENCE_PARAMS } from '../config/marswalkProfile.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile } from './walkback.js';
+import { planScienceEva, tagScore } from './science.js';
 
 const HALF = TERRAIN_SIZE / 2;
 
@@ -399,7 +400,7 @@ function computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, experi
 }
 
 // ---- Chain Pathfinding ----
-function chainAStar(waypoints, costMap, edge = null) {
+function chainAStar(waypoints, costMap, edge = null, segEnds = null) {
   const fullPath = [];
   for (let i=0; i<waypoints.length-1; i++) {
     const { col:sc, row:sr } = worldToGrid(waypoints[i].x, waypoints[i].z);
@@ -407,6 +408,7 @@ function chainAStar(waypoints, costMap, edge = null) {
     const seg = aStar(sr,sc,er,ec, costMap, edge);
     if (i===0) fullPath.push(...seg);
     else fullPath.push(...seg.slice(1));
+    if (segEnds) segEnds.push(fullPath.length - 1);
   }
   return fullPath;
 }
@@ -495,7 +497,22 @@ function computeLightStats(path, elapsedS, returnS, startMs, hMap) {
   };
 }
 
-function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap) {
+// Science-stop dwell: waypoint w (w ≥ 1) ends A* segment w−1 at raw index
+// segEnds[w−1]. smoothPath keeps the point count, then keeps every `step`-th
+// point (+ the last), so raw index r ↦ smoothed index round(r/step).
+function dwellIndexMap(path, waypoints, segEnds, rawLen) {
+  const m = new Map();
+  const step = Math.max(1, Math.floor(rawLen / 200));
+  for (let w = 1; w < waypoints.length; w++) {
+    if (!(waypoints[w].dwellS > 0)) continue;
+    const r = segEnds[w - 1];
+    const i = r >= rawLen - 1 ? path.length - 1 : Math.min(path.length - 1, Math.round(r / step));
+    m.set(i, (m.get(i) || 0) + waypoints[w].dwellS);
+  }
+  return m;
+}
+
+function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap, dwellAt = null) {
   const base = computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, null, 0);
   if (!base) return null;
   const out = pathWalkStats(path, getTerrainHeight);
@@ -519,7 +536,8 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     }
   }
   const budgetS = param('evaDurationH') * 3600;
-  const wb = walkbackProfile(path, getTerrainHeight, cellIndexAt, homeMaps.toHome, budgetS);
+  const wb = walkbackProfile(path, getTerrainHeight, cellIndexAt, homeMaps.toHome, budgetS, dwellAt);
+  const dwellTotalS = dwellAt ? [...dwellAt.values()].reduce((a, b) => a + b, 0) : 0;
   const backS = wb.returnFromEndS;
   const roundTripS = wb.roundTripS;
   const checks = {
@@ -531,6 +549,8 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     ...base,
     distance: out.horizM,
     walkTimeS: out.timeS,
+    dwellTotalS,
+    stopCount: dwellAt ? dwellAt.size : 0,
     returnTimeS: backS,
     roundTripS,
     budgetS,
@@ -570,9 +590,11 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
       if (!_costCache[cacheKey]) _costCache[cacheKey] = buildDemMultMap(mode, slopeMap);
       const w = MODE_WEIGHTS[mode] || MODE_WEIGHTS.AUTO;
       const edge = { hMap, climbPenaltyS: w.climbPenaltyS };
-      const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge);
+      const segEnds = [];
+      const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge, segEnds);
       const path = smoothPath(rawPath);
-      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap) };
+      const dwellAt = waypoints.some(w => w.dwellS > 0) ? dwellIndexMap(path, waypoints, segEnds, rawPath.length) : null;
+      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap, dwellAt) };
     }
     return result;
   }
@@ -612,8 +634,37 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
   return result;
 }
 
+/**
+ * Science EVA (Stage 6): best set + order of geology stops from `home` within the
+ * EVA budget (see utils/science.js). Serializable result (worker → main thread).
+ * opts: { dwellMin, budgetS } override SCIENCE_PARAMS / the EVA duration.
+ */
+export function planScience(home, hMap, opts = {}) {
+  const geo = SITE.geology;
+  if (!IS_DEM || !geo) return null;
+  const homeMaps = getHomeMaps(home.x, home.z, hMap);
+  const dwellS = (opts.dwellMin ?? SCIENCE_PARAMS.dwellMin) * 60;
+  const budgetS = opts.budgetS ?? param('evaDurationH') * 3600;
+  const r = planScienceEva(geo, homeMaps, hMap, getWallMap(), {
+    cellM: CELL_SIZE, budgetS, dwellS, maxRadialM: param('maxRadialDistanceKm') * 1000,
+    weights: SCIENCE_PARAMS.weights, interiorR: SCIENCE_PARAMS.interiorR,
+    minHomeDistM: SCIENCE_PARAMS.minHomeDistM, maxCandidates: SCIENCE_PARAMS.maxCandidates,
+  });
+  const toWorld = (c) => { const { wx, wz } = gridToWorld(c.col, c.row); return { ...c, x: wx, z: wz }; };
+  return {
+    candidates: r.candidates.map(toWorld),
+    stops: r.stops.map(toWorld),
+    order: r.tour.order,
+    score: r.tour.score,
+    maxScore: tagScore([...new Set(r.candidates.flatMap(c => c.tags))], SCIENCE_PARAMS.weights), // all candidates
+    tags: r.tour.tags,
+    totalS: r.tour.totalS, walkS: r.tour.walkS, dwellTotalS: r.tour.dwellTotalS,
+    dwellS, budgetS,
+  };
+}
+
 /** Test-only access to internals (tests/marswalk.test.mjs). Not used by the app. */
-export const _internals = { aStar, buildDemMultMap, CELL_SIZE, cellIndexAt };
+export const _internals = { aStar, buildDemMultMap, CELL_SIZE, cellIndexAt, dwellIndexMap };
 
 export function clearPathCache() { _costCache = {}; _illumCache = {}; _wallMap = null; }
 
