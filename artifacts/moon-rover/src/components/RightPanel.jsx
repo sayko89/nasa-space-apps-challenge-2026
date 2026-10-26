@@ -19,9 +19,9 @@ const HALF = TERRAIN_SIZE / 2;
 const PW   = 218;  // panel width
 const MAP_S = 202; // mini-map px — fills panel width (218 - 8px×2 padding)
 
-const HEATMAP_OPTIONS = ['Elevation','Slope','Slope Angle','No-Go','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
+const HEATMAP_OPTIONS = ['Elevation','Slope','Slope Angle','No-Go','EVA Range','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
 const HM_COLORS = {
-  'Elevation':'#e8a878','No-Go':'#ff4466',
+  'Elevation':'#e8a878','No-Go':'#ff4466','EVA Range':'#66ddff',
   'Slope':'#aaddaa','Slope Angle':'#88ccff','Roughness':'#ffcc88',
   'Slip Risk':'#ff8844','Illumination':'#ffffaa','Hazard Score':'#ff6655','Traversability':'#44ffaa',
   'Experience':'#cc66ff',
@@ -42,7 +42,7 @@ function clamp(vx,vy,zoom) {
 }
 
 // ---- Mini-map ----
-function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace }) {
+function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr }) {
   const canvasRef   = useRef(null);
   const terrainRef  = useRef(null);
   const zoomRef     = useRef(1);
@@ -109,6 +109,15 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
       });
     }
 
+    // Point of no return (active route) — red ⛔ diamond
+    if (ponr) {
+      const {x,y}=w2m(ponr[0],ponr[2],vx,vy,zoom);
+      ctx.save(); ctx.translate(x,y); ctx.rotate(Math.PI/4);
+      ctx.fillStyle='#ff2a1a'; ctx.strokeStyle='#fff'; ctx.lineWidth=1;
+      ctx.fillRect(-4,-4,8,8); ctx.strokeRect(-4,-4,8,8);
+      ctx.restore();
+    }
+
     // Rover arrow
     if (roverPos) {
       const {x,y}=w2m(roverPos.x,roverPos.z,vx,vy,zoom);
@@ -163,7 +172,7 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
     // Zoom badge
     ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(W-32,3,29,13);
     ctx.fillStyle='#88cc88';ctx.font='7px monospace';ctx.fillText(`${zoom.toFixed(1)}x`,W-28,12.5);
-  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode]);
+  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode, ponr]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -277,6 +286,9 @@ function fmtHM(sec) {
   const m = Math.round(sec / 60);
   return `${Math.floor(m / 60)} sa ${String(m % 60).padStart(2, '0')} dk`;
 }
+function fmtSignedHM(sec) {
+  return (sec < 0 ? '−' : '') + fmtHM(Math.abs(sec));
+}
 function MarswalkStats({ mode, s }) {
   const P = MARSWALK_PROFILE;
   const fail = (ok) => ok ? '#88dd99' : '#ff6655';
@@ -285,7 +297,7 @@ function MarswalkStats({ mode, s }) {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
         <span style={{color:'rgba(160,200,160,0.8)',fontSize:7.5}}>
           Gidiş <b style={{color:'#e8e0c8'}}>{fmtHM(s.walkTimeS)}</b>
-          {'  '}Gidiş-dönüş <b style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</b>
+          {'  '}+ en hızlı dönüş <b style={{color:fail(s.checks.budget)}}>{fmtHM(s.returnTimeS)}</b>
         </span>
         <span style={{
           fontSize:7.5, fontWeight:'bold', padding:'1px 5px', borderRadius:3,
@@ -293,8 +305,12 @@ function MarswalkStats({ mode, s }) {
         }}>{s.go ? 'GO' : 'NO-GO'}</span>
       </div>
       <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55}}>
-        EVA bütçesi: <span style={{color:fail(s.checks.budget)}}>%{(s.budgetFrac*100).toFixed(0)}</span> / {P.evaDurationH.value} sa
-        {' · '}Maks. eğim: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {P.maxWalkableSlopeDeg.value}°
+        Toplam <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = bütçenin %{(s.budgetFrac*100).toFixed(0)}'i ({P.evaDurationH.value} sa)
+        <br/>
+        Geri dönüş payı (en düşük): <span style={{color:fail(s.checks.budget)}}>{Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'eve yol yok'}</span>
+        {s.ponrIdx >= 0 && <span style={{color:'#ff6655'}}> · ⛔ dönüşü olmayan nokta: rotanın %{Math.round(s.ponrIdx / Math.max(1, s.marginS.length - 1) * 100)}'inde</span>}
+        <br/>
+        Maks. eğim: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {P.maxWalkableSlopeDeg.value}°
         <br/>
         Dik zemin (&gt;{s.steepDeg.toFixed(0)}°): <span style={{color:'#e8c890'}}>%{(s.steepFrac*100).toFixed(0)}</span>
         {' · '}Tırmanış {s.climbM.toFixed(0)} m · İniş {s.descentM.toFixed(0)} m
@@ -739,6 +755,7 @@ export default function RightPanel({
             roverPos={{x,z,heading}}
             routes={routePaths}
             activeRoute={activeRoute}
+            ponr={routes?.[activeRoute]?.stats?.ponrPoint || null}
             pickMode={pickMode}
             onPick={handlePick}
             dustHazard={dustHazard}

@@ -4,7 +4,8 @@
  */
 
 import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS } from '../three/terrainGenerator.js';
-import { buildIlluminationMap, hazardScore, getWallMap } from './pathfinder.js';
+import { buildIlluminationMap, hazardScore, getWallMap, peekHomeMaps } from './pathfinder.js';
+import { param } from '../config/marswalkProfile.js';
 
 // Thermal color scale: blue→cyan→green→yellow→red
 function thermalColor(t) {
@@ -154,6 +155,21 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
       const wall = getWallMap();
       paramMap = new Float32Array(wall.length);
       for (let i = 0; i < wall.length; i++) paramMap[i] = wall[i];
+      maxVal = 1;
+      break;
+    }
+    case 'EVA Range': {
+      // (home→cell + cell→home) / EVA budget. < 1 → out-and-back feasible.
+      // Needs a home: computed when a route is planned (first waypoint).
+      const hmaps = peekHomeMaps();
+      paramMap = new Float32Array(GRID_RES * GRID_RES).fill(1);
+      if (hmaps) {
+        const budget = param('evaDurationH') * 3600;
+        for (let i = 0; i < paramMap.length; i++) {
+          const t = (hmaps.fromHome[i] + hmaps.toHome[i]) / budget;
+          paramMap[i] = Number.isFinite(t) ? Math.min(1, t) : 1;
+        }
+      }
       maxVal = 1;
       break;
     }

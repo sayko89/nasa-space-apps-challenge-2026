@@ -634,6 +634,24 @@ function SunLight({ roverRef, sunAngleDeg }) {
   );
 }
 
+// ---- Point of no return marker (walk-back margin < 0 from here on) ----
+function PonrMarker({ point }) {
+  if (!point) return null;
+  const y = getTerrainHeight(point[0], point[2]);
+  return (
+    <group position={[point[0], y, point[2]]} scale={[MARKER_SCALE, MARKER_SCALE, MARKER_SCALE]}>
+      <mesh position={[0, 1.1, 0]}>
+        <cylinderGeometry args={[0.06, 0.06, 2.2, 6]} />
+        <meshStandardMaterial color="#ff2a1a" emissive="#ff2a1a" emissiveIntensity={0.7} />
+      </mesh>
+      <mesh position={[0, 2.35, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.45, 0.45, 0.08]} />
+        <meshStandardMaterial color="#ff2a1a" emissive="#ff2a1a" emissiveIntensity={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
 // ---- Camera ----
 function CameraController({ roverRef, cameraMode, orbitRef }) {
   useFrame(({ camera }) => {
@@ -664,6 +682,7 @@ export default function MoonScene({
   cameraMode, wireframe, sunAngleDeg,
   learningModel,
   dustHazard,
+  ponrPoint,
 }) {
   const roverRef = useRef();
   const orbitRef = useRef();
@@ -711,6 +730,8 @@ export default function MoonScene({
 
       {/* Dust cloud hazard — rendered in world space, anchored to terrain */}
       {dustHazard && <DustCloudHazard hazard={dustHazard} />}
+
+      <PonrMarker point={ponrPoint} />
 
       {/* Numbered waypoint markers */}
       {waypoints && waypoints.map((wp, i) => (

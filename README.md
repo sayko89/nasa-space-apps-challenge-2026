@@ -79,6 +79,16 @@ maksimum eğim, dik zemin payı, tırmanış/iniş ve **GO/NO-GO** kararını g�
 (FAST / SAFE / ECO / AUTO) yalnızca yol seçimini etkileyen tercih ağırlıklarıdır;
 raporlanan süreler hepsinde aynı fiziksel modelle hesaplanır.
 
+### 4. Geri dönüş garantisi (walk-back margin)
+
+Başlangıç noktası "ev" kabul edilir. Haritadaki her hücre için iki tam Dijkstra
+hesaplanır: evden oraya ve oradan eve en hızlı yürüme süresi (yöne bağlı).
+Rota boyunca her noktada `bütçe − (geçen süre + oradan eve en hızlı dönüş)`
+**geri dönüş payı** hesaplanır; payın ilk negatif olduğu yer **dönüşü olmayan
+nokta**dır ve 3D sahnede/mini haritada kırmızı işaretle gösterilir. GO kararı
+bu payın rota boyunca hiç negatife düşmemesini şart koşar. `EVA Range` ısı
+haritası gidip-dönülebilen bölgeyi gösterir.
+
 Testler: `node --test artifacts/moon-rover/tests/*.test.mjs`
 - Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
 - Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.

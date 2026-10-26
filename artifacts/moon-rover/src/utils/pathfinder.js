@@ -9,7 +9,8 @@ import {
   buildHeightMap, buildSlopeMap,
 } from '../three/terrainGenerator.js';
 import { param, MODE_WEIGHTS } from '../config/marswalkProfile.js';
-import { walkTimeS, maxSpeedMs, pathWalkStats, reverseWalkTimeS } from './walkModel.js';
+import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
+import { homeTimeMaps, walkbackProfile } from './walkback.js';
 
 const HALF = TERRAIN_SIZE / 2;
 
@@ -418,18 +419,34 @@ function buildDemMultMap(mode, slopeMap) {
   return mult;
 }
 
+// ---- Home time maps (walk-back) ----
+// Terrain is static, so these are cached per home cell and deliberately NOT
+// cleared by clearPathCache() (which LearningModel/sun changes call often).
+let _homeMaps = null;
+export function getHomeMaps(homeX, homeZ, hMap) {
+  const { col, row } = worldToGrid(homeX, homeZ);
+  const homeIdx = row * GRID_RES + col;
+  if (_homeMaps?.homeIdx === homeIdx) return _homeMaps;
+  _homeMaps = homeTimeMaps(homeIdx, hMap, getWallMap(), GRID_RES, CELL_SIZE);
+  return _homeMaps;
+}
+/** Last computed home maps (for the EVA Range heatmap), or null. */
+export function peekHomeMaps() { return _homeMaps; }
+
+const cellIndexAt = (x, z) => { const { col, row } = worldToGrid(x, z); return row * GRID_RES + col; };
+
 /**
  * Physical route stats for a Marswalk. All times use the same walk model in
- * every mode, so modes are directly comparable. Round trip = walk back along
- * the same path (uphill/downhill swap). GO requires: round trip within the EVA
- * budget, never farther than the radial limit from the start, and no terrain
- * cell on the path steeper than the walkable limit.
+ * every mode, so modes are directly comparable. Return = FASTEST walk home
+ * from the end (not necessarily the same path). GO requires: at every point
+ * of the route the crew can still get home within the EVA budget (walk-back
+ * margin ≥ 0), never farther than the radial limit from the start, and no
+ * terrain cell on the path steeper than the walkable limit.
  */
-function computeDemStats(path, slopeMap, craterMask, illumMap, costMap) {
+function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps) {
   const base = computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, null, 0);
   if (!base) return null;
   const out = pathWalkStats(path, getTerrainHeight);
-  const backS = reverseWalkTimeS(path, getTerrainHeight);
   // Max slope alone is dominated by unavoidable spots (e.g. a steep endpoint),
   // so also report the share of path length on "steep" ground (> 75% of the
   // walkable limit — a display threshold, not a sourced value).
@@ -450,9 +467,11 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap) {
     }
   }
   const budgetS = param('evaDurationH') * 3600;
-  const roundTripS = out.timeS + backS;
+  const wb = walkbackProfile(path, getTerrainHeight, cellIndexAt, homeMaps.toHome, budgetS);
+  const backS = wb.returnFromEndS;
+  const roundTripS = wb.roundTripS;
   const checks = {
-    budget: roundTripS <= budgetS,
+    budget: wb.ponrIdx < 0,                 // walk-back margin ≥ 0 everywhere
     radial: maxRadialM <= param('maxRadialDistanceKm') * 1000,
     slope: maxSlopeDeg <= param('maxWalkableSlopeDeg'),
   };
@@ -470,17 +489,26 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap) {
     steepDeg,
     steepFrac: totLen > 0 ? steepLen / totLen : 0,
     maxRadialM,
+    minMarginS: wb.minMarginS,
+    minMarginIdx: wb.minMarginIdx,
+    ponrIdx: wb.ponrIdx,
+    ponrPoint: wb.ponrIdx >= 0 ? path[wb.ponrIdx] : null,
+    marginS: wb.margin,
     checks,
     go: checks.budget && checks.radial && checks.slope,
   };
 }
 
-export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg = 45, experienceMap = null) {
+// opts.home: {x,z} the walk-back "home" (habitat). Defaults to waypoints[0];
+// return-to-home planning passes the real home so the cached maps stay valid.
+export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg = 45, experienceMap = null, opts = {}) {
   if (!waypoints || waypoints.length < 2) throw new Error('Need at least 2 waypoints');
 
   if (IS_DEM) {
     // Sun angle / learned experience don't enter the DEM cost (yet) — the
     // cost is physical walking time. Cache key is mode-only.
+    const home = opts.home || waypoints[0];
+    const homeMaps = getHomeMaps(home.x, home.z, hMap);
     const result = {};
     for (const mode of ['SAFE','ECO','FAST','AUTO']) {
       const cacheKey = `DEM_${mode}`;
@@ -489,7 +517,7 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
       const edge = { hMap, climbPenaltyS: w.climbPenaltyS };
       const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge);
       const path = smoothPath(rawPath);
-      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey]) };
+      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps) };
     }
     return result;
   }
@@ -530,7 +558,7 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
 }
 
 /** Test-only access to internals (tests/marswalk.test.mjs). Not used by the app. */
-export const _internals = { aStar, buildDemMultMap, CELL_SIZE };
+export const _internals = { aStar, buildDemMultMap, CELL_SIZE, cellIndexAt };
 
 export function clearPathCache() { _costCache = {}; _illumCache = {}; _wallMap = null; }
 

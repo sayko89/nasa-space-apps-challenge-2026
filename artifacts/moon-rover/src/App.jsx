@@ -531,6 +531,7 @@ export default function App() {
             sunAngleDeg={sunAngleDeg}
             learningModel={learningModel}
             dustHazard={dustHazard}
+            ponrPoint={routes?.[activeRoute]?.stats?.ponrPoint || null}
           />
         </Suspense>
       </div>

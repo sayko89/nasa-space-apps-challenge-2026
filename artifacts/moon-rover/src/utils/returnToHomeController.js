@@ -12,6 +12,6 @@ import { planAllRoutes } from './pathfinder';
  * @param {Float32Array|null} [experienceMap] - from LearningModel.getExperienceMap()
  */
 export function buildReturnToHomePath(roverPos, home, maps, sunAngleDeg, experienceMap = null) {
-  const planned = planAllRoutes([roverPos, home], maps.sm, maps.cm, maps.hm, sunAngleDeg, experienceMap);
+  const planned = planAllRoutes([roverPos, home], maps.sm, maps.cm, maps.hm, sunAngleDeg, experienceMap, { home });
   return planned?.SAFE?.path || planned?.AUTO?.path || null;
 }
