@@ -43,6 +43,7 @@ import json
 import math
 import os
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 
@@ -93,8 +94,18 @@ def get_zip(args) -> bytes:
         with open(cached, "rb") as f:
             return f.read()
     print(f"[1/4] İndiriliyor (3.5 MB, CC BY 4.0): {ZIP_URL}")
-    with urllib.request.urlopen(ZIP_URL, timeout=120) as r:
-        data = r.read()
+    # CaltechAUTHORS, Python'un varsayılan User-Agent'ını (Python-urllib) 403 ile reddediyor.
+    req = urllib.request.Request(ZIP_URL, headers={
+        "User-Agent": "Mozilla/5.0 (martian-map pipeline; +https://github.com/ugurfurkanyesil-rgb/final)",
+        "Accept": "application/zip,application/octet-stream,*/*",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            data = r.read()
+    except urllib.error.HTTPError as e:
+        sys.exit(f"İndirme başarısız (HTTP {e.code}). Dosyayı tarayıcıyla indirip şöyle verin:\n"
+                 f"  {ZIP_URL}\n"
+                 f"  python pipeline/build_geology.py --zip <indirilen>/11214_2020_739_MOESM3_ESM.zip")
     if len(data) != ZIP_SIZE:
         sys.exit(f"Beklenmeyen boyut: {len(data)} B (beklenen {ZIP_SIZE} B)")
     with open(cached, "wb") as f:
