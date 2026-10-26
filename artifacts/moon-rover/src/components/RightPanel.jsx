@@ -8,7 +8,7 @@
  */
 
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { TERRAIN_SIZE, CRATERS } from '../three/terrainGenerator';
+import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { generateHeatmapCanvas } from '../utils/heatmaps';
@@ -18,8 +18,9 @@ const HALF = TERRAIN_SIZE / 2;
 const PW   = 218;  // panel width
 const MAP_S = 202; // mini-map px — fills panel width (218 - 8px×2 padding)
 
-const HEATMAP_OPTIONS = ['Slope','Slope Angle','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
+const HEATMAP_OPTIONS = ['Elevation','Slope','Slope Angle','No-Go','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
 const HM_COLORS = {
+  'Elevation':'#e8a878','No-Go':'#ff4466',
   'Slope':'#aaddaa','Slope Angle':'#88ccff','Roughness':'#ffcc88',
   'Slip Risk':'#ff8844','Illumination':'#ffffaa','Hazard Score':'#ff6655','Traversability':'#44ffaa',
   'Experience':'#cc66ff',
@@ -684,8 +685,8 @@ export default function RightPanel({
       {/* Header */}
       <div style={{padding:'7px 10px 5px',borderBottom:'1px solid rgba(35,70,35,0.4)',
         background:'rgba(0,14,0,0.7)',flexShrink:0}}>
-        <div style={{color:'#3dff55',fontSize:10,fontWeight:'bold',letterSpacing:2}}>MOON ROVER SIM</div>
-        <div style={{color:'#245524',fontSize:7,letterSpacing:1}}>MISSION CONTROL TERMINAL</div>
+        <div style={{color:'#3dff55',fontSize:10,fontWeight:'bold',letterSpacing:2}}>{IS_DEM ? 'MARTIAN MAP' : 'MOON ROVER SIM'}</div>
+        <div style={{color:'#245524',fontSize:7,letterSpacing:1}}>{IS_DEM ? 'MARSWALK PLANNER' : 'MISSION CONTROL TERMINAL'}</div>
       </div>
 
       <div style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
@@ -723,7 +724,7 @@ export default function RightPanel({
         {/* Terrain */}
         <Sect label="Terrain Mode">
           <Row>
-            <Btn active={!wireframe} onClick={()=>setWireframe(false)}>PROCEDURAL</Btn>
+            <Btn active={!wireframe} onClick={()=>setWireframe(false)}>{IS_DEM ? 'DEM' : 'PROCEDURAL'}</Btn>
             <Btn active={wireframe}  onClick={()=>setWireframe(true)}>WIRE</Btn>
           </Row>
         </Sect>

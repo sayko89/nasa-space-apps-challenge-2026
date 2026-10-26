@@ -5,8 +5,9 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import RightPanel from './components/RightPanel';
-import { planAllRoutes, clearPathCache, getHazardAtPoint } from './utils/pathfinder';
-import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS } from './three/terrainGenerator';
+import { planAllRoutes, clearPathCache, getHazardAtPoint, isWallAt } from './utils/pathfinder';
+import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
+import { param, placeholderParams } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
@@ -15,6 +16,10 @@ import { buildReturnToHomePath } from './utils/returnToHomeController';
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
 function ts() { return new Date().toLocaleTimeString('en-US', { hour12: false }); }
+
+const WALL_REJECT_MSG = IS_DEM
+  ? `⛔ WAYPOINT REDDEDİLDİ — Eğim ${param('maxWalkableSlopeDeg')}° sınırının üstünde. Daha düz zemin seçin.`
+  : '⛔ WAYPOINT REDDEDİLDİ — Krater içinde! Rover hiçbir zaman krater bölgelerine giremez. Düz zemin seçin.';
 
 // ---- Toast System ----
 let _toastId = 0;
@@ -51,8 +56,45 @@ function ToastContainer({ toasts, onDismiss }) {
   );
 }
 
+// ---- Data provenance / fallback badge (bottom-left) ----
+function SiteBadge() {
+  const base = {
+    position:'absolute', left:12, bottom:10, zIndex:15, maxWidth:520,
+    fontFamily:'monospace', fontSize:9, lineHeight:1.45, padding:'6px 9px',
+    borderRadius:4, pointerEvents:'auto',
+  };
+  if (!IS_DEM) {
+    if (!SITE.loadError) return null; // ?site=moon — bilinçli prosedürel mod
+    return (
+      <div style={{ ...base, background:'rgba(70,35,0,0.92)', border:'1px solid #ff8800', color:'#ffcc88' }}>
+        ⚠ DEM yüklenemedi → prosedürel Ay arazisi gösteriliyor.<br/>
+        {SITE.loadError}<br/>
+        Çözüm: <code>python pipeline/build_site.py</code> çalıştırıp sayfayı yenileyin.
+      </div>
+    );
+  }
+  const m = SITE.meta;
+  const ph = placeholderParams();
+  return (
+    <div style={{ ...base, background:'rgba(20,10,6,0.82)', border:'1px solid rgba(232,168,120,0.35)', color:'#e8c4a8' }}>
+      TERRAIN: {m.source?.title || 'DTM'} · {m.grid.cell_m} m grid · {Math.round(m.grid.span_m)} m alan<br/>
+      MERKEZ: {m.center.lat_deg.toFixed(4)}°N {m.center.lon_deg_east.toFixed(4)}°E ·
+      {' '}yükseklik {m.elevation_m.min.toFixed(0)}…{m.elevation_m.max.toFixed(0)} m<br/>
+      {m.source?.doi && <a href={m.source.doi} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>{m.source.doi}</a>}
+      {ph.length > 0 && (
+        <div style={{color:'#ffaa55', marginTop:3}}>
+          ⚠ Kaynağı bağlanmamış parametre: {ph.join(', ')} (geçici değer)
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
-  const [roverState, setRoverState] = useState({ x:-25, y:0, z:-20, speed:0, heading:0, autoMode:false });
+  const [roverState, setRoverState] = useState(() => ({
+    x: DEFAULT_HOME.x, y: getTerrainHeight(DEFAULT_HOME.x, DEFAULT_HOME.z) + 0.45, z: DEFAULT_HOME.z,
+    speed: 0, heading: 0, autoMode: false,
+  }));
   // waypoints: ordered array of {x, z} — first = start, last = end, middle = intermediate
   const [waypoints, setWaypoints]   = useState([]);
   const [routes, setRoutes]         = useState(null); // { SAFE:{path,stats}, ECO:{path,stats}, ... }
@@ -115,16 +157,10 @@ export default function App() {
   const addWaypoint = useCallback((pos) => {
     const { sm: sm2, cm: cm2 } = getMaps();
 
-    // Hard crater check — direct distance test against every crater (full bowl + rim)
-    const inCrater = CRATERS.some(c => {
-      const d = Math.sqrt((pos.x - c.x) ** 2 + (pos.z - c.z) ** 2);
-      return d < c.radius * 1.05;
-    });
-    if (inCrater) {
-      showToast(
-        '⛔ WAYPOINT REDDEDİLDİ — Krater içinde! Rover hiçbir zaman krater bölgelerine giremez. Düz zemin seçin.',
-        'error', 7000
-      );
+    // Hard wall check — same impassable map the router uses
+    // (procedural: crater bowl+rim / debris; DEM: steeper than the slope limit)
+    if (isWallAt(pos.x, pos.z)) {
+      showToast(WALL_REJECT_MSG, 'error', 7000);
       return;
     }
 
@@ -160,12 +196,8 @@ export default function App() {
   // Override first waypoint → always teleport rover
   const setStartWaypoint = useCallback((pos) => {
     const { sm: sm2, cm: cm2 } = getMaps();
-    const inCrater = CRATERS.some(c => {
-      const d = Math.sqrt((pos.x - c.x) ** 2 + (pos.z - c.z) ** 2);
-      return d < c.radius * 1.05;
-    });
-    if (inCrater) {
-      showToast('⛔ BAŞLANGIÇ NOKTASİ REDDEDİLDİ — Krater içinde! Düz zemin seçin.', 'error', 7000);
+    if (isWallAt(pos.x, pos.z)) {
+      showToast(WALL_REJECT_MSG.replace('WAYPOINT', 'BAŞLANGIÇ NOKTASI'), 'error', 7000);
       return;
     }
     const hazard = getHazardAtPoint(pos.x, pos.z, cm2, sm2);
@@ -455,7 +487,7 @@ export default function App() {
   const endPos   = waypoints[waypoints.length - 1] || null;
 
   return (
-    <div style={{ width:'100vw', height:'100vh', overflow:'hidden', position:'relative', background:'#000008' }}>
+    <div style={{ width:'100vw', height:'100vh', overflow:'hidden', position:'relative', background: IS_DEM ? '#2a1a12' : '#000008' }}>
       <style>{`
         @keyframes slideDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
@@ -465,7 +497,7 @@ export default function App() {
         <Suspense fallback={
           <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',
             color:'#44ff88',fontSize:13,fontFamily:'monospace',letterSpacing:'0.18em'}}>
-            LOADING LUNAR SURFACE...
+            {IS_DEM ? 'LOADING MARTIAN SURFACE...' : 'LOADING LUNAR SURFACE...'}
           </div>
         }>
           <MoonScene
@@ -492,11 +524,12 @@ export default function App() {
         letterSpacing:'0.2em', zIndex:15, pointerEvents:'none',
         textShadow:'0 0 8px rgba(40,180,40,0.4)',
       }}>
-        MOON ROVER SIMULATOR
+        {IS_DEM ? `MARTIAN MAP · ${(SITE.meta?.label || SITE.name).toUpperCase()}` : 'MOON ROVER SIMULATOR'}
         <div style={{fontSize:8,color:'rgba(70,130,70,0.6)',marginTop:2}}>
           LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM
         </div>
       </div>
+      <SiteBadge />
 
       {/* Toasts */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

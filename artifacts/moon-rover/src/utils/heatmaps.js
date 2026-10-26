@@ -4,7 +4,7 @@
  */
 
 import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS } from '../three/terrainGenerator.js';
-import { buildIlluminationMap, hazardScore } from './pathfinder.js';
+import { buildIlluminationMap, hazardScore, getWallMap } from './pathfinder.js';
 
 // Thermal color scale: blue→cyan→green→yellow→red
 function thermalColor(t) {
@@ -133,6 +133,27 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
       for (let i = 0; i < GRID_RES * GRID_RES; i++) {
         paramMap[i] = 1 - hazardScore(_craterMask[i], _slopeMap[i]);
       }
+      maxVal = 1;
+      break;
+    }
+    case 'Elevation': {
+      // Height normalised to the site's own min–max (DEM range can be 100s of m)
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < _heightMap.length; i++) {
+        if (_heightMap[i] < lo) lo = _heightMap[i];
+        if (_heightMap[i] > hi) hi = _heightMap[i];
+      }
+      const span = Math.max(1e-6, hi - lo);
+      paramMap = new Float32Array(_heightMap.length);
+      for (let i = 0; i < _heightMap.length; i++) paramMap[i] = (_heightMap[i] - lo) / span;
+      maxVal = 1;
+      break;
+    }
+    case 'No-Go': {
+      // Exactly the impassable cells A* refuses to enter
+      const wall = getWallMap();
+      paramMap = new Float32Array(wall.length);
+      for (let i = 0; i < wall.length; i++) paramMap[i] = wall[i];
       maxVal = 1;
       break;
     }

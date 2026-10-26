@@ -10,6 +10,55 @@ Canlı yayın hedefi:
 
 ![Moon Rover Visual](./attached_assets/image_1774710280737.png)
 
+## Martian Map — NASA Space Apps 2026 (`mars-marswalk` branch)
+
+*Interplanetary Survival Guide: Martian Map* challenge'ı için uygulama gerçek Mars
+arazisinde çalışacak şekilde genişletildi. Varsayılan site Jezero Krateri; grid,
+Perseverance'ın iniş noktası **Octavia E. Butler Landing** (18.44°K, 77.45°D)
+üzerinde merkezlenir.
+
+| Mod | URL | Arazi kaynağı |
+|---|---|---|
+| Mars (DEM) | `/?site=jezero` (varsayılan) | `public/sites/jezero/` — gerçek HiRISE DTM |
+| Ay (prosedürel) | `/?site=moon` | Eski prosedürel arazi, davranışı değişmedi |
+
+DEM verisi bulunamazsa uygulama prosedürel moda düşer ve sol altta nedenini gösterir.
+
+### 1. Arazi verisini üret (bir kez)
+
+```bash
+pip install -r pipeline/requirements.txt
+python pipeline/build_site.py            # Jezero, 512×512 grid, 4 m → ~2 km alan
+```
+
+Script, [USGS Mars 2020 TRN HiRISE DTM mozaiğinden](https://astrogeology.usgs.gov/search/map/mars_2020_terrain_relative_navigation_hirise_dtm_mosaic)
+(1 m/piksel, 1.8 GB GeoTIFF) yalnızca gereken bölgeyi HTTP aralık istekleriyle okur ve
+`artifacts/moon-rover/public/sites/jezero/` altına `grid.bin`, `meta.json` ve
+`preview.png` yazar. Uzaktan okuma yavaşsa dosyayı indirip yerel yolu verin:
+
+```bash
+python pipeline/build_site.py --src JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif
+```
+
+Seçenekler: `--grid` (düğüm sayısı), `--cell` (m), `--lat/--lon` (merkez). Üretilen
+dosyaları (~1 MB) commit edin; GitHub Pages yayını bunları kullanır.
+
+**Projeksiyon:** Kaynak DTM equirectangular (`lat_ts=0`). Bu projeksiyonda Jezero
+enleminde doğu-batı ölçeği ~%5 şişer. Pipeline veriyi merkezde gerçek ölçekli
+yerel projeksiyona yeniden örnekler, böylece eğimler doğru hesaplanır.
+
+**Atıf:** USGS Astrogeology (2020), *Mars 2020 Terrain Relative Navigation HiRISE
+DTM Mosaic*, [doi:10.5066/P9REJ9JN](https://doi.org/10.5066/P9REJ9JN); Fergason vd.
+(2020), 51st LPSC.
+
+### 2. DEM modunda ne değişti
+
+- Krater listesi ve rastgele kaya/enkaz yok; arazi tamamen veriden gelir.
+- Geçilmez bölgeler eğim eşiğinden türetilir (`src/config/marswalkProfile.js`).
+  Eşik şu an **geçici** değer; NASA EVA kaynağı bağlanana kadar arayüzde uyarı gösterilir.
+- Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
+- Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.
+
 ## İçindekiler
 
 - [Proje Özeti](#proje-özeti)

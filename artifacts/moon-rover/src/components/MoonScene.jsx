@@ -10,9 +10,15 @@ import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   generateTerrain, getTerrainHeight, generateRockPositions,
-  generateDebrisPositions, TERRAIN_SIZE,
+  generateDebrisPositions, TERRAIN_SIZE, IS_DEM,
   createLunarRegolithTexture, createLunarNormalMap,
 } from '../three/terrainGenerator';
+
+// Sahne ölçeği: prosedürel Ay alanı 100 m; DEM alanı ~2 km. Görsel işaretler
+// (rota tüpü, waypoint) ve kamera limitleri buna göre büyütülür.
+const SCENE_SCALE = Math.max(1, TERRAIN_SIZE / 100);
+const MARKER_SCALE = IS_DEM ? Math.max(1, SCENE_SCALE * 0.15) : 1;
+const MARS_SKY = '#c9a27e';
 import { useRoverController } from '../three/roverController';
 import { ROUTE_COLORS } from '../utils/constants';
 
@@ -532,8 +538,8 @@ function DustCloudHazard({ hazard }) {
 function RouteLine({ points, color, active }) {
   if (!points || points.length < 2) return null;
 
-  const tubeRadius = active ? 0.18 : 0.09;   // 1.5× thicker than old 0.12/0.06
-  const lift       = active ? 0.14 : 0.08;
+  const tubeRadius = (active ? 0.18 : 0.09) * MARKER_SCALE;   // 1.5× thicker than old 0.12/0.06
+  const lift       = (active ? 0.14 : 0.08) * MARKER_SCALE;
 
   const curve = useMemo(() => {
     const vecs = points.map(p => new THREE.Vector3(p[0], p[1] + lift, p[2]));
@@ -581,7 +587,7 @@ function WaypointMarker({ pos, idx, total }) {
   const color = isStart ? '#22ff55' : isEnd ? '#ff4422' : WP_COLORS[idx % WP_COLORS.length];
   const h = isStart ? 1.4 : isEnd ? 1.4 : 1.0;
   return (
-    <group position={[pos.x, y, pos.z]}>
+    <group position={[pos.x, y, pos.z]} scale={[MARKER_SCALE, MARKER_SCALE, MARKER_SCALE]}>
       <mesh>
         <cylinderGeometry args={[0, 0.30, h, 6]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.65} transparent opacity={0.92} />
@@ -591,6 +597,40 @@ function WaypointMarker({ pos, idx, total }) {
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} transparent opacity={0.5} />
       </mesh>
     </group>
+  );
+}
+
+// ---- Sun (follows the rover so the local shadow box stays sharp anywhere) ----
+const _ORIGIN = new THREE.Vector3(0, 0, 0);
+function SunLight({ roverRef, sunAngleDeg }) {
+  const lightRef = useRef();
+  const target = useMemo(() => new THREE.Object3D(), []);
+  const sunRad = (sunAngleDeg * Math.PI) / 180;
+  const sx = Math.sin(sunRad) * 75, sz = -Math.cos(sunRad) * 75, sy = 68;
+  useFrame(() => {
+    const c = roverRef.current ? roverRef.current.position : _ORIGIN;
+    if (lightRef.current) lightRef.current.position.set(c.x + sx, c.y + sy, c.z + sz);
+    target.position.copy(c);
+    target.updateMatrixWorld();
+  });
+  return (
+    <>
+      <primitive object={target} />
+      <directionalLight
+        ref={lightRef}
+        target={target}
+        intensity={IS_DEM ? 1.6 : 1.9}
+        color={IS_DEM ? '#fff1e0' : '#fffaf2'}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={220}
+        shadow-camera-left={-65}
+        shadow-camera-right={65}
+        shadow-camera-top={65}
+        shadow-camera-bottom={-65}
+      />
+    </>
   );
 }
 
@@ -628,39 +668,37 @@ export default function MoonScene({
   const roverRef = useRef();
   const orbitRef = useRef();
 
-  const sunRad = (sunAngleDeg * Math.PI) / 180;
-  const sunX = Math.sin(sunRad) * 75;
-  const sunZ = -Math.cos(sunRad) * 75;
-  const sunY = 68;
-
   const trail = pathRef.current._roverTrail || [];
 
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 30, -24], fov: 46, near: 0.1, far: 800 }}
-      style={{ background: '#000008' }}
+      camera={{
+        position: [roverState.x, roverState.y + 30, roverState.z - 24], fov: 46,
+        near: IS_DEM ? 0.5 : 0.1, far: Math.max(800, TERRAIN_SIZE * 2.5),
+      }}
+      style={{ background: IS_DEM ? MARS_SKY : '#000008' }}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
     >
-      <Stars radius={280} depth={55} count={4500} factor={3.5} saturation={0} fade />
+      {IS_DEM ? (
+        <>
+          {/* Mars: gündüz gökyüzü saçılması → sıcak ambient + mesafe pusu (görsel) */}
+          <color attach="background" args={[MARS_SKY]} />
+          <fog attach="fog" args={[MARS_SKY, TERRAIN_SIZE * 0.2, TERRAIN_SIZE * 1.2]} />
+          <ambientLight intensity={0.38} color="#e0b088" />
+          <hemisphereLight args={['#e8c09a', '#5a3420', 0.25]} />
+        </>
+      ) : (
+        <>
+          <Stars radius={280} depth={55} count={4500} factor={3.5} saturation={0} fade />
+          {/* Earthshine fill */}
+          <ambientLight intensity={0.065} color="#b8caff" />
+          <directionalLight position={[-35, 12, -55]} intensity={0.10} color="#b0c0ff" />
+        </>
+      )}
 
       {/* Sun */}
-      <directionalLight
-        position={[sunX, sunY, sunZ]}
-        intensity={1.9}
-        color="#fffaf2"
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-far={220}
-        shadow-camera-left={-65}
-        shadow-camera-right={65}
-        shadow-camera-top={65}
-        shadow-camera-bottom={-65}
-      />
-      {/* Earthshine fill */}
-      <ambientLight intensity={0.065} color="#b8caff" />
-      <directionalLight position={[-35, 12, -55]} intensity={0.10} color="#b0c0ff" />
+      <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} />
 
       <Terrain wireframe={wireframe} />
       <Rocks />
@@ -703,7 +741,7 @@ export default function MoonScene({
         dampingFactor={0.07}
         maxPolarAngle={Math.PI / 2.02}
         minDistance={4}
-        maxDistance={130}
+        maxDistance={IS_DEM ? TERRAIN_SIZE * 0.9 : 130}
         zoomSpeed={1.4}
         panSpeed={0.9}
         rotateSpeed={0.55}

@@ -4,19 +4,28 @@
  * Debris objects have exclusion zones added to the cost map.
  */
 
-import { TERRAIN_SIZE, GRID_RES, getTerrainHeight, CRATERS } from '../three/terrainGenerator.js';
+import {
+  TERRAIN_SIZE, GRID_RES, getTerrainHeight, CRATERS, IS_DEM,
+  buildHeightMap, buildSlopeMap,
+} from '../three/terrainGenerator.js';
+import { param } from '../config/marswalkProfile.js';
 
 const HALF = TERRAIN_SIZE / 2;
 
 // How far (in grid cells) to search for the nearest open cell when a route
-// endpoint lands inside a wall. Must cover the largest crater's wall radius,
-// or the search comes back empty, the endpoint stays a wall cell, and A* can
-// never reach it (walls are never enterable) — guaranteeing a fallback.
+// endpoint lands inside a wall. Procedural: must cover the largest crater's
+// wall radius, or the search comes back empty, the endpoint stays a wall cell,
+// and A* can never reach it (walls are never enterable) — guaranteeing a
+// fallback. DEM: walls are steep-slope cells (no crater list), which form thin
+// bands/patches; 48 cells (~190 m at 4 m/cell) comfortably covers them.
 const CELL_SIZE = TERRAIN_SIZE / (GRID_RES - 1);
-const MAX_WALL_RADIUS_CELLS = Math.ceil((Math.max(...CRATERS.map(c => c.radius)) * 1.05) / CELL_SIZE) + 2;
+const MAX_WALL_RADIUS_CELLS = CRATERS.length
+  ? Math.ceil((Math.max(...CRATERS.map(c => c.radius)) * 1.05) / CELL_SIZE) + 2
+  : 48;
 
 // Debris positions (x, z, radius) — match generateDebrisPositions() in terrainGenerator.js
-const DEBRIS_ZONES = [
+// Only exists in the procedural Moon scenario.
+const DEBRIS_ZONES = IS_DEM ? [] : [
   { x: -32, z:  14, r: 3.5 },
   { x:  28, z: -42, r: 2.5 },
   { x: -14, z: -30, r: 3.0 },
@@ -84,12 +93,26 @@ export function buildIlluminationMap(sunAngleDeg, hMap) {
   return illum;
 }
 
-// ---- Impassable map (craters = walls, debris = obstacles) ----
-// Built once and reused. Cells with value true are completely blocked.
+// ---- Impassable map ----
+// Procedural: craters = walls, debris = obstacles.
+// DEM: cells steeper than the Marswalk slope limit (config/marswalkProfile.js).
+// Built once and reused. Cells with value 1 are completely blocked.
 let _wallMap = null;
-function getWallMap() {
+export function getWallMap() {
   if (_wallMap) return _wallMap;
   _wallMap = new Uint8Array(GRID_RES * GRID_RES);
+  if (IS_DEM) {
+    const slope = buildSlopeMap(buildHeightMap());       // rise/run
+    const limit = Math.tan((param('maxWalkableSlopeDeg') * Math.PI) / 180);
+    for (let i = 0; i < slope.length; i++) if (slope[i] > limit) _wallMap[i] = 1;
+    // buildSlopeMap leaves the 1-cell border at 0; block it so routes never
+    // run along the unverifiable grid edge.
+    for (let k = 0; k < GRID_RES; k++) {
+      _wallMap[k] = _wallMap[(GRID_RES - 1) * GRID_RES + k] = 1;
+      _wallMap[k * GRID_RES] = _wallMap[k * GRID_RES + GRID_RES - 1] = 1;
+    }
+    return _wallMap;
+  }
   for (let row = 0; row < GRID_RES; row++) {
     for (let col = 0; col < GRID_RES; col++) {
       const wx = -HALF + (col / (GRID_RES - 1)) * TERRAIN_SIZE;
@@ -412,6 +435,12 @@ export function clearPathCache() { _costCache = {}; _illumCache = {}; _wallMap =
  */
 export function hazardScore(crater, slope) {
   return Math.min(1, crater * 1.0 + Math.max(0, slope - 0.25) * 2.0);
+}
+
+/** True if the world position falls on an impassable cell (crater/debris or too steep). */
+export function isWallAt(wx, wz) {
+  const { col, row } = worldToGrid(wx, wz);
+  return getWallMap()[row * GRID_RES + col] === 1;
 }
 
 /** Check how hazardous a world position is (0=safe, 1=very dangerous) */

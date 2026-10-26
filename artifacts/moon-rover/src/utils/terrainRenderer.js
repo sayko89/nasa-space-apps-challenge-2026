@@ -3,7 +3,7 @@
  * High-contrast satellite-view: hillshaded relief + crater tints + rover-start marker.
  */
 
-import { TERRAIN_SIZE, GRID_RES, CRATERS, buildHeightMap, buildCraterMask, buildSlopeMap } from '../three/terrainGenerator.js';
+import { TERRAIN_SIZE, GRID_RES, CRATERS, IS_DEM, buildHeightMap, buildCraterMask, buildSlopeMap } from '../three/terrainGenerator.js';
 
 let _offscreen = null;
 
@@ -80,12 +80,19 @@ export function getTerrainCanvas(size = 256) {
 
       v = Math.max(0.14, Math.min(0.96, v));
 
-      // Neon silver-grey — cool blue tint, no warm bias
       const bv  = Math.round(v * 255);
       const idx = (py * size + px2) * 4;
-      px[idx]   = Math.round(bv * 0.91);  // R slightly back
-      px[idx+1] = Math.round(bv * 0.95);  // G near neutral
-      px[idx+2] = bv;                      // B dominant (cool)
+      if (IS_DEM) {
+        // Mars: hillshade, warm tint (visual only)
+        px[idx]   = Math.min(255, Math.round(bv * 1.00));
+        px[idx+1] = Math.round(bv * 0.68);
+        px[idx+2] = Math.round(bv * 0.48);
+      } else {
+        // Neon silver-grey — cool blue tint, no warm bias
+        px[idx]   = Math.round(bv * 0.91);  // R slightly back
+        px[idx+1] = Math.round(bv * 0.95);  // G near neutral
+        px[idx+2] = bv;                      // B dominant (cool)
+      }
       px[idx+3] = 255;
     }
   }
@@ -105,14 +112,20 @@ export function getTerrainCanvas(size = 256) {
     ctx.stroke();
   }
 
-  // --- Rover start marker (green dot) ---
+  // --- Start marker ---
+  // Procedural: legacy rover-start dot. DEM: landing site = grid center
+  // (pipeline/build_site.py centers the site on it).
   const half  = TERRAIN_SIZE / 2;
-  const rsx   = ((-38 + half) / TERRAIN_SIZE) * size;
-  const rsy   = ((-38 + half) / TERRAIN_SIZE) * size;
+  const sx0   = IS_DEM ? 0 : -38, sz0 = IS_DEM ? 0 : -38;
+  const rsx   = ((sx0 + half) / TERRAIN_SIZE) * size;
+  const rsy   = ((sz0 + half) / TERRAIN_SIZE) * size;
   ctx.beginPath();
-  ctx.arc(rsx, rsy, 2.5, 0, Math.PI * 2);
+  ctx.arc(rsx, rsy, IS_DEM ? 3.5 : 2.5, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(40,255,100,0.85)';
   ctx.fill();
+  if (IS_DEM) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 1; ctx.stroke();
+  }
 
   _offscreen = canvas;
   return canvas;
