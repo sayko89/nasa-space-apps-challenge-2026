@@ -13,7 +13,12 @@ const DECEL        = 5;
 const TURN_SPD     = 2.2;
 const HALF         = TERRAIN_SIZE / 2 - 2;
 const AUTO_SPD     = 6.0;
-const WP_REACH     = 2.0;   // Generous reach radius so rover never stalls on waypoints
+const MIN_AUTO_SPD = 0.3;   // m/s — lets the rover pivot without stalling
+// Pure-pursuit parameters (metres / seconds) — independent of path point spacing
+const LOOKAHEAD_MIN  = 3.0;  // m
+const LOOKAHEAD_TIME = 1.0;  // s of travel at current speed
+const ARRIVE_DIST    = 1.5;  // m of path left → arrive
+const SEARCH_SEGS    = 40;   // segments searched ahead of the last projection
 const ROVER_SCALE  = 1.67;
 const ROVER_Y_OFF  = 0.135 * ROVER_SCALE + 0.05;
 
@@ -26,6 +31,48 @@ function insideCrater(wx, wz) {
     if (d < c.radius * 0.9) return true;
   }
   return false;
+}
+
+// ---- Path geometry helpers (route = [[x,y,z], ...]) ----
+function projectOnPath(route, fromSeg, px, pz) {
+  let best = { d2: Infinity, seg: fromSeg, t: 0 };
+  const last = Math.min(route.length - 2, fromSeg + SEARCH_SEGS);
+  for (let i = Math.max(0, fromSeg); i <= last; i++) {
+    const a = route[i], b = route[i + 1];
+    const dx = b[0] - a[0], dz = b[2] - a[2];
+    const L2 = dx * dx + dz * dz;
+    let t = L2 > 1e-9 ? ((px - a[0]) * dx + (pz - a[2]) * dz) / L2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const qx = a[0] + t * dx - px, qz = a[2] + t * dz - pz;
+    const d2 = qx * qx + qz * qz;
+    if (d2 < best.d2) best = { d2, seg: i, t };
+  }
+  return best;
+}
+
+function pointAhead(route, seg, t, dist) {
+  for (let i = seg; i < route.length - 1; i++) {
+    const a = route[i], b = route[i + 1];
+    const len = Math.hypot(b[0] - a[0], b[2] - a[2]);
+    const t0 = i === seg ? t : 0;
+    const avail = len * (1 - t0);
+    if (dist <= avail && len > 1e-9) {
+      const u = t0 + dist / len;
+      return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+    }
+    dist -= avail;
+  }
+  return route[route.length - 1];
+}
+
+function remainingLength(route, seg, t) {
+  let sum = 0;
+  for (let i = seg; i < route.length - 1; i++) {
+    const a = route[i], b = route[i + 1];
+    const len = Math.hypot(b[0] - a[0], b[2] - a[2]);
+    sum += i === seg ? len * (1 - t) : len;
+  }
+  return sum;
 }
 
 const keys = { forward: false, backward: false, left: false, right: false };
@@ -67,6 +114,14 @@ export function useRoverController(roverRef, setRoverState, pathRef, activeRoute
     const tp = pathRef.current._teleportTo;
     if (tp) {
       rover.position.set(tp.x, tp.y, tp.z);
+      // Face along the route so the start isn't a U-turn
+      const r0 = activeRoute && pathRef.current[activeRoute];
+      if (r0?.length > 1) {
+        const ahead = pointAhead(r0, 0, 0, LOOKAHEAD_MIN);
+        if (Math.hypot(ahead[0] - tp.x, ahead[2] - tp.z) > 1e-3) {
+          rover.rotation.y = Math.atan2(ahead[0] - tp.x, ahead[2] - tp.z);
+        }
+      }
       velRef.current = 0;
       pathRef.current._teleportTo = null;
       stuckRef.current = { t: 0, x: tp.x, z: tp.z };
@@ -75,41 +130,23 @@ export function useRoverController(roverRef, setRoverState, pathRef, activeRoute
     let vel     = velRef.current;
     let isAuto  = false;
 
-    // ---- Autonomous path following ----
+    // ---- Autonomous path following (pure pursuit, scale-independent) ----
+    // Rover her karede kendini rota üzerine izdüşürür; hedef, izdüşümün
+    // `lookahead` metre ilerisindeki nokta. Nokta aralığından bağımsızdır
+    // (eski "noktaya 2 m yaklaş" mantığı seyrek DEM rotalarında takılıp 360°
+    // dönmeye yol açıyordu).
     const wpIdx  = pathRef.current._waypointIdx;
     const route  = activeRoute && pathRef.current[activeRoute];
-    const doAuto = wpIdx !== undefined && route?.length > 0;
+    const doAuto = wpIdx !== undefined && route?.length > 1;
 
     if (doAuto) {
       isAuto = true;
+      const px = rover.position.x, pz = rover.position.z;
+      const proj = projectOnPath(route, Math.min(wpIdx, route.length - 2), px, pz);
+      pathRef.current._waypointIdx = proj.seg;
 
-      // Advance waypoint index past all already-reached points
-      let idx = wpIdx;
-      while (idx < route.length - 1) {
-        const wp = route[idx];
-        const dx = wp[0] - rover.position.x;
-        const dz = wp[2] - rover.position.z;
-        if (Math.sqrt(dx * dx + dz * dz) < WP_REACH) idx++;
-        else break;
-      }
-
-      // Lookahead: skip ahead several more points to stay smooth & avoid getting stuck on corners
-      const LOOKAHEAD = 4;
-      const targetIdx = Math.min(idx + LOOKAHEAD, route.length - 1);
-      pathRef.current._waypointIdx = idx;
-
-      const target = route[targetIdx];
-      const dx = target[0] - rover.position.x;
-      const dz = target[2] - rover.position.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      const finalDist = (() => {
-        const fp = route[route.length - 1];
-        const fdx = fp[0] - rover.position.x;
-        const fdz = fp[2] - rover.position.z;
-        return Math.sqrt(fdx * fdx + fdz * fdz);
-      })();
-
-      if (idx >= route.length - 1 && finalDist < WP_REACH * 1.2) {
+      const remaining = remainingLength(route, proj.seg, proj.t);
+      if (remaining < ARRIVE_DIST) {
         // Reached final destination — slow down
         vel = Math.max(0, vel - DECEL * dt * 4);
         if (vel < 0.08) {
@@ -117,6 +154,11 @@ export function useRoverController(roverRef, setRoverState, pathRef, activeRoute
           isAuto = false;
         }
       } else {
+        const look = Math.max(LOOKAHEAD_MIN, Math.abs(vel) * LOOKAHEAD_TIME);
+        const target = pointAhead(route, proj.seg, proj.t, look);
+        const dx = target[0] - px;
+        const dz = target[2] - pz;
+
         // Steer toward target point
         const targetAngle = Math.atan2(dx, dz);
         let diff = targetAngle - rover.rotation.y;
@@ -124,22 +166,23 @@ export function useRoverController(roverRef, setRoverState, pathRef, activeRoute
         while (diff < -Math.PI) diff += 2 * Math.PI;
         rover.rotation.y += diff * Math.min(1, TURN_SPD * dt * 3.5);
 
-        // Speed: reduce only for sharp turns (>90°), never stall completely
-        const turnFactor = Math.max(0.40, 1 - Math.min(0.60, Math.abs(diff) / Math.PI));
-        const targetVel  = AUTO_SPD * turnFactor;
+        // Speed: cos-shaped slowdown; target behind (>~70°) → nearly turn in place
+        const turnFactor = Math.max(0, Math.cos(Math.min(Math.abs(diff), Math.PI / 2)));
+        const targetVel  = Math.max(MIN_AUTO_SPD, AUTO_SPD * turnFactor);
         vel += (targetVel - vel) * Math.min(1, ACCEL * dt);
-        vel  = Math.max(0.8, vel); // Floor: never stall while path is active
+        // Never slow below the remaining distance needs (smooth arrival)
+        vel  = Math.min(vel, Math.max(MIN_AUTO_SPD, remaining * 1.2));
 
-        // Stall detection: if rover hasn't moved in 1.5s, skip 8 waypoints forward
+        // Stall detection: if rover hasn't moved in 1.5s, advance one segment
         const sx = stuckRef.current.x, sz = stuckRef.current.z;
-        if (Math.abs(rover.position.x - sx) + Math.abs(rover.position.z - sz) < 0.05) {
+        if (Math.abs(px - sx) + Math.abs(pz - sz) < 0.05) {
           stuckRef.current.t += dt;
           if (stuckRef.current.t > 1.5) {
-            pathRef.current._waypointIdx = Math.min(idx + 8, route.length - 1);
+            pathRef.current._waypointIdx = Math.min(proj.seg + 1, route.length - 2);
             stuckRef.current.t = 0;
           }
         } else {
-          stuckRef.current = { t: 0, x: rover.position.x, z: rover.position.z };
+          stuckRef.current = { t: 0, x: px, z: pz };
         }
       }
     }

@@ -2,6 +2,8 @@
  * Dust hazard state + configuration model.
  */
 
+import { IS_DEM } from '../three/terrainGenerator.js';
+
 export const DUST_STATES = {
   NORMAL: 'normal',
   PLACEMENT: 'dust_placement_mode',
@@ -23,7 +25,8 @@ export const DUST_HAZARD_CONFIG = {
   triggerPersistenceTicks: 6,
 };
 
-export const DEFAULT_HOME = { x: -25, z: -20 };
+// DEM: site center = landing site (pipeline centers the grid on it).
+export const DEFAULT_HOME = IS_DEM ? { x: 0, z: 0 } : { x: -25, z: -20 };
 
 export function createDustHazard(x, z, config = DUST_HAZARD_CONFIG) {
   return {

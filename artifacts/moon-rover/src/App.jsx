@@ -5,16 +5,23 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import RightPanel from './components/RightPanel';
-import { planAllRoutes, clearPathCache, getHazardAtPoint } from './utils/pathfinder';
-import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS } from './three/terrainGenerator';
+import { clearPathCache, getHazardAtPoint, isWallAt } from './utils/pathfinder';
+import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
+import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT, SCIENCE_PARAMS } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
 import { buildReturnToHomePath } from './utils/returnToHomeController';
+import { planRoutes, planScience, warmPlanner, plannerUsesWorker } from './utils/plannerClient';
+import { sunPosition, msAtLtst } from './utils/marsTime';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
 function ts() { return new Date().toLocaleTimeString('en-US', { hour12: false }); }
+
+const WALL_REJECT_MSG = IS_DEM
+  ? `⛔ WAYPOINT REDDEDİLDİ — Eğim ${param('maxWalkableSlopeDeg')}° sınırının üstünde. Daha düz zemin seçin.`
+  : '⛔ WAYPOINT REDDEDİLDİ — Krater içinde! Rover hiçbir zaman krater bölgelerine giremez. Düz zemin seçin.';
 
 // ---- Toast System ----
 let _toastId = 0;
@@ -51,19 +58,93 @@ function ToastContainer({ toasts, onDismiss }) {
   );
 }
 
+// ---- Data provenance / fallback badge (bottom-left) ----
+function SiteBadge() {
+  const base = {
+    position:'absolute', left:12, bottom:10, zIndex:15, maxWidth:520,
+    fontFamily:'monospace', fontSize:9, lineHeight:1.45, padding:'6px 9px',
+    borderRadius:4, pointerEvents:'auto',
+  };
+  if (!IS_DEM) {
+    if (!SITE.loadError) return null; // ?site=moon — bilinçli prosedürel mod
+    return (
+      <div style={{ ...base, background:'rgba(70,35,0,0.92)', border:'1px solid #ff8800', color:'#ffcc88' }}>
+        ⚠ DEM yüklenemedi → prosedürel Ay arazisi gösteriliyor.<br/>
+        {SITE.loadError}<br/>
+        Çözüm: <code>python pipeline/build_site.py</code> çalıştırıp sayfayı yenileyin.
+      </div>
+    );
+  }
+  const m = SITE.meta;
+  const ph = placeholderParams();
+  const as = assumptionParams();
+  return (
+    <div style={{ ...base, background:'rgba(20,10,6,0.82)', border:'1px solid rgba(232,168,120,0.35)', color:'#e8c4a8' }}>
+      TERRAIN: {m.source?.title || 'DTM'} · {m.grid.cell_m} m grid · {Math.round(m.grid.span_m)} m alan<br/>
+      MERKEZ: {m.center.lat_deg.toFixed(4)}°N {m.center.lon_deg_east.toFixed(4)}°E ·
+      {' '}yükseklik {m.elevation_m.min.toFixed(0)}…{m.elevation_m.max.toFixed(0)} m<br/>
+      {m.source?.doi && <a href={m.source.doi} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>{m.source.doi}</a>}<br/>
+      EVA: eğim ≤{MARSWALK_PROFILE.maxWalkableSlopeDeg.value}° · düz zemin {MARSWALK_PROFILE.levelWalkSpeedKmh.value} km/h ·
+      {' '}≤{MARSWALK_PROFILE.evaDurationH.value} sa · ≤{MARSWALK_PROFILE.maxRadialDistanceKm.value} km —{' '}
+      <a href={MARSWALK_PROFILE.maxWalkableSlopeDeg.url} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>NASA xEVA ConOps</a>
+      {as.length > 0 && <> · varsayım: {as.join(', ')}</>}
+      {SITE.climate && <div>
+        HAVA: MEDA ATS türetilmiş sıcaklıklar — Hueso et al. 2024,{' '}
+        <a href={SITE.climate.source.doi} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>Zenodo</a>, CC BY 4.0
+      </div>}
+      {SITE.geology && <div>
+        JEOLOJİ: Stack et al. 2020, Space Sci. Rev. 216:127,{' '}
+        <a href={SITE.geology.source?.doi} target="_blank" rel="noreferrer" style={{color:'#ffb080'}}>DOI</a>, CC BY 4.0
+      </div>}
+      <div style={{color:'#ffaa55', marginTop:3}}>
+        ⚠ Bu değerler Ay için yazılmış; Mars için iyimser.{' '}
+        <a href={MARS_CAVEAT.url} target="_blank" rel="noreferrer" style={{color:'#ffcc88'}} title={MARS_CAVEAT.note}>Neden?</a>
+      </div>
+      {ph.length > 0 && (
+        <div style={{color:'#ffaa55', marginTop:3}}>
+          ⚠ Kaynağı bağlanmamış parametre: {ph.join(', ')} (geçici değer)
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
-  const [roverState, setRoverState] = useState({ x:-25, y:0, z:-20, speed:0, heading:0, autoMode:false });
+  const [roverState, setRoverState] = useState(() => ({
+    x: DEFAULT_HOME.x, y: getTerrainHeight(DEFAULT_HOME.x, DEFAULT_HOME.z) + 0.45, z: DEFAULT_HOME.z,
+    speed: 0, heading: 0, autoMode: false,
+  }));
   // waypoints: ordered array of {x, z} — first = start, last = end, middle = intermediate
   const [waypoints, setWaypoints]   = useState([]);
   const [routes, setRoutes]         = useState(null); // { SAFE:{path,stats}, ECO:{path,stats}, ... }
   const [activeRoute, setActiveRoute] = useState('AUTO');
-  const [sunAngleDeg, setSunAngleDeg] = useState(45);
+  const [sunAngleState, setSunAngleDeg] = useState(45);
+  // DEM: EVA start time drives the sun (Mars24). Default: today, 09:00 LTST at the site.
+  const siteCenter = SITE.meta?.center;
+  const [evaStartMs, setEvaStartMs] = useState(() =>
+    IS_DEM && siteCenter ? msAtLtst(Date.now(), 9, siteCenter.lon_deg_east) : null);
+  const sun = useMemo(() => (IS_DEM && siteCenter && evaStartMs != null)
+    ? sunPosition(evaStartMs, siteCenter.lat_deg, siteCenter.lon_deg_east) : null,
+  [evaStartMs, siteCenter]);
+  // Existing consumers (scene light, illumination) use an azimuth in degrees
+  const sunAngleDeg = sun ? Math.round(sun.azimuthDeg * 10) / 10 : sunAngleState;
+  const sunElevationDeg = sun ? sun.elevationDeg : undefined;
   const [wireframe, setWireframe]   = useState(false);
   const [cameraMode, setCameraMode] = useState('follow');
   const [routeLog, setRouteLog]     = useState([`[${ts()}] Ready. Add waypoints and press PLAN PATH.`]);
   const [isRoving, setIsRoving]     = useState(false);
   const [resetKey, setResetKey]     = useState(0);
   const [toasts, setToasts]         = useState([]);
+  const [isPlanning, setIsPlanning] = useState(false);
+  const planSeqRef = useRef(0);   // stale-result guard for async planning
+  // Stage 6 — science EVA (geology stops). null = none planned
+  const [science, setScience] = useState(null);
+  const [scienceDwellMin, setScienceDwellMin] = useState(SCIENCE_PARAMS.dwellMin);
+  const [isPlanningScience, setIsPlanningScience] = useState(false);
+  const autoPlanRef = useRef(false);   // plan as soon as the science waypoints are committed
+
+  // Planner worker'ı açılışta ısıt (DEM): ilk PLAN PATH beklemesi kısalır
+  useEffect(() => { warmPlanner(); }, []);
 
   // ---- Dust Hazard State Machine ----
   // 'normal' | 'dust_placement_mode' | 'dust_present' | 'dust_interference_detected' | 'signal_lost' | 'stopped' | 'return_to_home'
@@ -115,16 +196,10 @@ export default function App() {
   const addWaypoint = useCallback((pos) => {
     const { sm: sm2, cm: cm2 } = getMaps();
 
-    // Hard crater check — direct distance test against every crater (full bowl + rim)
-    const inCrater = CRATERS.some(c => {
-      const d = Math.sqrt((pos.x - c.x) ** 2 + (pos.z - c.z) ** 2);
-      return d < c.radius * 1.05;
-    });
-    if (inCrater) {
-      showToast(
-        '⛔ WAYPOINT REDDEDİLDİ — Krater içinde! Rover hiçbir zaman krater bölgelerine giremez. Düz zemin seçin.',
-        'error', 7000
-      );
+    // Hard wall check — same impassable map the router uses
+    // (procedural: crater bowl+rim / debris; DEM: steeper than the slope limit)
+    if (isWallAt(pos.x, pos.z)) {
+      showToast(WALL_REJECT_MSG, 'error', 7000);
       return;
     }
 
@@ -155,17 +230,14 @@ export default function App() {
       return next;
     });
     setRoutes(null);
+    setScience(null);
   }, [getMaps, showToast, addLog]);
 
   // Override first waypoint → always teleport rover
   const setStartWaypoint = useCallback((pos) => {
     const { sm: sm2, cm: cm2 } = getMaps();
-    const inCrater = CRATERS.some(c => {
-      const d = Math.sqrt((pos.x - c.x) ** 2 + (pos.z - c.z) ** 2);
-      return d < c.radius * 1.05;
-    });
-    if (inCrater) {
-      showToast('⛔ BAŞLANGIÇ NOKTASİ REDDEDİLDİ — Krater içinde! Düz zemin seçin.', 'error', 7000);
+    if (isWallAt(pos.x, pos.z)) {
+      showToast(WALL_REJECT_MSG.replace('WAYPOINT', 'BAŞLANGIÇ NOKTASI'), 'error', 7000);
       return;
     }
     const hazard = getHazardAtPoint(pos.x, pos.z, cm2, sm2);
@@ -181,17 +253,23 @@ export default function App() {
       const next = [...prev]; next[0] = pos; return next;
     });
     setRoutes(null);
+    setScience(null);
     addLog(`Start moved to (${pos.x.toFixed(0)}, ${pos.z.toFixed(0)}) — rover teleported.`);
   }, [getMaps, showToast, addLog]);
+
+  // Any waypoint edit invalidates an in-flight plan
+  useEffect(() => { planSeqRef.current++; setIsPlanning(false); }, [waypoints]);
 
   const removeLastWaypoint = useCallback(() => {
     setWaypoints(prev => prev.length > 0 ? prev.slice(0, -1) : prev);
     setRoutes(null);
+    setScience(null);
   }, []);
 
   const clearWaypoints = useCallback(() => {
     setWaypoints([]);
     setRoutes(null);
+    setScience(null);
     pathRef.current = { _roverTrail: pathRef.current._roverTrail || [] };
     pathRef.current._waypointIdx = undefined;
     clearPathCache();
@@ -215,13 +293,18 @@ export default function App() {
       showToast('Need at least 2 waypoints to plan a route.', 'warning');
       return;
     }
-    addLog(`Planning 4 routes through ${waypoints.length} waypoints...`);
+    addLog(`Planning 4 routes through ${waypoints.length} waypoints${plannerUsesWorker() ? ' (background)' : ''}...`);
     setRoutes(null);
+    setIsPlanning(true);
+    const mySeq = ++planSeqRef.current;
+    const t0 = performance.now();
 
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        const { sm: sm2, cm: cm2, hm: hm2 } = getMaps();
-        const planned = planAllRoutes(waypoints, sm2, cm2, hm2, sunAngleDeg, learningModel.getExperienceMap());
+        const planned = await planRoutes(waypoints, getMaps(), sunAngleDeg, learningModel.getExperienceMap(),
+          evaStartMs != null ? { startMs: evaStartMs } : {});
+        // Waypoints changed / re-planned meanwhile → drop this stale result
+        if (mySeq !== planSeqRef.current) return;
         setRoutes(planned);
         pathRef.current = {
           ...pathRef.current,
@@ -232,15 +315,63 @@ export default function App() {
         };
         for (const [mode, r] of Object.entries(planned)) {
           const s = r.stats;
-          addLog(`${mode}: ${r.path.length} pts, ${s?.distance.toFixed(1)}m, risk ${s?.riskPercent.toFixed(0)}%`);
+          if (s?.walkTimeS !== undefined) {
+            addLog(`${mode}: ${s.distance.toFixed(0)}m, gidiş ${(s.walkTimeS/60).toFixed(0)}dk, gidiş-dönüş ${(s.roundTripS/60).toFixed(0)}dk, maks ${s.maxSlopeDeg.toFixed(1)}° → ${s.go ? 'GO' : 'NO-GO'}`);
+          } else {
+            addLog(`${mode}: ${r.path.length} pts, ${s?.distance.toFixed(1)}m, risk ${s?.riskPercent.toFixed(0)}%`);
+          }
         }
-        addLog('Select route and press START ROVER.');
+        addLog(`Planned in ${((performance.now() - t0) / 1000).toFixed(1)} s. Select route and press START ROVER.`);
       } catch (err) {
+        if (mySeq !== planSeqRef.current) return;
         addLog(`[ERR] ${err.message}`);
         showToast(`Path planning failed: ${err.message}`, 'error');
+      } finally {
+        if (mySeq === planSeqRef.current) setIsPlanning(false);
       }
     }, 30);
-  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel]);
+  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel, evaStartMs]);
+
+  // Science waypoints committed → plan them (runs after the invalidation effect above)
+  useEffect(() => {
+    if (autoPlanRef.current && waypoints.length >= 2) { autoPlanRef.current = false; handlePlanPath(); }
+  }, [waypoints, handlePlanPath]);
+
+  // ---- Science EVA (Stage 6) ----
+  // Picks the best set + order of geology stops from home within the EVA budget
+  // (worker), then turns them into waypoints home → stops → home with dwell.
+  const handlePlanScience = useCallback(async () => {
+    if (!IS_DEM || !SITE.geology) return;
+    const home = waypoints[0] || homeWaypointRef.current || { ...DEFAULT_HOME };
+    setIsPlanningScience(true);
+    addLog(`Science EVA: choosing stops (dwell ${scienceDwellMin} min/stop)...`);
+    try {
+      const t0 = performance.now();
+      const res = await planScience(home, getMaps(), { dwellMin: scienceDwellMin });
+      if (!res || res.stops.length === 0) {
+        showToast('No geology stop fits the EVA budget from this start.', 'warning');
+        addLog('Science EVA: no feasible stop.');
+        return;
+      }
+      addLog(`Science EVA: ${res.stops.length}/${res.candidates.length} stops, score ${res.score}/${res.maxScore}, `
+        + `${(res.totalS / 60).toFixed(0)} min planned (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
+      const homeWp = { x: home.x, z: home.z };
+      const stopsWp = res.stops.map(st => ({ x: st.x, z: st.z, dwellS: res.dwellS, label: st.label }));
+      if (waypoints.length === 0) {
+        homeWaypointRef.current = homeWp;
+        setRoverState(s => ({ ...s, x: home.x, y: getTerrainHeight(home.x, home.z) + 0.45, z: home.z }));
+        setResetKey(k => k + 1);
+      }
+      setScience(res);
+      autoPlanRef.current = true;
+      setWaypoints([homeWp, ...stopsWp, homeWp]);
+    } catch (err) {
+      addLog(`[ERR] science: ${err.message}`);
+      showToast(`Science planning failed: ${err.message}`, 'error');
+    } finally {
+      setIsPlanningScience(false);
+    }
+  }, [waypoints, getMaps, scienceDwellMin, addLog, showToast]);
 
   // ---- Rover control ----
   const handleStartRover = useCallback(() => {
@@ -322,9 +453,11 @@ export default function App() {
       // Stage 2: plan and launch return route
       const home = homeWaypointRef.current || { ...DEFAULT_HOME };
       const roverPos = { x: roverState.x, z: roverState.z };
-      try {
+      (async () => { try {
         const maps = getMaps();
-        const returnPath = buildReturnToHomePath(roverPos, home, maps, sunAngleDeg, learningModel.getExperienceMap());
+        const returnPath = plannerUsesWorker()
+          ? (await planRoutes([roverPos, home], maps, sunAngleDeg, null, { home, modes: ['SAFE'] }))?.SAFE?.path
+          : buildReturnToHomePath(roverPos, home, maps, sunAngleDeg, learningModel.getExperienceMap());
         if (!returnPath || returnPath.length < 2) {
           throw new Error('No valid return path available');
         }
@@ -342,7 +475,7 @@ export default function App() {
       } catch (err) {
         addLog(`[ERR] Return To Home planning failed: ${err.message}`);
         showToast('Return To Home path unavailable. Rover remains in safe STOPPED state.', 'error', 7000);
-      }
+      } })();
     }, 260);
   }, [addLog, showToast, roverState.x, roverState.y, roverState.z, getMaps, sunAngleDeg, activeRoute, learningModel]);
 
@@ -436,6 +569,16 @@ export default function App() {
     }
   }, [dustMode, isRoving, showToast, addLog, setActiveRoute]);
 
+  // DEM: EVA start changed → refresh lighting stats by re-planning in the background
+  const lastStartRef = useRef(evaStartMs);
+  useEffect(() => {
+    if (!IS_DEM || evaStartMs === lastStartRef.current) return;
+    lastStartRef.current = evaStartMs;
+    if (!routes || waypoints.length < 2) return;
+    const id = setTimeout(() => handlePlanPath(), 400);   // debounce slider drags
+    return () => clearTimeout(id);
+  }, [evaStartMs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Re-plan when sun angle changes significantly (10° threshold)
   const lastSunRef = useRef(sunAngleDeg);
   useEffect(() => {
@@ -444,6 +587,11 @@ export default function App() {
       clearPathCache();
     }
   }, [sunAngleDeg, routes]);
+
+  // Dev-only test hook (Playwright reads rover/route state); stripped from prod builds
+  if (import.meta.env.DEV) {
+    window.__mm = { roverState, routes, activeRoute, isRoving };
+  }
 
   // Extract just paths for MoonScene (which draws lines)
   const routePaths = useMemo(() => {
@@ -455,7 +603,7 @@ export default function App() {
   const endPos   = waypoints[waypoints.length - 1] || null;
 
   return (
-    <div style={{ width:'100vw', height:'100vh', overflow:'hidden', position:'relative', background:'#000008' }}>
+    <div style={{ width:'100vw', height:'100vh', overflow:'hidden', position:'relative', background: IS_DEM ? '#2a1a12' : '#000008' }}>
       <style>{`
         @keyframes slideDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
@@ -465,7 +613,7 @@ export default function App() {
         <Suspense fallback={
           <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',
             color:'#44ff88',fontSize:13,fontFamily:'monospace',letterSpacing:'0.18em'}}>
-            LOADING LUNAR SURFACE...
+            {IS_DEM ? 'LOADING MARTIAN SURFACE...' : 'LOADING LUNAR SURFACE...'}
           </div>
         }>
           <MoonScene
@@ -479,8 +627,10 @@ export default function App() {
             cameraMode={cameraMode}
             wireframe={wireframe}
             sunAngleDeg={sunAngleDeg}
+            sunElevationDeg={sunElevationDeg}
             learningModel={learningModel}
             dustHazard={dustHazard}
+            ponrPoint={routes?.[activeRoute]?.stats?.ponrPoint || null}
           />
         </Suspense>
       </div>
@@ -492,11 +642,12 @@ export default function App() {
         letterSpacing:'0.2em', zIndex:15, pointerEvents:'none',
         textShadow:'0 0 8px rgba(40,180,40,0.4)',
       }}>
-        MOON ROVER SIMULATOR
+        {IS_DEM ? `MARTIAN MAP · ${(SITE.meta?.label || SITE.name).toUpperCase()}` : 'MOON ROVER SIMULATOR'}
         <div style={{fontSize:8,color:'rgba(70,130,70,0.6)',marginTop:2}}>
           LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM
         </div>
       </div>
+      <SiteBadge />
 
       {/* Toasts */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
@@ -514,7 +665,14 @@ export default function App() {
         onRemoveLastWaypoint={removeLastWaypoint}
         onClearWaypoints={clearWaypoints}
         onPlanPath={handlePlanPath}
+        isPlanning={isPlanning}
+        hasGeology={IS_DEM && !!SITE.geology}
+        science={science}
+        onPlanScience={handlePlanScience}
+        isPlanningScience={isPlanningScience}
+        scienceDwellMin={scienceDwellMin} setScienceDwellMin={setScienceDwellMin}
         sunAngleDeg={sunAngleDeg}   setSunAngleDeg={setSunAngleDeg}
+        sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs}
         cameraMode={cameraMode}     setCameraMode={setCameraMode}
         wireframe={wireframe}       setWireframe={setWireframe}
         onStartRover={handleStartRover}

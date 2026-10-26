@@ -1,5 +1,7 @@
 /**
- * Terrain Generator - Realistic NASA-inspired Moon surface
+ * Terrain Generator
+ * DEM modu: gerçek Mars DTM'i (siteData.js). Prosedürel mod (aşağısı):
+ * Realistic NASA-inspired Moon surface
  * Based on LRO/Apollo elevation and albedo data characteristics:
  *   - Multi-scale fractal undulation (highlands wavelength ~30m, meso ~8m, micro ~2m)
  *   - Physically-proportioned craters with bowl, rim, and ejecta blanket
@@ -8,12 +10,22 @@
  */
 
 import * as THREE from 'three';
+import { site } from '../terrain/siteData.js';
 
-export const TERRAIN_SIZE = 100;
-export const GRID_RES = 256;
+// ─── Terrain source ──────────────────────────────────────────────────────────
+// 'dem'        → gerçek Mars DTM'i (public/sites/<name>, pipeline/build_site.py)
+// 'procedural' → eski prosedürel Ay arazisi (veri yoksa veya ?site=moon)
+// Bu sabitler modül ilk değerlendirildiğinde site verisinden okunur; main.jsx
+// loadSite()'ı App'i import etmeden önce bekler (bkz. terrain/siteData.js).
+export const IS_DEM = site.mode === 'dem';
+export const TERRAIN_SIZE = IS_DEM ? site.sizeM : 100;
+export const GRID_RES = IS_DEM ? site.gridRes : 256;
+export const SITE = site;
 
-// ─── Canonical crater list ─────────────────────────────────────────────────
-export const CRATERS = [
+// ─── Canonical crater list (yalnızca prosedürel mod) ───────────────────────
+// DEM modunda boş: kraterler artık gerçek yükseklik verisinin parçası, ayrı
+// bir liste/duvar olarak tutulmuyor. Geçilmezlik eğimden türetilir (pathfinder).
+const PROC_CRATERS = [
   { x:  15, z: -10, radius:  9,   depth: 3.8,  rimH: 1.40, rimW: 0.28 },
   { x: -20, z:  18, radius:  6,   depth: 2.4,  rimH: 0.85, rimW: 0.30 },
   { x:  35, z:  32, radius: 14,   depth: 5.2,  rimH: 1.90, rimW: 0.25 },
@@ -39,6 +51,7 @@ export const CRATERS = [
   { x:  -2, z: -26, radius:  3,   depth: 0.85, rimH: 0.32, rimW: 0.36 },
   { x:  48, z:  30, radius:  4,   depth: 1.2,  rimH: 0.46, rimW: 0.33 },
 ];
+export const CRATERS = IS_DEM ? [] : PROC_CRATERS;
 
 // ─── Multi-octave fractal noise (hash-based value noise, deterministic) ─────
 // Mimics LRO LOLA-derived elevation fractals at three wavelength bands.
@@ -133,7 +146,27 @@ function craterProfile(wx, wz, c) {
 }
 
 // ─── Public height API ───────────────────────────────────────────────────────
+// DEM modu: grid düğümleri arasında bilinear örnekleme. Düğüm (col,row) dünya
+// koordinatı x = -HALF + col·cell, z = -HALF + row·cell (row 0 = kuzey, z güneye).
+// Grid dışı sorgular kenara kenetlenir.
+function demHeight(wx, wz) {
+  const n = site.gridRes;
+  const h = site.heights;
+  const half = site.sizeM / 2;
+  let u = (wx + half) / site.cellM;
+  let v = (wz + half) / site.cellM;
+  if (!(u >= 0)) u = 0; else if (u > n - 1) u = n - 1;   // !(>=) NaN'ı da yakalar
+  if (!(v >= 0)) v = 0; else if (v > n - 1) v = n - 1;
+  const c0 = Math.min(n - 2, Math.floor(u)), r0 = Math.min(n - 2, Math.floor(v));
+  const fu = u - c0, fv = v - r0;
+  const i = r0 * n + c0;
+  const top = h[i] * (1 - fu) + h[i + 1] * fu;
+  const bot = h[i + n] * (1 - fu) + h[i + n + 1] * fu;
+  return top * (1 - fv) + bot * fv;
+}
+
 export function getTerrainHeight(wx, wz) {
+  if (IS_DEM) return demHeight(wx, wz);
   let h = lunarFBM(wx, wz);
   for (const c of CRATERS) h += craterProfile(wx, wz, c);
   return h;
@@ -234,9 +267,12 @@ export function createLunarRegolithTexture(size = 512) {
       // Base neon silver-grey (cool blue-tinted bright grey) ± grain
       // R:G:B = 185:194:204, same grain applied to all channels so the
       // cool tint balance is preserved, just clamped to a valid byte.
-      d[i]   = Math.max(0, Math.min(255, 185 + grain));
-      d[i+1] = Math.max(0, Math.min(255, 194 + grain));
-      d[i+2] = Math.max(0, Math.min(255, 204 + grain));
+      // DEM (Mars): sıcak, nötre yakın açık ton — asıl renk vertex color'dan
+      // gelir, bu doku yalnızca ince tane dokusu ekler.
+      const [br, bg, bb] = IS_DEM ? [214, 204, 196] : [185, 194, 204];
+      d[i]   = Math.max(0, Math.min(255, br + grain));
+      d[i+1] = Math.max(0, Math.min(255, bg + grain));
+      d[i+2] = Math.max(0, Math.min(255, bb + grain));
       d[i+3] = 255;
     }
   }
@@ -244,7 +280,9 @@ export function createLunarRegolithTexture(size = 512) {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(8, 8);   // was 16 — fewer seams visible
+  // Her doku karosu ≈ 12.5 m kalacak şekilde ölçeklenir (100 m'lik Ay alanında 8×)
+  const rep = Math.max(8, Math.round(TERRAIN_SIZE / 12.5));
+  tex.repeat.set(rep, rep);
   tex.anisotropy = 16;
   return tex;
 }
@@ -276,7 +314,8 @@ export function createLunarNormalMap(size = 256) {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(16, 16);  // was 32 — fewer visible seams
+  const nrep = Math.max(16, Math.round(TERRAIN_SIZE / 6.25));
+  tex.repeat.set(nrep, nrep);
   tex.anisotropy = 16;
   return tex;
 }
@@ -293,9 +332,31 @@ export function generateTerrain() {
   }
   geo.computeVertexNormals();
 
-  // 2. Vertex colours — neon silver-grey, no patterns, only crater shading
+  // 2. Vertex colours
   const normals = geo.attributes.normal;
   const colors  = new Float32Array(pos.count * 3);
+
+  if (IS_DEM) {
+    // Mars: toz rengi taban + eğimle koyulaşma + hafif yükseklik tonu.
+    // YALNIZCA görsel; bilimsel katman değildir (renk verisi kullanılmıyor).
+    let hMin = Infinity, hMax = -Infinity;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      if (y < hMin) hMin = y;
+      if (y > hMax) hMax = y;
+    }
+    const hR = Math.max(1e-3, hMax - hMin);
+    for (let i = 0; i < pos.count; i++) {
+      const slope = 1.0 - Math.abs(normals.getY(i));        // 0 düz → 1 dik
+      const hN = (pos.getY(i) - hMin) / hR;
+      const lum = Math.max(0.35, Math.min(1.0, 0.92 - slope * 0.55 + (hN - 0.5) * 0.10));
+      colors[i * 3]     = 0.78 * lum;
+      colors[i * 3 + 1] = 0.50 * lum;
+      colors[i * 3 + 2] = 0.33 * lum;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    return geo;
+  }
 
   for (let i = 0; i < pos.count; i++) {
     const wx = pos.getX(i), wz = pos.getZ(i);
@@ -323,6 +384,8 @@ export function generateTerrain() {
 
 // ─── Map data builders (unchanged interface) ─────────────────────────────────
 export function buildHeightMap() {
+  // DEM: grid düğümleri zaten tam olarak bu dizilimde — kopya döndür
+  if (IS_DEM) return Float32Array.from(site.heights);
   const map  = new Float32Array(GRID_RES * GRID_RES);
   const half = TERRAIN_SIZE / 2;
   for (let row = 0; row < GRID_RES; row++) {
@@ -351,6 +414,7 @@ export function buildSlopeMap(hMap) {
 
 export function buildCraterMask() {
   const mask = new Float32Array(GRID_RES * GRID_RES);
+  if (IS_DEM) return mask; // DEM'de ayrı krater maskesi yok (hepsi 0)
   const half = TERRAIN_SIZE / 2;
   for (let row = 0; row < GRID_RES; row++) {
     for (let col = 0; col < GRID_RES; col++) {
@@ -371,6 +435,9 @@ export function buildCraterMask() {
 
 // ─── Rock positions ──────────────────────────────────────────────────────────
 export function generateRockPositions(count = 80) {
+  // DEM modunda rastgele kaya üretilmez: gerçek veride olmayan engel
+  // göstermek tehlike haritasını yanıltır.
+  if (IS_DEM) return [];
   const rocks   = [];
   const half    = TERRAIN_SIZE / 2 - 3;
   let   attempts = 0;
@@ -393,6 +460,7 @@ export function generateRockPositions(count = 80) {
 
 // ─── Space debris positions ──────────────────────────────────────────────────
 export function generateDebrisPositions() {
+  if (IS_DEM) return []; // Ay senaryosuna özgü uydurma enkaz
   const positions = [
     { x: -32, z:  14, rot: 0.4, type: 'panel', scale: 0.9  },
     { x:  28, z: -42, rot: 1.2, type: 'tank',  scale: 0.7  },

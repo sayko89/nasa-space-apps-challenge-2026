@@ -8,21 +8,28 @@
  */
 
 import { useRef, useEffect, useCallback, useState } from 'react';
-import { TERRAIN_SIZE, CRATERS } from '../three/terrainGenerator';
+import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
-import { generateHeatmapCanvas } from '../utils/heatmaps';
+import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
+import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS } from '../config/marswalkProfile';
+import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
+import { airTemp, diurnalCurve, K_TO_C } from '../utils/climate';
+import { SITE } from '../three/terrainGenerator';
 
 const HALF = TERRAIN_SIZE / 2;
 const PW   = 218;  // panel width
 const MAP_S = 202; // mini-map px — fills panel width (218 - 8px×2 padding)
 
-const HEATMAP_OPTIONS = ['Slope','Slope Angle','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
+const HEATMAP_OPTIONS = ['Elevation','Slope','Slope Angle','No-Go','EVA Range',
+  ...(SITE.geology ? GEOLOGY_LAYERS : []),
+  'Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
 const HM_COLORS = {
+  'Elevation':'#e8a878','No-Go':'#ff4466','EVA Range':'#66ddff',
   'Slope':'#aaddaa','Slope Angle':'#88ccff','Roughness':'#ffcc88',
   'Slip Risk':'#ff8844','Illumination':'#ffffaa','Hazard Score':'#ff6655','Traversability':'#44ffaa',
-  'Experience':'#cc66ff',
+  'Experience':'#cc66ff', 'Geology: Bedrock':'#d6a060', 'Geology: Surface':'#e8c070',
 };
 const WP_COLORS_2D = ['#22ff55','#ffcc22','#44ddff','#ff88ff','#ffaa33','#aaffaa'];
 
@@ -40,7 +47,7 @@ function clamp(vx,vy,zoom) {
 }
 
 // ---- Mini-map ----
-function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace }) {
+function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr }) {
   const canvasRef   = useRef(null);
   const terrainRef  = useRef(null);
   const zoomRef     = useRef(1);
@@ -107,6 +114,15 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
       });
     }
 
+    // Point of no return (active route) — red ⛔ diamond
+    if (ponr) {
+      const {x,y}=w2m(ponr[0],ponr[2],vx,vy,zoom);
+      ctx.save(); ctx.translate(x,y); ctx.rotate(Math.PI/4);
+      ctx.fillStyle='#ff2a1a'; ctx.strokeStyle='#fff'; ctx.lineWidth=1;
+      ctx.fillRect(-4,-4,8,8); ctx.strokeRect(-4,-4,8,8);
+      ctx.restore();
+    }
+
     // Rover arrow
     if (roverPos) {
       const {x,y}=w2m(roverPos.x,roverPos.z,vx,vy,zoom);
@@ -161,7 +177,7 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
     // Zoom badge
     ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(W-32,3,29,13);
     ctx.fillStyle='#88cc88';ctx.font='7px monospace';ctx.fillText(`${zoom.toFixed(1)}x`,W-28,12.5);
-  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode]);
+  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode, ponr]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -262,6 +278,87 @@ function SunDial({ angle, onChange }) {
   );
 }
 
+// ---- Mars time (DEM): EVA start drives the Mars24 sun ----
+const fmtLtst = (h) => { const m = Math.round(h * 60) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+const SEASONS_N = ['Kuzey ilkbaharı', 'Kuzey yazı', 'Kuzey sonbaharı', 'Kuzey kışı'];
+const COMPASS = ['K','KKD','KD','DKD','D','DGD','GD','GGD','G','GGB','GB','BGB','B','BKB','KB','KKB'];
+
+// Günlük sıcaklık eğrisi (MEDA ATS medyanı, p10–p90 bandı) + EVA başlangıç işareti
+function DiurnalTempChart({ bin, ltstH }) {
+  const W = 200, H = 54, padL = 22, padB = 10, padT = 4;
+  const n = bin.median.length;
+  const vals = [...bin.p10, ...bin.p90].filter(v => v != null).map(K_TO_C);
+  if (!vals.length) return null;
+  const lo = Math.floor(Math.min(...vals) / 10) * 10, hi = Math.ceil(Math.max(...vals) / 10) * 10;
+  const x = (i) => padL + (i / n) * (W - padL);
+  const y = (k) => padT + (1 - (K_TO_C(k) - lo) / (hi - lo)) * (H - padT - padB);
+  const line = (arr) => arr.map((v, i) => v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean).join(' ');
+  const band = [];
+  for (let i = 0; i < n; i++) if (bin.p90[i] != null) band.push(`${x(i).toFixed(1)},${y(bin.p90[i]).toFixed(1)}`);
+  for (let i = n - 1; i >= 0; i--) if (bin.p10[i] != null) band.push(`${x(i).toFixed(1)},${y(bin.p10[i]).toFixed(1)}`);
+  const mx = padL + (((ltstH % 24) + 24) % 24) / 24 * (W - padL);
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', marginTop: 3 }}>
+      <polygon points={band.join(' ')} fill="rgba(255,170,80,0.18)" />
+      <polyline points={line(bin.median)} fill="none" stroke="#ffaa55" strokeWidth="1.2" />
+      <line x1={mx} x2={mx} y1={padT} y2={H - padB} stroke="#FFD700" strokeWidth="1" strokeDasharray="2,2" />
+      {[lo, hi].map(v => <text key={v} x={padL - 2} y={v === hi ? padT + 6 : H - padB} textAnchor="end" fontSize="6.5" fill="#7a8a7a">{v}°</text>)}
+      {[0, 6, 12, 18].map(h => <text key={h} x={padL + h / 24 * (W - padL)} y={H - 1} fontSize="6" fill="#5a6a5a">{String(h).padStart(2, '0')}</text>)}
+    </svg>
+  );
+}
+
+function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
+  const c = SITE.meta?.center;
+  if (!c || !sun || evaStartMs == null) return null;
+  const lon = c.lon_deg_east;
+  const cur = ltstOf(j2000tt(evaStartMs), lon);
+  const ss = sunriseSunset(evaStartMs, c.lat_deg, lon);
+  const utcDate = new Date(evaStartMs).toISOString().slice(0, 10);
+  const setDate = (iso) => {
+    if (!iso) return;
+    const noonUtc = Date.parse(`${iso}T12:00:00Z`);
+    if (Number.isFinite(noonUtc)) setEvaStartMs(msAtLtst(noonUtc, cur, lon));
+  };
+  const row = { display: 'flex', justifyContent: 'space-between', fontSize: 7.5, color: 'rgba(160,200,160,0.8)', lineHeight: 1.6 };
+  const v = { color: '#e8e0c8' };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+        <input type="date" value={utcDate} onChange={e => setDate(e.target.value)}
+          style={{ flex: 1, background: '#0a140a', color: '#aaffaa', border: '1px solid #234423', fontSize: 9, fontFamily: 'monospace', padding: '2px 4px' }} />
+        <span style={{ color: '#FFD700', fontSize: 13, fontWeight: 'bold' }}>{fmtLtst(cur)}</span>
+      </div>
+      <input type="range" min={0} max={23.75} step={0.25} value={Math.round(cur * 4) / 4}
+        onChange={e => setEvaStartMs(msAtLtst(evaStartMs, Number(e.target.value), lon))} style={{ width: '100%' }} />
+      <div style={{ color: '#554433', fontSize: 7, margin: '1px 0 4px' }}>EVA BAŞLANGICI — YEREL GERÇEK GÜNEŞ SAATİ (LTST)</div>
+      <div style={row}><span>Sol (MSD)</span><span style={v}>{Math.floor(sun.msd)}</span></div>
+      <div style={row}><span>Mevsim</span><span style={v}>Ls {sun.ls.toFixed(1)}° · {SEASONS_N[Math.floor(sun.ls / 90) % 4]}</span></div>
+      <div style={row}><span>Güneş</span><span style={{ color: sun.elevationDeg > 0 ? '#FFD700' : '#8899cc' }}>
+        {sun.elevationDeg > 0 ? `${sun.elevationDeg.toFixed(1)}° yükseklik` : `ufkun ${(-sun.elevationDeg).toFixed(1)}° altında`}
+        {' · '}{COMPASS[Math.round(sun.azimuthDeg / 22.5) % 16]} {sun.azimuthDeg.toFixed(0)}°</span></div>
+      {ss && <div style={row}><span>Doğuş / batış</span><span style={v}>{fmtLtst(ss.riseLtst)} / {fmtLtst(ss.setLtst)} LTST</span></div>}
+      <div style={row}><span>UTC</span><span style={v}>{new Date(evaStartMs).toISOString().slice(0, 16).replace('T', ' ')}</span></div>
+      {(() => {
+        const a = airTemp(SITE.climate, sun.ls, cur);
+        const bin = diurnalCurve(SITE.climate, sun.ls);
+        if (!a || !bin) return SITE.climate ? null : (
+          <div style={{ color: '#4a6a4a', fontSize: 6.5, marginTop: 2 }}>Hava sıcaklığı: climate.json yok (python pipeline/build_climate.py)</div>
+        );
+        return (
+          <>
+            <div style={row}><span>Hava (1.45 m)</span><span style={{ color: '#ffcc88' }}>
+              {K_TO_C(a.median).toFixed(0)} °C <span style={{ color: '#7a8a7a' }}>({K_TO_C(a.p10).toFixed(0)}…{K_TO_C(a.p90).toFixed(0)})</span></span></div>
+            <DiurnalTempChart bin={bin} ltstH={cur} />
+            <div style={{ color: '#4a6a4a', fontSize: 6.5 }}>MEDA ATS, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sol · medyan, %10–90</div>
+          </>
+        );
+      })()}
+      <div style={{ color: '#4a6a4a', fontSize: 6.5, marginTop: 2 }}>Mars24 (NASA GISS) · Allison &amp; McEwen 2000</div>
+    </div>
+  );
+}
+
 // ---- Route Analysis ----
 const ROUTE_DESC = {
   SAFE: s => `Low-risk path. Avoids craters + shadows. Avg hazard=${(s.avgHazard||0).toFixed(3)}, slip=${(s.avgSlip||0).toFixed(3)}, slope=${(s.avgSlopeAngle||0).toFixed(1)}°.`,
@@ -269,6 +366,100 @@ const ROUTE_DESC = {
   FAST: s => `Speed-optimized. Shortest distance=${(s.distance||0).toFixed(1)}m, total cost=${(s.totalCost||0).toFixed(1)}.`,
   AUTO: s => `Balanced route. Hazard=${(s.avgHazard||0).toFixed(3)}, illum=${(s.avgIllumination||0).toFixed(3)}, dist=${(s.distance||0).toFixed(1)}m.`,
 };
+
+// ---- Marswalk (DEM) stats card body ----
+function fmtHM(sec) {
+  const m = Math.round(sec / 60);
+  return `${Math.floor(m / 60)} sa ${String(m % 60).padStart(2, '0')} dk`;
+}
+function fmtSignedHM(sec) {
+  return (sec < 0 ? '−' : '') + fmtHM(Math.abs(sec));
+}
+function MarswalkStats({ mode, s }) {
+  const P = MARSWALK_PROFILE;
+  const fail = (ok) => ok ? '#88dd99' : '#ff6655';
+  return (
+    <>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
+        <span style={{color:'rgba(160,200,160,0.8)',fontSize:7.5}}>
+          Gidiş <b style={{color:'#e8e0c8'}}>{fmtHM(s.walkTimeS)}</b>
+          {'  '}+ en hızlı dönüş <b style={{color:fail(s.checks.budget)}}>{fmtHM(s.returnTimeS)}</b>
+        </span>
+        <span style={{
+          fontSize:7.5, fontWeight:'bold', padding:'1px 5px', borderRadius:3,
+          color: s.go ? '#0a1a0a' : '#fff', background: s.go ? '#44dd66' : '#cc3322',
+        }}>{s.go ? 'GO' : 'NO-GO'}</span>
+      </div>
+      <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55}}>
+        Toplam <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = bütçenin %{(s.budgetFrac*100).toFixed(0)}'i ({P.evaDurationH.value} sa)
+        {s.stopCount > 0 && <> · {s.stopCount} durakta {fmtHM(s.dwellTotalS)} örnekleme dahil</>}
+        <br/>
+        Geri dönüş payı (en düşük): <span style={{color:fail(s.checks.budget)}}>{Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'eve yol yok'}</span>
+        {s.ponrIdx >= 0 && <span style={{color:'#ff6655'}}> · ⛔ dönüşü olmayan nokta: rotanın %{Math.round(s.ponrIdx / Math.max(1, s.marginS.length - 1) * 100)}'inde</span>}
+        <br/>
+        Maks. eğim: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {P.maxWalkableSlopeDeg.value}°
+        <br/>
+        Dik zemin (&gt;{s.steepDeg.toFixed(0)}°): <span style={{color:'#e8c890'}}>%{(s.steepFrac*100).toFixed(0)}</span>
+        {' · '}Tırmanış {s.climbM.toFixed(0)} m · İniş {s.descentM.toFixed(0)} m
+        {' · '}Başlangıca uzaklık <span style={{color:fail(s.checks.radial)}}>{(s.maxRadialM/1000).toFixed(2)}</span> / {P.maxRadialDistanceKm.value} km
+      </div>
+      {s.light && (
+        <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55,marginTop:1}}>
+          Işık (gidiş): gölgede <span style={{color:'#e8c890'}}>%{(s.light.shadowFrac*100).toFixed(0)}</span>
+          {s.light.darkFrac > 0 && <> · <span style={{color:'#8899cc'}}>karanlıkta %{(s.light.darkFrac*100).toFixed(0)}</span></>}
+          {' · '}{s.light.homeBySunset === null ? 'gün doğumu/batımı yok'
+            : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>gün batımından önce evde</span>
+            : <span style={{color:'#ffaa55'}}>⚠ gün ışığında tamamlanmıyor</span>}
+          {s.light.air && <><br/>Hava (1.45 m, EVA boyunca): <span style={{color:'#ffcc88'}}>
+            {K_TO_C(s.light.air.minMedian).toFixed(0)}…{K_TO_C(s.light.air.maxMedian).toFixed(0)} °C</span>
+            {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (uç: {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
+        </div>
+      )}
+      <div style={{color:'rgba(100,150,100,0.75)',fontSize:7,marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
+    </>
+  );
+}
+
+// ---- Stage 6: science EVA (geology stops) ----
+function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }) {
+  return (
+    <>
+      <div style={{display:'flex',alignItems:'center',gap:5,fontSize:7.5,color:'#9ab89a',marginBottom:4}}>
+        <span>Durak süresi</span>
+        <input type="range" min={5} max={60} step={5} value={dwellMin}
+          onChange={e=>setDwellMin(Number(e.target.value))} style={{flex:1}}/>
+        <b style={{color:'#e8e0c8',width:34,textAlign:'right'}}>{dwellMin} dk</b>
+      </div>
+      <div style={{fontSize:6.5,color:'#7a6a4a',marginBottom:4}}>
+        Varsayım: kaynaklı durak süresi bulunamadı. Puan = farklı birim çeşitliliği
+        (ana kaya {SCIENCE_PARAMS.weights.bedrock}, yüzey {SCIENCE_PARAMS.weights.surface}, kontak {SCIENCE_PARAMS.weights.contact}) — tasarım tercihi.
+      </div>
+      <Btn disabled={busy || disabled} onClick={onPlan}
+        style={{width:'100%',background:'rgba(70,40,0,0.55)',borderColor:'rgba(230,150,60,0.6)',color:'#ffbb66',fontWeight:'bold'}}>
+        {busy ? 'SEARCHING…' : 'PLAN SCIENCE EVA'}
+      </Btn>
+      {science && (
+        <div style={{marginTop:5,fontSize:7.5,lineHeight:1.5,color:'#b8c8b0'}}>
+          <div>
+            {science.stops.length} durak / {science.candidates.length} aday ·
+            {' '}puan <b style={{color:'#ffcc66'}}>{science.score}</b>/{science.maxScore}
+            {' '}· plan {fmtHM(science.totalS)}
+          </div>
+          <ol style={{margin:'3px 0 0',paddingLeft:14,color:'#e0d0b0'}}>
+            {science.stops.map((st, i) => (
+              <li key={i} title={st.tags.join('\n')}>{st.label}</li>
+            ))}
+          </ol>
+          {science.candidates.length > science.stops.length && (
+            <div style={{color:'#7a8a7a',marginTop:2}}>
+              Elenen: {science.candidates.filter(c => !science.stops.some(st => st.idx === c.idx)).map(c => c.label).join('; ')}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
 
 function RouteAnalysis({ routes, activeRoute, onSelect }) {
   if (!routes) return (
@@ -299,7 +490,8 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
               </div>
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:8}}>{s.distance.toFixed(1)}m</span>}
             </div>
-            {s && (
+            {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} />}
+            {s && s.walkTimeS === undefined && (
               <>
                 <div style={{color:'rgba(160,200,160,0.7)',fontSize:7.5,marginBottom:2}}>
                   Risk: <span style={{color:'#ffcc44'}}>{s.riskPercent.toFixed(1)}%</span>
@@ -318,7 +510,7 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
 }
 
 // ---- Heatmap ----
-function HeatmapViewer({ sunAngle, learningModel }) {
+function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
   const ref=useRef(null);
   const [sel,setSel]=useState('Hazard Score');
   const [open,setOpen]=useState(false);
@@ -333,8 +525,8 @@ function HeatmapViewer({ sunAngle, learningModel }) {
   useEffect(()=>{
     if (!ref.current) return;
     const experienceMap = sel === 'Experience' ? learningModel?.getExperienceMap?.() : undefined;
-    generateHeatmapCanvas(ref.current,sel,sunAngle,experienceMap);
-  }, [sel,sunAngle,tick,learningModel]);
+    generateHeatmapCanvas(ref.current,sel,sunAngle,experienceMap,sunElevation);
+  }, [sel,sunAngle,sunElevation,tick,learningModel]);
   return (
     <div>
       <Label>Parameter Heatmap</Label>
@@ -362,9 +554,21 @@ function HeatmapViewer({ sunAngle, learningModel }) {
       </div>
       <canvas ref={ref} width={MAP_S} height={MAP_S}
         style={{width:MAP_S,height:MAP_S,display:'block',borderRadius:3,border:'1px solid rgba(80,120,60,0.3)'}}/>
+      {geologyLegend(sel) ? (
+        <div style={{fontSize:7,color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
+          {geologyLegend(sel).map(e => (
+            <div key={e.name} style={{display:'flex',alignItems:'center',gap:4}}>
+              <span style={{width:7,height:7,background:e.color,display:'inline-block',flexShrink:0}}/>
+              <span style={{flex:1}}>{e.name}</span><span>{e.pct.toFixed(1)}%</span>
+            </div>
+          ))}
+          <div style={{color:'#6a7a6a'}}>Stack et al. 2020 (CC BY 4.0)</div>
+        </div>
+      ) : (
       <div style={{display:'flex',justifyContent:'space-between',fontSize:7,color:'#558855',marginTop:2}}>
         <span>LOW</span><span style={{color:HM_COLORS[sel]}}>{sel.toUpperCase()}</span><span>HIGH</span>
       </div>
+      )}
     </div>
   );
 }
@@ -640,7 +844,11 @@ export default function RightPanel({
   routes, activeRoute, setActiveRoute,
   waypoints, onAddWaypoint, onSetStartWaypoint, onRemoveLastWaypoint, onClearWaypoints,
   onPlanPath,
+  isPlanning = false,
+  hasGeology = false, science = null, onPlanScience = () => {}, isPlanningScience = false,
+  scienceDwellMin = 20, setScienceDwellMin = () => {},
   sunAngleDeg, setSunAngleDeg,
+  sun = null, evaStartMs = null, setEvaStartMs = () => {},
   cameraMode, setCameraMode,
   wireframe, setWireframe,
   onStartRover, onStopRover, isRoving,
@@ -684,8 +892,8 @@ export default function RightPanel({
       {/* Header */}
       <div style={{padding:'7px 10px 5px',borderBottom:'1px solid rgba(35,70,35,0.4)',
         background:'rgba(0,14,0,0.7)',flexShrink:0}}>
-        <div style={{color:'#3dff55',fontSize:10,fontWeight:'bold',letterSpacing:2}}>MOON ROVER SIM</div>
-        <div style={{color:'#245524',fontSize:7,letterSpacing:1}}>MISSION CONTROL TERMINAL</div>
+        <div style={{color:'#3dff55',fontSize:10,fontWeight:'bold',letterSpacing:2}}>{IS_DEM ? 'MARTIAN MAP' : 'MOON ROVER SIM'}</div>
+        <div style={{color:'#245524',fontSize:7,letterSpacing:1}}>{IS_DEM ? 'MARSWALK PLANNER' : 'MISSION CONTROL TERMINAL'}</div>
       </div>
 
       <div style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
@@ -703,6 +911,7 @@ export default function RightPanel({
             roverPos={{x,z,heading}}
             routes={routePaths}
             activeRoute={activeRoute}
+            ponr={routes?.[activeRoute]?.stats?.ponrPoint || null}
             pickMode={pickMode}
             onPick={handlePick}
             dustHazard={dustHazard}
@@ -723,7 +932,7 @@ export default function RightPanel({
         {/* Terrain */}
         <Sect label="Terrain Mode">
           <Row>
-            <Btn active={!wireframe} onClick={()=>setWireframe(false)}>PROCEDURAL</Btn>
+            <Btn active={!wireframe} onClick={()=>setWireframe(false)}>{IS_DEM ? 'DEM' : 'PROCEDURAL'}</Btn>
             <Btn active={wireframe}  onClick={()=>setWireframe(true)}>WIRE</Btn>
           </Row>
         </Sect>
@@ -740,6 +949,7 @@ export default function RightPanel({
                     background:i===0?'#22ff55':i===waypoints.length-1?'#ff4422':WP_COLORS_2D[i%WP_COLORS_2D.length]}}/>
                   <span style={{color:'#779977'}}>{i===0?'S':i===waypoints.length-1?'E':i}:</span>
                   <span style={{color:'#aaffaa'}}>{wp.x.toFixed(0)},{wp.z.toFixed(0)}</span>
+                  {wp.label && <span style={{color:'#ffbb66',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={wp.label}>⛏ {wp.label}</span>}
                 </div>
               ))}
             </div>
@@ -755,15 +965,27 @@ export default function RightPanel({
           </Row>
           <Row>
             <Btn onClick={onClearWaypoints} disabled={waypoints.length===0}>CLEAR ALL</Btn>
-            <Btn disabled={waypoints.length<2} onClick={onPlanPath}
+            <Btn disabled={waypoints.length<2 || isPlanning} onClick={onPlanPath}
               style={{flex:1.5,background:'rgba(0,65,0,0.55)',borderColor:'rgba(0,180,0,0.5)',
                 color:'#44ff88',fontWeight:'bold'}}>
-              PLAN PATH
+              {isPlanning ? 'PLANNING…' : 'PLAN PATH'}
             </Btn>
           </Row>
         </Sect>
 
-        {/* Sun */}
+        {hasGeology && (
+        <Sect label="Science EVA">
+          <SciencePanel science={science} onPlan={onPlanScience} busy={isPlanningScience || isPlanning}
+            dwellMin={scienceDwellMin} setDwellMin={setScienceDwellMin} disabled={isRoving} />
+        </Sect>
+        )}
+
+        {/* Sun — DEM: Mars24 time controls; procedural: manual dial */}
+        {IS_DEM && sun ? (
+        <Sect label="Mars Time">
+          <MarsTimePanel sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs} />
+        </Sect>
+        ) : (
         <Sect label="Sun Direction">
           <div style={{display:'flex',gap:7,alignItems:'center'}}>
             <SunDial angle={sunAngleDeg} onChange={setSunAngleDeg}/>
@@ -777,6 +999,7 @@ export default function RightPanel({
             </div>
           </div>
         </Sect>
+        )}
 
         {/* Route selector + start */}
         <Sect label="Select Route">
@@ -906,7 +1129,7 @@ export default function RightPanel({
         </Sect>
 
         {/* Heatmap */}
-        <HeatmapViewer sunAngle={sunAngleDeg} learningModel={learningModel}/>
+        <HeatmapViewer sunAngle={sunAngleDeg} sunElevation={sun?.elevationDeg} learningModel={learningModel}/>
 
         {/* Image processing proof panel */}
         <ProcessingMapPreview

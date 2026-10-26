@@ -3,8 +3,9 @@
  * Generates 2D canvas heatmaps for different terrain parameters.
  */
 
-import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS } from '../three/terrainGenerator.js';
-import { buildIlluminationMap, hazardScore } from './pathfinder.js';
+import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS, SITE } from '../three/terrainGenerator.js';
+import { buildIlluminationMap, hazardScore, getWallMap, peekHomeMaps } from './pathfinder.js';
+import { param } from '../config/marswalkProfile.js';
 
 // Thermal color scale: blue→cyan→green→yellow→red
 function thermalColor(t) {
@@ -39,6 +40,24 @@ function divergingColor(t) {
   }
 }
 
+// Categorical geology palette (Stage 6). Code 0 = unmapped / no surface unit.
+const GEO_PALETTE = [[60, 55, 50], [214, 120, 64], [86, 140, 214], [120, 200, 110], [230, 200, 80],
+  [190, 110, 200], [90, 200, 200], [240, 140, 160], [160, 160, 90]];
+const GEO_LAYER = { 'Geology: Bedrock': 'bedrock', 'Geology: Surface': 'surface' };
+export const GEOLOGY_LAYERS = Object.keys(GEO_LAYER);
+
+/** Legend for a categorical geology layer: [{ name, color, pct }] (null if not geology). */
+export function geologyLegend(type) {
+  const layer = GEO_LAYER[type], g = SITE.geology;
+  if (!layer || !g) return null;
+  const grid = g[layer], units = layer === 'bedrock' ? g.bedrockUnits : g.surfaceUnits;
+  const cnt = new Array(units.length).fill(0);
+  for (const v of grid) cnt[v]++;
+  return units.map((u, k) => ({ name: u || (layer === 'surface' ? 'no surface unit' : 'unmapped'),
+    color: `rgb(${GEO_PALETTE[k % GEO_PALETTE.length].join(',')})`, pct: 100 * cnt[k] / grid.length }))
+    .filter(e => e.pct > 0);
+}
+
 let _heightMap = null;
 let _slopeMap = null;
 let _craterMask = null;
@@ -56,11 +75,12 @@ export function getSlopeMap() { ensureMaps(); return _slopeMap; }
 export function getCraterMask() { ensureMaps(); return _craterMask; }
 
 /** Draw a heatmap to a canvas element (also exported as generateHeatmapCanvas for compatibility) */
-export function generateHeatmapCanvas(canvas, type, sunAngle, experienceMap) {
-  return drawHeatmap(canvas, type, experienceMap, sunAngle);
+export function generateHeatmapCanvas(canvas, type, sunAngle, experienceMap, sunElevation) {
+  return drawHeatmap(canvas, type, experienceMap, sunAngle, sunElevation);
 }
 
-export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
+// sunElevation (optional, DEM): real Mars24 sun elevation → lambert + cast shadows
+export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45, sunElevation) {
   ensureMaps();
   const ctx = canvas.getContext('2d');
   const W = canvas.width;
@@ -71,6 +91,19 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
   // Build the parameter map
   let paramMap;
   let maxVal = 1;
+
+  const geoLayer = GEO_LAYER[type];
+  if (geoLayer) {
+    const grid = SITE.geology?.[geoLayer];
+    for (let py = 0; py < H; py++) for (let px2 = 0; px2 < W; px2++) {
+      const row = Math.floor((py / H) * GRID_RES), col = Math.floor((px2 / W) * GRID_RES);
+      const c = GEO_PALETTE[(grid ? grid[row * GRID_RES + col] : 0) % GEO_PALETTE.length];
+      const i = (py * W + px2) * 4;
+      px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = 220;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return;
+  }
 
   switch (type) {
     case 'Slope': {
@@ -114,7 +147,7 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
     case 'Illumination': {
       // Same sun-direction model used for route illumination costing (pathfinder.js),
       // so this view reflects the actual sun angle set via the sun dial.
-      paramMap = buildIlluminationMap(sunAngle, _heightMap);
+      paramMap = buildIlluminationMap(sunAngle, _heightMap, sunElevation);
       maxVal = 1;
       break;
     }
@@ -132,6 +165,42 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45) {
       paramMap = new Float32Array(GRID_RES * GRID_RES);
       for (let i = 0; i < GRID_RES * GRID_RES; i++) {
         paramMap[i] = 1 - hazardScore(_craterMask[i], _slopeMap[i]);
+      }
+      maxVal = 1;
+      break;
+    }
+    case 'Elevation': {
+      // Height normalised to the site's own min–max (DEM range can be 100s of m)
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < _heightMap.length; i++) {
+        if (_heightMap[i] < lo) lo = _heightMap[i];
+        if (_heightMap[i] > hi) hi = _heightMap[i];
+      }
+      const span = Math.max(1e-6, hi - lo);
+      paramMap = new Float32Array(_heightMap.length);
+      for (let i = 0; i < _heightMap.length; i++) paramMap[i] = (_heightMap[i] - lo) / span;
+      maxVal = 1;
+      break;
+    }
+    case 'No-Go': {
+      // Exactly the impassable cells A* refuses to enter
+      const wall = getWallMap();
+      paramMap = new Float32Array(wall.length);
+      for (let i = 0; i < wall.length; i++) paramMap[i] = wall[i];
+      maxVal = 1;
+      break;
+    }
+    case 'EVA Range': {
+      // (home→cell + cell→home) / EVA budget. < 1 → out-and-back feasible.
+      // Needs a home: computed when a route is planned (first waypoint).
+      const hmaps = peekHomeMaps();
+      paramMap = new Float32Array(GRID_RES * GRID_RES).fill(1);
+      if (hmaps) {
+        const budget = param('evaDurationH') * 3600;
+        for (let i = 0; i < paramMap.length; i++) {
+          const t = (hmaps.fromHome[i] + hmaps.toHome[i]) / budget;
+          paramMap[i] = Number.isFinite(t) ? Math.min(1, t) : 1;
+        }
       }
       maxVal = 1;
       break;
