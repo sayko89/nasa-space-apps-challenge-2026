@@ -477,6 +477,11 @@ export default function App() {
     }
   }, [sunAngleDeg, routes]);
 
+  // Dev-only test hook (Playwright reads rover/route state); stripped from prod builds
+  if (import.meta.env.DEV) {
+    window.__mm = { roverState, routes, activeRoute, isRoving };
+  }
+
   // Extract just paths for MoonScene (which draws lines)
   const routePaths = useMemo(() => {
     if (!routes) return null;
