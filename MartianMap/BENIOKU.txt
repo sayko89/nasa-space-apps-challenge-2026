@@ -1,0 +1,20 @@
+MARTIAN MAP — Marswalk Planner (NASA Space Apps 2026, PERIAPSIS)
+
+ÇALIŞTIRMA (repoyu GitHub'dan "Code → Download ZIP" ile indirdiyseniz bu klasör: final-main/MartianMap)
+  Windows   : Baslat-Windows.bat dosyasına çift tıklayın.
+  macOS/Linux: terminalde  ./baslat-mac-linux.sh
+  Tarayıcı kendiliğinden http://127.0.0.1:8765/ adresini açar.
+  Gerekli: Python 3 (ek paket gerekmez) ve güncel bir tarayıcı (Chrome/Edge/Firefox).
+  Not: app/index.html'e doğrudan çift tıklamak ÇALIŞMAZ (tarayıcı güvenlik kısıtı).
+
+ÇEVRİMİÇİ SÜRÜM (kurulum yok)
+  https://ugurfurkanyesil-rgb.github.io/final/
+
+KAYNAK KOD
+  https://github.com/ugurfurkanyesil-rgb/final
+
+VERİ KAYNAKLARI VE ATIFLAR
+  Arazi : USGS Astrogeology, Mars 2020 TRN HiRISE DTM Mosaic — doi:10.5066/P9REJ9JN
+  Hava  : Hueso et al. (2024), MEDA ATS türetilmiş sıcaklıklar, Zenodo doi:10.5281/zenodo.11198655 (CC BY 4.0)
+  Jeoloji: Stack et al. (2020), Space Sci. Rev. 216:127, doi:10.1007/s11214-020-00739-x (CC BY 4.0)
+  EVA sınırları: NASA xEVA System ConOps (EVA-EXP-0042 Rev B) — Ay için yazılmış değerler, Mars için iyimser.

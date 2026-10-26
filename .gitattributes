@@ -9,3 +9,7 @@
 # build. Pinning eol=lf here matches what the generator actually produces,
 # so checkout and build agree and `git status` stays clean.
 artifacts/mockup-sandbox/src/.generated/* text eol=lf
+
+# Windows başlatıcısı: CRLF baytlarıyla saklanır (git archive / GitHub ZIP dönüştürmez)
+*.bat -text
+*.sh text eol=lf

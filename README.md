@@ -12,6 +12,12 @@ Canlı yayın hedefi:
 
 ## Martian Map — NASA Space Apps 2026 (`mars-marswalk` branch)
 
+> **Hemen çalıştır (kurulum yok):**
+> - Çevrimiçi: https://ugurfurkanyesil-rgb.github.io/final/
+> - Çevrimdışı: bu sayfada **Code → Download ZIP** → zip'i açın → `MartianMap/Baslat-Windows.bat`
+>   (macOS/Linux: `MartianMap/baslat-mac-linux.sh`). Gerekli: yalnızca Python 3.
+>   `index.html`'e doğrudan çift tıklamak çalışmaz. Paketi yenilemek: `python pipeline/build_offline.py`.
+
 *Interplanetary Survival Guide: Martian Map* challenge'ı için uygulama gerçek Mars
 arazisinde çalışacak şekilde genişletildi. Varsayılan site Jezero Krateri; grid,
 Perseverance'ın iniş noktası **Octavia E. Butler Landing** (18.44°K, 77.45°D)
