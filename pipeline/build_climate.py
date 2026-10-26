@@ -114,9 +114,12 @@ def sol_to_ls(fourier_cols, fourier_rows):
     pairs = sorted((int(r[si]), float(r[li])) for r in fourier_rows
                    if r[si] is not None and r[li] is not None)
     sols = np.array([p[0] for p in pairs], dtype=float)
-    ls = np.unwrap(np.radians([p[1] for p in pairs]))           # 360→0 sıçramasını aç
+    # 360→0 sıçramasını DERECE üzerinde aç. Radyan↔derece gidiş-dönüşü 60.0'ı
+    # 59.99999999999999 yapıp solu yanlış Ls dilimine düşürüyordu (gerçek veride
+    # yakalandı: Ls 50–60/60–70 dilimlerinde 22/22 yerine 21/23 sol).
+    ls = np.unwrap(np.array([p[1] for p in pairs], dtype=float), period=360.0)
     def f(sol):
-        return float(np.degrees(np.interp(sol, sols, ls, left=np.nan, right=np.nan)) % 360.0)
+        return float(np.interp(sol, sols, ls, left=np.nan, right=np.nan) % 360.0)
     return f, (int(sols[0]), int(sols[-1]))
 
 
