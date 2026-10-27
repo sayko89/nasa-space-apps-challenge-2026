@@ -78,7 +78,9 @@ export async function planRoutes(waypoints, maps, sunAngleDeg, experienceMap, op
   if (plannerUsesWorker()) {
     try {
       await ensureWorker();
-      const plain = waypoints.map(w => (w.dwellS > 0 ? { x: w.x, z: w.z, dwellS: w.dwellS } : { x: w.x, z: w.z }));
+      const plain = waypoints.map(w => (w.dwellS > 0
+        ? { x: w.x, z: w.z, dwellS: w.dwellS, label: w.label || null }
+        : { x: w.x, z: w.z }));
       const r = await call('plan', { waypoints: plain, sunAngleDeg, opts });
       if (r.homeMaps) setHomeMaps(r.homeMaps);
       return r.routes;

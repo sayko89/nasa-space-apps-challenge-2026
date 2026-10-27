@@ -14,8 +14,10 @@ export const DUST_STATES = {
   RETURN_HOME: 'return_to_home',
 };
 
+// DEM (2 km Mars site): the hazard is a dust devil, drawn at a map-readable
+// size (illustrative radius, not a measured value); Moon: 8 m dust cloud.
 export const DUST_HAZARD_CONFIG = {
-  visibleRadius: 8,
+  visibleRadius: IS_DEM ? 35 : 8,
   interferenceRadiusScale: 1.35,
   criticalRadiusScale: 1.0,
   pathInfluenceScale: 1.05,

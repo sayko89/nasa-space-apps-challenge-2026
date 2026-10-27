@@ -1,16 +1,21 @@
 /**
  * MoonScene - React Three Fiber 3D scene
- * 100×100m Moon terrain, detailed rover, space debris, adjustable sun.
+ * Procedural mode: 100×100 m Moon terrain, detailed rover, space debris.
+ * DEM mode (Martian Map): real Jezero DTM, two-person EVA crew driven by the
+ * EVA playback, mission-time sun and sky, terrain-draped route lines.
  * Full touchpad / mouse / scroll controls.
  */
 
 import { useRef, useEffect, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
+import { MarsCrew, DemRouteLine, StopBadges, DustDevil } from './MarsCrew';
+import { sunPosition } from '../utils/marsTime';
+import { drawHeatmap } from '../utils/heatmaps';
 import * as THREE from 'three';
 import {
   generateTerrain, getTerrainHeight, generateRockPositions,
-  generateDebrisPositions, TERRAIN_SIZE, IS_DEM,
+  generateDebrisPositions, TERRAIN_SIZE, IS_DEM, SITE,
   createLunarRegolithTexture, createLunarNormalMap,
 } from '../three/terrainGenerator';
 
@@ -59,6 +64,30 @@ function Terrain({ wireframe }) {
           envMapIntensity={0.0}
         />
       )}
+    </mesh>
+  );
+}
+
+// ---- Map layer draped on the 3D terrain (DEM "layered view") ----
+// The 2D heatmap canvas is in grid order (row 0 = north, col 0 = west), which is
+// exactly the terrain PlaneGeometry's UV layout (CanvasTexture flipY → v=1 north).
+function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshKey }) {
+  const tex = useMemo(() => {
+    if (typeof document === 'undefined') return null;
+    const c = document.createElement('canvas');
+    c.width = c.height = 512;
+    drawHeatmap(c, layer, undefined, sunAngleDeg, sunElevationDeg);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
+  }, [layer, sunAngleDeg, sunElevationDeg, refreshKey]);
+  useEffect(() => () => tex?.dispose(), [tex]);
+  if (!_geo || !tex) return null;
+  return (
+    <mesh geometry={_geo} renderOrder={1}>
+      <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false}
+        polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-4} />
     </mesh>
   );
 }
@@ -611,23 +640,55 @@ function WaypointMarker({ pos, idx, total }) {
 
 // ---- Sun (follows the rover so the local shadow box stays sharp anywhere) ----
 const _ORIGIN = new THREE.Vector3(0, 0, 0);
-// sunElevationDeg (DEM): real Mars24 elevation; otherwise the legacy fixed height.
-function SunLight({ roverRef, sunAngleDeg, sunElevationDeg }) {
-  const lightRef = useRef();
-  const target = useMemo(() => new THREE.Object3D(), []);
-  const sunRad = (sunAngleDeg * Math.PI) / 180;
+
+// DEM: while an EVA is loaded the sun follows the MISSION clock (EVA start +
+// elapsed time), so light and sky change as the crew walks. Recomputed at
+// most every 0.2 s of real time.
+function useMissionSun(playback, sunAngleDeg, sunElevationDeg) {
+  const cache = useRef({ t: -1, az: sunAngleDeg, el: sunElevationDeg, at: 0 });
+  return (now) => {
+    const c = cache.current;
+    const meta = playback?.meta, center = SITE.meta?.center;
+    if (!IS_DEM || !playback?.loaded || !Number.isFinite(meta?.startMs) || !center) {
+      c.az = sunAngleDeg; c.el = sunElevationDeg; c.t = -1;
+      return c;
+    }
+    if (c.t !== playback.t && now - c.at > 0.2) {
+      const sp = sunPosition(meta.startMs + playback.t * 1000, center.lat_deg, center.lon_deg_east);
+      c.az = sp.azimuthDeg; c.el = sp.elevationDeg; c.t = playback.t; c.at = now;
+    }
+    return c;
+  };
+}
+
+function sunGeometry(azDeg, elDeg) {
+  const sunRad = (azDeg * Math.PI) / 180;
   let sx = Math.sin(sunRad) * 75, sz = -Math.cos(sunRad) * 75, sy = 68;
   let intensity = IS_DEM ? 1.6 : 1.9;
-  if (Number.isFinite(sunElevationDeg)) {
-    const el = Math.max(sunElevationDeg, 1) * Math.PI / 180;   // keep the light above the horizon
+  if (Number.isFinite(elDeg)) {
+    const el = Math.max(elDeg, 1) * Math.PI / 180;   // keep the light above the horizon
     const R = 100;
     sx = Math.sin(sunRad) * Math.cos(el) * R; sz = -Math.cos(sunRad) * Math.cos(el) * R; sy = Math.sin(el) * R;
     // Fade out through twilight; night ≈ off
-    intensity = 1.6 * Math.max(0, Math.min(1, (sunElevationDeg + 2) / 12));
+    intensity = 1.6 * Math.max(0, Math.min(1, (elDeg + 2) / 12));
   }
-  useFrame(() => {
+  return { sx, sy, sz, intensity };
+}
+
+// sunElevationDeg (DEM): real Mars24 elevation; otherwise the legacy fixed height.
+function SunLight({ roverRef, sunAngleDeg, sunElevationDeg, playback }) {
+  const lightRef = useRef();
+  const target = useMemo(() => new THREE.Object3D(), []);
+  const missionSun = useMissionSun(playback, sunAngleDeg, sunElevationDeg);
+  const { intensity } = sunGeometry(sunAngleDeg, sunElevationDeg);
+  useFrame(({ clock }) => {
     const c = roverRef.current ? roverRef.current.position : _ORIGIN;
-    if (lightRef.current) lightRef.current.position.set(c.x + sx, c.y + sy, c.z + sz);
+    const sun = missionSun(clock.getElapsedTime());
+    const g = sunGeometry(sun.az, sun.el);
+    if (lightRef.current) {
+      lightRef.current.position.set(c.x + g.sx, c.y + g.sy, c.z + g.sz);
+      lightRef.current.intensity = g.intensity;
+    }
     target.position.copy(c);
     target.updateMatrixWorld();
   });
@@ -652,6 +713,27 @@ function SunLight({ roverRef, sunAngleDeg, sunElevationDeg }) {
   );
 }
 
+// ---- DEM atmosphere: sky, fog and ambient follow the (mission-time) sun ----
+function MarsAtmosphere({ playback, sunAngleDeg, sunElevationDeg }) {
+  const ambRef = useRef();
+  const missionSun = useMissionSun(playback, sunAngleDeg, sunElevationDeg);
+  const col = useMemo(() => new THREE.Color(), []);
+  useFrame(({ scene, clock }) => {
+    const { el } = missionSun(clock.getElapsedTime());
+    col.set(marsSky(el));
+    if (scene.background?.isColor) scene.background.copy(col); else scene.background = col.clone();
+    if (scene.fog) scene.fog.color.copy(col);
+    if (ambRef.current) ambRef.current.intensity = 0.06 + 0.32 * Math.max(0, Math.min(1, ((el ?? 45) + 6) / 16));
+  });
+  return (
+    <>
+      <fog attach="fog" args={[marsSky(sunElevationDeg), TERRAIN_SIZE * 0.2, TERRAIN_SIZE * 1.2]} />
+      <ambientLight ref={ambRef} intensity={0.3} color="#e0b088" />
+      <hemisphereLight args={['#e8c09a', '#5a3420', 0.25]} />
+    </>
+  );
+}
+
 // ---- Point of no return marker (walk-back margin < 0 from here on) ----
 function PonrMarker({ point }) {
   if (!point) return null;
@@ -671,23 +753,59 @@ function PonrMarker({ point }) {
 }
 
 // ---- Camera ----
+// DEM chase camera: behind and above EV1 (astronaut scale), smoothed heading.
+const FOLLOW_BACK = IS_DEM ? 9 : 14;
+const FOLLOW_UP   = IS_DEM ? 4.2 : 13;
+const FOLLOW_LOOK = IS_DEM ? 1.1 : 0;
+// DEM overview: oblique view of the whole site from the south.
+const OVERVIEW_POS = new THREE.Vector3(0, TERRAIN_SIZE * 0.55, TERRAIN_SIZE * 0.62);
 function CameraController({ roverRef, cameraMode, orbitRef }) {
-  useFrame(({ camera }) => {
+  const st = useRef({ heading: null, overviewT: 0, lastMode: null });
+  useFrame(({ camera }, dt) => {
+    const S = st.current;
+    if (S.lastMode !== cameraMode) { S.lastMode = cameraMode; S.overviewT = 0; }
     if (cameraMode === 'follow' && roverRef.current) {
       const rover = roverRef.current;
-      const angle = rover.rotation.y;
-      camera.position.lerp(
-        new THREE.Vector3(
-          rover.position.x - Math.sin(angle) * 14,
-          rover.position.y + 13,
-          rover.position.z - Math.cos(angle) * 14
-        ),
-        0.055
+      const h = rover.rotation.y;
+      if (S.heading === null) S.heading = h;
+      let d = h - S.heading;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      S.heading += d * (1 - Math.exp(-Math.min(dt, 0.1) * 2.5));
+      const want = new THREE.Vector3(
+        rover.position.x - Math.sin(S.heading) * FOLLOW_BACK,
+        rover.position.y + FOLLOW_UP,
+        rover.position.z - Math.cos(S.heading) * FOLLOW_BACK,
       );
-      const target = rover.position.clone();
+      if (IS_DEM) camera.position.lerp(want, 1 - Math.exp(-Math.min(dt, 0.1) * 6));
+      else camera.position.lerp(want, 0.055);
+      const target = rover.position.clone(); target.y += FOLLOW_LOOK;
       camera.lookAt(target);
-      if (orbitRef.current) orbitRef.current.target.lerp(target, 0.07);
+      if (orbitRef.current) orbitRef.current.target.lerp(target, IS_DEM ? 0.5 : 0.07);
+    } else if (cameraMode === 'overview' && S.overviewT < 1.2) {
+      // glide to the overview once, then hand control back to the orbit controls
+      S.overviewT += Math.min(dt, 0.1);
+      const k = 1 - Math.exp(-Math.min(dt, 0.1) * 4);
+      camera.position.lerp(OVERVIEW_POS, S.overviewT >= 1.2 ? 1 : k);
+      if (orbitRef.current) {
+        orbitRef.current.target.lerp(new THREE.Vector3(0, 0, 0), S.overviewT >= 1.2 ? 1 : k);
+        orbitRef.current.update();
+      } else {
+        camera.lookAt(0, 0, 0);
+      }
     }
+  });
+  return null;
+}
+
+// PCFSoftShadowMap is deprecated in three r18x (it logs a warning on every
+// render); request plain PCF explicitly.
+const SHADOW_CFG = { type: THREE.PCFShadowMap };
+
+// ---- Scripted capture hook (dev / demo video): exposes camera + controls ----
+function SceneApi({ apiRef, orbitRef }) {
+  useFrame(({ camera, gl, scene }) => {
+    apiRef.current = { camera, controls: orbitRef.current, gl, scene };
   });
   return null;
 }
@@ -701,6 +819,13 @@ export default function MoonScene({
   learningModel,
   dustHazard,
   ponrPoint,
+  playback = null,          // DEM: EvaPlayback controller (utils/evaPlayback.js)
+  crewIdlePos = null,       // DEM: where the crew stands without a loaded EVA
+  onCrewPose = null,        // DEM: throttled crew pose → App (minimap/telemetry)
+  trailKey = 0,             // DEM: change to wipe boot prints
+  returnPath = null,        // DEM: abort return path (dashed)
+  sceneApiRef = null,       // optional: { camera, controls } for scripted captures
+  overlay = null,           // DEM: { layer, opacity, refreshKey } map layer draped on the terrain
 }) {
   const roverRef = useRef();
   const orbitRef = useRef();
@@ -709,7 +834,7 @@ export default function MoonScene({
 
   return (
     <Canvas
-      shadows
+      shadows={SHADOW_CFG}
       camera={{
         position: [roverState.x, roverState.y + 30, roverState.z - 24], fov: 46,
         near: IS_DEM ? 0.5 : 0.1, far: Math.max(800, TERRAIN_SIZE * 2.5),
@@ -719,11 +844,9 @@ export default function MoonScene({
     >
       {IS_DEM ? (
         <>
-          {/* Mars: gündüz gökyüzü saçılması → sıcak ambient + mesafe pusu (görsel) */}
+          {/* Mars: daytime sky scattering → warm ambient + distance haze (visual) */}
           <color attach="background" args={[marsSky(sunElevationDeg)]} />
-          <fog attach="fog" args={[marsSky(sunElevationDeg), TERRAIN_SIZE * 0.2, TERRAIN_SIZE * 1.2]} />
-          <ambientLight intensity={0.06 + 0.32 * Math.max(0, Math.min(1, ((sunElevationDeg ?? 45) + 6) / 16))} color="#e0b088" />
-          <hemisphereLight args={['#e8c09a', '#5a3420', 0.25]} />
+          <MarsAtmosphere playback={playback} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />
         </>
       ) : (
         <>
@@ -735,19 +858,25 @@ export default function MoonScene({
       )}
 
       {/* Sun */}
-      <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />
+      <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} playback={playback} />
 
       <Terrain wireframe={wireframe} />
+      {IS_DEM && overlay?.layer && (
+        <TerrainOverlay layer={overlay.layer} opacity={overlay.opacity ?? 0.6} refreshKey={overlay.refreshKey}
+          sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />
+      )}
       <Rocks />
       <SpaceDebris />
 
-      {/* Routes */}
-      {routes && Object.entries(routes).map(([mode, pts]) => (
-        <RouteLine key={mode} points={pts} color={ROUTE_COLORS[mode] ?? '#ff8800'} active={mode === activeRoute} />
+      {/* Routes — DEM: terrain-draped screen-space lines; Moon: tubes */}
+      {routes && Object.entries(routes).map(([mode, pts]) => (IS_DEM
+        ? <DemRouteLine key={mode} points={pts} color={ROUTE_COLORS[mode] ?? '#ff8800'} active={mode === activeRoute} />
+        : <RouteLine key={mode} points={pts} color={ROUTE_COLORS[mode] ?? '#ff8800'} active={mode === activeRoute} />
       ))}
+      {IS_DEM && returnPath && <DemRouteLine points={returnPath} color="#ff8800" active dashed />}
 
-      {/* Dust cloud hazard — rendered in world space, anchored to terrain */}
-      {dustHazard && <DustCloudHazard hazard={dustHazard} />}
+      {/* Dust hazard — DEM: dust devil; Moon: dust cloud (world space, anchored to terrain) */}
+      {dustHazard && (IS_DEM ? <DustDevil hazard={dustHazard} /> : <DustCloudHazard hazard={dustHazard} />)}
 
       <PonrMarker point={ponrPoint} />
 
@@ -755,20 +884,32 @@ export default function MoonScene({
       {waypoints && waypoints.map((wp, i) => (
         <WaypointMarker key={i} pos={wp} idx={i} total={waypoints.length} />
       ))}
+      {IS_DEM && <StopBadges waypoints={waypoints} markerScale={MARKER_SCALE}
+        visited={playback?.loaded ? playback.nominal.stops
+          .filter(st => st.departS <= playback.t && (!playback.aborted || st.departS <= playback.aborted.t0))
+          .map(st => st.n) : []} />}
 
-      <RoverPhysics
-        roverRef={roverRef}
-        setRoverState={setRoverState}
-        pathRef={pathRef}
-        activeRoute={activeRoute}
-        learningModel={learningModel}
-        wireframe={wireframe}
-        initPos={roverState}
-      />
-      <WheelTracks roverRef={roverRef} />
-      <DustParticles roverRef={roverRef} />
+      {IS_DEM && playback ? (
+        <MarsCrew playback={playback} idlePos={crewIdlePos || { x: roverState.x, z: roverState.z }}
+          leadRef={roverRef} onPose={onCrewPose} trailKey={trailKey} sunElevationDeg={sunElevationDeg} />
+      ) : (
+        <>
+          <RoverPhysics
+            roverRef={roverRef}
+            setRoverState={setRoverState}
+            pathRef={pathRef}
+            activeRoute={activeRoute}
+            learningModel={learningModel}
+            wireframe={wireframe}
+            initPos={roverState}
+          />
+          <WheelTracks roverRef={roverRef} />
+          <DustParticles roverRef={roverRef} />
+        </>
+      )}
 
       <CameraController roverRef={roverRef} cameraMode={cameraMode} orbitRef={orbitRef} />
+      {sceneApiRef && <SceneApi apiRef={sceneApiRef} orbitRef={orbitRef} />}
 
       {/* Map-like controls: LEFT=PAN, RIGHT=ROTATE, SCROLL=ZOOM, TOUCH=PAN+PINCH */}
       <OrbitControls

@@ -106,6 +106,59 @@ export function homeTimeMaps(homeIdx, hMap, wall, n, cell) {
 }
 
 /**
+ * En hızlı eve dönüş yolu (EVA iptali / abort).
+ *
+ * `toHome` Dijkstra haritasında her adımda, (komşuya yürüme süresi + komşunun
+ * eve süresi) toplamını en aza indiren komşuya geçilir. Bu toplam tam olarak
+ * toHome[c] olduğundan yolun süresi Dijkstra'nın verdiği en kısa dönüş süresine
+ * eşittir — walk-back marjının varsaydığı yolun ta kendisi.
+ *
+ * Başlangıç hücresi duvar/ulaşılamaz ise `searchR` hücre yarıçapında eve süresi
+ * sonlu olan en yakın hücreden başlanır (rota yumuşatması duvar kenarına
+ * değebilir).
+ *
+ * @returns {{cells:number[], timeS:number}|null}  cells[0] = başlangıç (veya
+ *   en yakın geçerli hücre), son = ev; ulaşılamıyorsa null
+ */
+export function descendToHome(startIdx, toHome, hMap, wall, n, cell, searchR = 3) {
+  let k = startIdx;
+  if (!Number.isFinite(toHome[k]) || (wall && wall[k])) {
+    const r0 = (k / n) | 0, c0 = k - r0 * n;
+    let best = -1, bestD = Infinity;
+    for (let dr = -searchR; dr <= searchR; dr++) for (let dc = -searchR; dc <= searchR; dc++) {
+      const r = r0 + dr, c = c0 + dc;
+      if (r < 0 || r >= n || c < 0 || c >= n) continue;
+      const kk = r * n + c;
+      if ((wall && wall[kk]) || !Number.isFinite(toHome[kk])) continue;
+      const d = Math.hypot(dr, dc);
+      if (d < bestD) { bestD = d; best = kk; }
+    }
+    if (best < 0) return null;
+    k = best;
+  }
+  const cells = [k];
+  const diagLen = cell * Math.SQRT2;
+  for (let guard = 0; toHome[k] > 0 && guard < n * n; guard++) {
+    const r = (k / n) | 0, c = k - r * n;
+    let next = -1, nextVal = Infinity;
+    for (let d = 0; d < 8; d++) {
+      const nr = r + DIRS[d][0], nc = c + DIRS[d][1];
+      if (nr < 0 || nr >= n || nc < 0 || nc >= n) continue;
+      const nk = nr * n + nc;
+      if ((wall && wall[nk]) || !Number.isFinite(toHome[nk])) continue;
+      // k → nk yürünür: dh = h[nk] − h[k]
+      const v = walkTimeS(d < 4 ? cell : diagLen, hMap[nk] - hMap[k]) + toHome[nk];
+      if (v < nextVal) { nextVal = v; next = nk; }
+    }
+    if (next < 0 || !(toHome[next] < toHome[k])) break;   // olmamalı; sonsuz döngüye karşı
+    cells.push(next);
+    k = next;
+  }
+  if (toHome[k] !== 0) return null;
+  return { cells, timeS: toHome[cells[0]] };
+}
+
+/**
  * Rota boyunca geri dönüş marjı.
  * @param {Array<[x,y,z]>} path  dünya koordinatlarında rota
  * @param {(x,z)=>number} heightAt
