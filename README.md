@@ -1,4 +1,126 @@
-# Interactive Simulation Hub
+# Martian Map — Marswalk Planner
+
+**NASA Space Apps Challenge 2026 · Interplanetary Survival Guide: Martian Map · Team PERIAPSIS**
+
+A layered, integrated map of a real place on Mars — Jezero crater around the
+Perseverance landing site — that helps a two-person crew **plan** a Marswalk,
+**carry it out** safely, and do new science along the way.
+
+![EV1 samples a geology stop while EV2 documents it; the HUD shows the mission clock and the live walk-back margin](docs/img/hero.jpg)
+
+## Try it
+
+| | |
+|---|---|
+| **Online** | https://ugurfurkanyesil-rgb.github.io/final/ (GitHub Pages; served while the repository is public) |
+| **Offline, no install** | **Code → Download ZIP** → unzip → `MartianMap/Baslat-Windows.bat` (Windows) or `MartianMap/baslat-mac-linux.sh` (macOS / Linux). Needs only Python 3. Opening `index.html` directly does not work — browsers block local data files and Web Workers. |
+| **From source** | `pnpm install`, then `pnpm --filter moon-rover dev` |
+
+**Quick tour:** press **PLAN SCIENCE EVA** → pick a route (SAFE / ECO / FAST / AUTO)
+and read its GO / NO-GO card → **START EVA** and follow the crew (×1 … ×600, **ABORT EVA**,
+**SIMULATE DUST DEVIL**) → **Map Layers → DRAPE ON 3D TERRAIN** to see geology, slope or
+EVA range on the terrain. Space bar = play / pause the EVA.
+
+![Geology layer draped on the Jezero terrain with the planned science EVA](docs/img/layers.jpg)
+
+## The layers — all real data
+
+| Layer | Source | Used for |
+|---|---|---|
+| Terrain, 4 m grid over 2 km | USGS Mars 2020 Terrain Relative Navigation HiRISE DTM mosaic (MRO HiRISE) | slopes, impassable walls, walking time, shadows |
+| Geology (surface + bedrock units) | Mars 2020 science-team photogeologic map (Stack et al. 2020) | science stops, map layer |
+| Air temperature at 1.45 m | Perseverance MEDA air-temperature sensors, one Mars year (Hueso et al. 2024) | expected temperature at the time the crew walks |
+| Sun, local solar time, sunrise / sunset | Mars24 algorithm (NASA GISS; Allison & McEwen 2000) | light, terrain shadow and darkness along the route; mission clock |
+| EVA limits | NASA xEVA System ConOps (2020): 20° slope, ~2 km/h, ≤ 8 h, ≤ 2 km | walls, speed, time budget, radius |
+| Crew of two (EV1 + EV2) | NASA EVA Lunar Surface ConOps (2020) | the crew in the 3D scene |
+
+## How a Marswalk is planned
+
+1. **Science stops.** Candidates are the nearest interior point of every (surface, bedrock)
+   unit pair and of every bedrock contact. Pairwise walking times come from Dijkstra; an exact
+   subset DP (Held–Karp) picks the set and order of stops that maximises geologic diversity
+   (distinct units sampled) while walking + time at stops stays within the 8 h budget.
+2. **Routes.** A* on walking time: Tobler's slope–speed shape scaled to NASA's ~2 km/h level
+   pace; cells steeper than 20° are walls. Four route preferences (SAFE, ECO, FAST, AUTO);
+   reported times always use the same physical model.
+3. **Walk-back margin.** Two Dijkstra maps give the fastest walk from home to every cell and
+   back. At every point: *margin = budget − (time so far + fastest walk home)*. The first point
+   with a negative margin is the **point of no return**. **GO** = margin ≥ 0 everywhere, never
+   farther than 2 km from home, no slope above 20°.
+4. **Conditions.** For the moment the crew actually walks each point: sun elevation, terrain
+   shadow, darkness, home before sunset or not, and the expected air-temperature range.
+
+## How it is carried out — EVA playback
+
+- Two astronauts walk the plan on a mission clock (×1 … ×600). Positions come from the
+  planner's own timeline, so what you see is exactly what the GO decision was based on.
+- At each stop EV1 kneels and samples while EV2 documents; a flag marks every sampled stop.
+- The HUD shows mission elapsed time, the current activity, the **live walk-back margin**,
+  distance from the habitat, and the sun elevation and MEDA temperature at the mission time.
+  Sun, sky and shadows move with the clock; helmet lights come on around sunset.
+- **ABORT EVA** sends the crew home on the fastest path of the same Dijkstra map, so the abort
+  ETA is exactly the return time the margin assumed. A **dust devil** on the route within the
+  next 10 minutes of walking triggers an automatic abort.
+
+![A dust devil on the route ahead triggers an abort; the crew walks home on the fastest path (dashed)](docs/img/abort.jpg)
+
+## Verified, not just drawn
+
+`node --test artifacts/moon-rover/tests/*.test.mjs` (37 tests) and
+`python -m unittest discover pipeline/tests` (3 tests):
+
+- **Sun:** USGS reference values, 60 random epochs against `marstime`, an independent vector
+  geometry check, and the MEDA team's sunset table (largest difference 0.25 min over 700 sols).
+- **Terrain & routes:** shadow length = height / tan(sun elevation); A* reaches the Dijkstra
+  optimum in every mode; the walk-back maps equal A* times in both directions.
+- **Data:** `climate.json` and `geology.json` match independent recomputations from the
+  original Zenodo and journal files.
+- **Planning & playback:** the stop optimiser equals brute force on 40 random cases; the
+  playback timeline equals the planner's round trip; the abort path time equals the Dijkstra
+  return time; a dust devil ahead aborts the EVA before the crew reaches it.
+
+## Honest limits
+
+- The EVA limits are lunar values. NASA found a suited walk-back at Mars gravity not acceptable
+  (TP-2009-214796), so they are optimistic for Mars. The app says so.
+- How slope changes suited walking speed is an assumption (Tobler shape).
+- Time per stop (20 min by default) and the science-score weights are design choices.
+- A 4 m grid cannot show rocks or ripples; shadows come only from terrain inside the 2 km site.
+- Temperatures are a one-Mars-year climatology, not a forecast. The dust-devil size is illustrative.
+
+## Data & credits
+
+- USGS Astrogeology (2020). *Mars 2020 Terrain Relative Navigation HiRISE DTM Mosaic.* [doi:10.5066/P9REJ9JN](https://doi.org/10.5066/P9REJ9JN)
+- Stack, K. M., et al. (2020). *Photogeologic map of the Perseverance rover field site in Jezero crater constructed by the Mars 2020 Science Team.* Space Sci. Rev. 216, 127. [doi:10.1007/s11214-020-00739-x](https://doi.org/10.1007/s11214-020-00739-x) (CC BY 4.0)
+- Hueso, R., et al. (2024). *Derived environmental temperatures at Jezero crater from Air Temperature Sensors' measurements on the Perseverance rover* (v2). Zenodo. [doi:10.5281/zenodo.11198655](https://doi.org/10.5281/zenodo.11198655) (CC BY 4.0)
+- Allison, M. & McEwen, M. (2000). *A post-Pathfinder evaluation of areocentric solar coordinates with improved timing recipes for Mars seasonal/diurnal climate studies.* Planet. Space Sci. 48 — the Mars24 algorithm, NASA GISS.
+- NASA EVA-EXP-0042 Rev B (2020). *Exploration EVA System Concept of Operations.* NASA (2020). *EVA Lunar Surface Concept of Operations.* Norcross, J., et al. (2009). NASA/TP-2009-214796.
+- Tobler, W. (1993). *Three presentations on geographical analysis and modeling.* NCGIA Technical Report 93-1.
+
+## Use of AI
+
+Developed with AI assistance (Anthropic Claude) for code, data pipelines, tests and
+documentation, under the team's direction and review. All data come from the sources above.
+The astronauts, dust devil and other 3D objects are original procedural models written in code;
+no AI-generated images are used. The demo video is a screen capture of the running app.
+
+## Repository map
+
+```
+pipeline/                 build_site.py (terrain) · build_climate.py (MEDA) · build_geology.py (map) · build_offline.py
+artifacts/moon-rover/     the web app (React + Three.js / react-three-fiber, Vite)
+  src/utils/              walkModel · pathfinder (A*) · walkback (Dijkstra, abort path) · science (stop optimiser)
+                          marsTime (Mars24) · shadows · climate · evaTimeline + evaPlayback (EVA playback)
+  src/components/         MoonScene (3D) · MarsCrew (astronauts) · EvaHud · RightPanel
+  tests/                  node --test suites
+MartianMap/               ready-to-run offline package
+```
+
+`?site=moon` still opens the original procedural Moon rover simulator.
+
+---
+
+## Interactive Simulation Hub (Türkçe)
 
 Interactive Simulation Hub, etkileşimli simülasyonlar, 3D görselleştirme, rota planlama, görev kontrol arayüzleri ve destekleyici backend katmanlarını tek bir `pnpm workspace` altında toplayan bir monorepo yapısıdır.
 
@@ -10,7 +132,7 @@ Canlı yayın hedefi:
 
 ![Moon Rover Visual](./attached_assets/image_1774710280737.png)
 
-## Martian Map — NASA Space Apps 2026 (`mars-marswalk` branch)
+## Martian Map — Türkçe teknik notlar
 
 > **Hemen çalıştır (kurulum yok):**
 > - Çevrimiçi: https://ugurfurkanyesil-rgb.github.io/final/
@@ -61,6 +183,8 @@ DTM Mosaic*, [doi:10.5066/P9REJ9JN](https://doi.org/10.5066/P9REJ9JN); Fergason 
 
 - Krater listesi ve rastgele kaya/enkaz yok; arazi tamamen veriden gelir.
 - Geçilmez bölgeler eğim eşiğinden türetilir (`src/config/marswalkProfile.js`).
+- Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
+- Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.
 
 ### 3. Marswalk modeli (fiziksel maliyet)
 
@@ -172,8 +296,28 @@ by the Mars 2020 Science Team.* Space Science Reviews 216, 127.
 Doğrulama: optimizasyon 40 rastgele örnekte kaba kuvvetle aynı; rasterleştirme,
 shapefile'dan farklı bir algoritmayla (düğüm başına nokta-poligon testi) bağımsız
 hesaplanan birim alanları ve örnek hücrelerle karşılaştırılır (geology.json varsa).
-- Sahne ölçeği (kamera, gölge, rota/işaret boyutu) alan boyutuna göre ayarlanır.
-- Isı haritasına `Elevation` ve `No-Go` (A*'ın girmediği hücreler) katmanları eklendi.
+
+### 7. İnsan kâşif ve EVA oynatma (Aşama 7)
+
+- **Ekip:** Rover yerine iki skafandrlı astronot, EV1 (kırmızı şeritli) ve EV2. NASA'nın
+  Ay yüzeyi EVA ConOps'u (2020) EVA'ları EV1/EV2 iki kişilik ekiple planlar; model
+  özgün ve basitleştirilmiş bir tasarımdır (`src/components/MarsCrew.jsx`).
+- **Oynatma:** START EVA, seçili rotayı plandaki zaman çizelgesiyle oynatır
+  (`src/utils/evaTimeline.js`, `evaPlayback.js`): görev saati ×1–×600, bilim
+  duraklarında planlanan bekleme (EV1 diz çöküp örnek alır, EV2 kaydeder), örneklenen
+  durağa bayrak, bot izleri. Güneş, gökyüzü ve gölgeler görev saatiyle değişir; güneş
+  6°'nin altına inince kask lambaları yanmaya başlar, ufkun 4° altında tam güçtedir.
+- **HUD:** MET, zaman çizelgesi (duraklar, dönüşü olmayan nokta), o anki etkinlik,
+  **canlı walk-back payı** (`bütçe − t − en hızlı eve dönüş`), habitata uzaklık, o andaki
+  güneş yüksekliği ve MEDA sıcaklığı. Pay eşikleri, dönüşü olmayan nokta ve gün batımı
+  olay olarak loglanır.
+- **ABORT:** Ekip, aynı Dijkstra haritasında en hızlı yoldan eve döner
+  (`walkback.descendToHome`) — abort ETA'sı, payın varsaydığı dönüş süresinin ta kendisi
+  (testle doğrulanır). Rotanın önümüzdeki 10 dakikalık kısmında toz şeytanı varsa
+  abort otomatik tetiklenir (toz şeytanı boyutu temsilîdir).
+- **Katmanlar 3D'de:** Map Layers → DRAPE ON 3D TERRAIN ile jeoloji, eğim, No-Go veya
+  EVA menzili arazinin üstüne serilir.
+- **Arayüz:** Tamamen İngilizce; Martian Map paneli %25 büyük (projeksiyon/video için).
 
 ## İçindekiler
 
