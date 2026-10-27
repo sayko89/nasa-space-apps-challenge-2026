@@ -7,6 +7,13 @@ MARTIAN MAP — Marswalk Planner (NASA Space Apps 2026, PERIAPSIS)
   Gerekli: Python 3 (ek paket gerekmez) ve güncel bir tarayıcı (Chrome/Edge/Firefox).
   Not: app/index.html'e doğrudan çift tıklamak ÇALIŞMAZ (tarayıcı güvenlik kısıtı).
 
+HIZLI TUR (arayüz İngilizce)
+  1. PLAN SCIENCE EVA  - 8 saatlik EVA bütçesine sığan en iyi jeoloji duraklarını seçer
+  2. Route & EVA       - SAFE / ECO / FAST / AUTO rotasını seçin, GO / NO-GO kartını okuyun
+  3. START EVA         - iki kişilik ekip planı yürür (x1 ... x600, ABORT EVA)
+  4. Map Layers        - DRAPE ON 3D TERRAIN: jeoloji / eğim / EVA menzili arazinin üstünde
+  Siyah pencereyi kapatınca uygulama durur.
+
 ÇEVRİMİÇİ SÜRÜM (kurulum yok)
   https://ugurfurkanyesil-rgb.github.io/final/
 
@@ -18,3 +25,6 @@ VERİ KAYNAKLARI VE ATIFLAR
   Hava  : Hueso et al. (2024), MEDA ATS türetilmiş sıcaklıklar, Zenodo doi:10.5281/zenodo.11198655 (CC BY 4.0)
   Jeoloji: Stack et al. (2020), Space Sci. Rev. 216:127, doi:10.1007/s11214-020-00739-x (CC BY 4.0)
   EVA sınırları: NASA xEVA System ConOps (EVA-EXP-0042 Rev B) — Ay için yazılmış değerler, Mars için iyimser.
+  Ekip (EV1 + EV2): NASA EVA Lunar Surface Concept of Operations (2020).
+
+Yapay zekâ desteğiyle geliştirildi (Anthropic Claude).
