@@ -137,7 +137,7 @@ export default function EvaHud({ playback, right = 12, onAbort, onStop }) {
   const canAbort = !snap.aborted && (snap.status === 'playing' || snap.status === 'paused');
 
   return (
-    <div style={{
+    <div id="eva-hud" style={{
       position: 'absolute', right, bottom: 12, width: 540, zIndex: 16,
       fontFamily: MONO, color: '#e8c4a8', background: 'rgba(22,10,4,0.86)',
       border: `1px solid ${snap.ponrPassed ? '#ff5a4a' : 'rgba(232,168,120,0.4)'}`,
