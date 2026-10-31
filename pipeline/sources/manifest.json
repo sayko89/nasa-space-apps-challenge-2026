@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-10-31T01:01:51+00:00",
+  "fetched_utc": "2026-10-31T10:40:19+00:00",
   "files": {
     "themis_ti/Jezero_Thermal_Inertia_v1.tiff": {
       "url": "https://zenodo.org/records/4931348/files/Jezero_Thermal_Inertia_v1.tiff?download=1",
@@ -35,40 +35,16 @@
       "sha256": "bd143ee69241229926abd373e6305b8bbb326d6b5a7b4a8d6935262696f93dc4"
     },
     "donki/events.json": {
-      "url": "https://api.nasa.gov/DONKI/<SEP|CME|FLR|GST|IPS>?startDate=2021-02-18&endDate=today&api_key=DEMO_KEY",
+      "url": "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/<SEP|CME|FLR|GST|IPS>?startDate=2021-02-18&endDate=today",
       "citation": "NASA CCMC Space Weather Database Of Notifications, Knowledge, Information (DONKI)"
     }
   },
   "errors": {
-    "donki/SEP/2021": "<HTTPError 503: 'Service Unavailable'>",
-    "donki/SEP/2022": "<HTTPError 503: 'Service Unavailable'>",
-    "donki/SEP/2023": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/SEP/2024": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/SEP/2025": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/SEP/2026": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/CME/2021": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/CME/2022": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/CME/2023": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/CME/2024": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/CME/2025": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/CME/2026": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/FLR/2021": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/FLR/2022": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/FLR/2023": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/FLR/2024": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/FLR/2025": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/FLR/2026": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/GST/2021": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/GST/2022": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/GST/2023": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/GST/2024": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/GST/2025": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/GST/2026": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/IPS/2021": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/IPS/2022": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/IPS/2023": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/IPS/2024": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/IPS/2025": "<HTTPError 429: 'Too Many Requests'>",
-    "donki/IPS/2026": "<HTTPError 429: 'Too Many Requests'>"
+    "donki/SEP/kauai.ccmc.gsfc.nasa.gov": "URLError(OSError(101, 'Network is unreachable'))",
+    "donki/SEP/api.nasa.gov": "<HTTPError 503: 'Service Unavailable'>",
+    "donki/CME/kauai.ccmc.gsfc.nasa.gov": "URLError(OSError(101, 'Network is unreachable'))",
+    "donki/CME/api.nasa.gov": "<HTTPError 503: 'Service Unavailable'>",
+    "donki/FLR/kauai.ccmc.gsfc.nasa.gov": "URLError(OSError(101, 'Network is unreachable'))",
+    "donki/FLR/api.nasa.gov": "<HTTPError 503: 'Service Unavailable'>"
   }
 }

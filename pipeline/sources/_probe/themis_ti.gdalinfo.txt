@@ -1,5 +1,6 @@
 Driver: GTiff/GeoTIFF
 Files: pipeline/sources/themis_ti/Jezero_Thermal_Inertia_v1.tiff
+       pipeline/sources/themis_ti/Jezero_Thermal_Inertia_v1.tiff.aux.xml
 Size is 890, 890
 Coordinate System is:
 PROJCRS["SimpleCylindrical Mars",
@@ -50,6 +51,7 @@ Upper Right ( 4653100.000, 1141100.000) ( 78d30' 2.20"E, 19d15' 3.77"N)
 Lower Right ( 4653100.000, 1052100.000) ( 78d30' 2.20"E, 17d44'58.43"N)
 Center      ( 4608600.000, 1096600.000) ( 77d44'59.53"E, 18d30' 1.10"N)
 Band 1 Block=890x2 Type=Float32, ColorInterp=Gray
+  Min=42.423 Max=1655.328 
   Minimum=42.423, Maximum=1655.328, Mean=254.694, StdDev=76.141
   NoData Value=0
   Metadata:

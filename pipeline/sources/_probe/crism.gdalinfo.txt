@@ -1,5 +1,6 @@
 Driver: GTiff/GeoTIFF
 Files: pipeline/sources/crism/jezeroFinal.tif
+       pipeline/sources/crism/jezeroFinal.tif.aux.xml
 Size is 614, 751
 Coordinate System is:
 PROJCRS["unnamed",
@@ -51,6 +52,7 @@ Upper Right ( 4602002.673, 1110579.692) ( 77d38'18.85"E, 18d44'10.14"N)
 Lower Right ( 4602002.673, 1083543.692) ( 77d38'18.85"E, 18d16'48.13"N)
 Center      ( 4590950.673, 1097061.692) ( 77d27' 7.61"E, 18d30'29.14"N)
 Band 1 Block=614x1 Type=Byte, ColorInterp=Red
+  Min=0.000 Max=255.000 
   Minimum=0.000, Maximum=255.000, Mean=134.068, StdDev=111.518
   Metadata:
     STATISTICS_MAXIMUM=255
@@ -59,6 +61,7 @@ Band 1 Block=614x1 Type=Byte, ColorInterp=Red
     STATISTICS_STDDEV=111.51795029046
     STATISTICS_VALID_PERCENT=100
 Band 2 Block=614x1 Type=Byte, ColorInterp=Green
+  Min=0.000 Max=255.000 
   Minimum=0.000, Maximum=255.000, Mean=121.837, StdDev=110.379
   Metadata:
     STATISTICS_MAXIMUM=255
@@ -67,6 +70,7 @@ Band 2 Block=614x1 Type=Byte, ColorInterp=Green
     STATISTICS_STDDEV=110.37887230221
     STATISTICS_VALID_PERCENT=100
 Band 3 Block=614x1 Type=Byte, ColorInterp=Blue
+  Min=0.000 Max=255.000 
   Minimum=0.000, Maximum=255.000, Mean=99.335, StdDev=115.198
   Metadata:
     STATISTICS_MAXIMUM=255
