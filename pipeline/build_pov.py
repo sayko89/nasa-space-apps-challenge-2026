@@ -7,7 +7,8 @@ inside the site grid, looks up the images Perseverance took there in NASA's publ
 raw-image feed and keeps the near-horizontal Navcam and Mastcam-Z frames with their
 pointing. Writes artifacts/moon-rover/public/sites/<site>/pov.json:
 
-  { panoramas: [ { rmc, sol, x, z, yaw, frames: [ { az, el, camera, small, medium, link } ] } ] }
+  { format: 'martian-map-pov/2', stations: [ { rmc, sol, x, z, lat, lon, yaw,
+      frames: [ { az, mastAz, el, camera, small, medium, link, sol, utc } ] } ] }
 
   x, z   site metres (east, south) of the rover position
   az     approximate pointing azimuth from north = mast azimuth (rover frame) + rover yaw

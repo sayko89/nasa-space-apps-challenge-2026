@@ -2,11 +2,6 @@ name: Fetch ground-view metadata
 
 # Perseverance raw-image metadata (NASA public feed) for rover positions inside the site.
 on:
-  push:
-    branches: [main]
-    paths:
-      - pipeline/build_pov.py
-      - .github/workflows/fetch-pov.yml
   workflow_dispatch:
 
 permissions:

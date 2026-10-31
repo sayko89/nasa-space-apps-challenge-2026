@@ -3,10 +3,6 @@ name: Fetch 1 m DTM window
 # Downloads the full Mars 2020 TRN HiRISE DTM mosaic (1.8 GB) once, cuts the site window
 # at full 1 m resolution and commits it (input for the rock-relief layer).
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/fetch-dtm.yml
   workflow_dispatch:
 
 permissions:

@@ -2,13 +2,8 @@ name: Fetch source data
 
 # Downloads the raw layer sources (Zenodo, NASA) and commits them, because the
 # processing scripts are run where these hosts are not reachable.
+# Run by hand (Actions → Fetch source data → Run workflow) when a source changes.
 on:
-  push:
-    branches: [main]
-    paths:
-      - pipeline/fetch_sources.py
-      - pipeline/build_pov.py
-      - .github/workflows/fetch-sources.yml
   workflow_dispatch:
 
 permissions:

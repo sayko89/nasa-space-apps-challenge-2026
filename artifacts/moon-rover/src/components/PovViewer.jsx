@@ -3,6 +3,7 @@
  * science stop, looking toward it — "what the crew will see when they get there".
  * Data: public/sites/<site>/pov.json (pipeline/build_pov.py); images load from mars.nasa.gov.
  */
+import { createPortal } from 'react-dom';
 import { SITE } from '../three/terrainGenerator';
 
 const MAX_DIST_M = 400;       // farther than this the photos say little about the stop
@@ -28,7 +29,8 @@ export function nearestPanorama(x, z) {
 
 export function PovViewer({ stop, label, onClose }) {
   const hit = nearestPanorama(stop.x, stop.z);
-  return (
+  // Portal to <body>: the side panel is a transformed container, which would trap position:fixed
+  return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(1100px, 100%)', background: '#0b0f0b',
@@ -67,6 +69,7 @@ export function PovViewer({ stop, label, onClose }) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

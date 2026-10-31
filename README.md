@@ -31,14 +31,14 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 
 | The challenge asks for… | In Martian Map |
 |---|---|
-| A layered, integrated view of a location or route, from **multiple NASA science missions** | One 2 km × 2 km site at 4 m resolution; every layer is resampled onto the same grid: **MRO** (HiRISE terrain, CRISM minerals), **Mars Odyssey** (THEMIS thermal inertia), **Mars 2020** (geology map, MEDA air temperature, Navcam panoramas, rover traverse), **Curiosity** (RAD radiation) |
-| **At least three kinds of data** | **Topographic** (HiRISE DTM, rock relief), **thermal** (THEMIS), **spectral** (CRISM), **geologic** (Mars 2020 map), **atmospheric** (MEDA), **radiation** (RAD + DONKI space weather), **optical** (Navcam) |
+| A layered, integrated view of a location or route, from **multiple NASA science missions** | One 2 km × 2 km site at 4 m resolution; every layer is resampled onto the same grid: **MRO** (HiRISE terrain, CRISM minerals), **Mars Odyssey** (THEMIS thermal inertia), **Mars 2020** (geology map, MEDA air temperature, Navcam / Mastcam-Z images, rover traverse), **Curiosity** (RAD radiation) |
+| **At least three kinds of data** | **Topographic** (HiRISE DTM, rock relief), **thermal** (THEMIS), **spectral** (CRISM), **geologic** (Mars 2020 map), **atmospheric** (MEDA), **radiation** (RAD + DONKI space weather), **optical** (Navcam, Mastcam-Z) |
 | Identify a **science objective** and a location | Sample as many distinct bedrock and surface units, contacts and **CRISM minerals** (olivine, olivine–smectite, pyroxene on this site) as an 8-hour EVA allows, on the crater floor Perseverance landed on |
 | **Astronaut safety first**; space weather, radiation | Per-route **GCR dose** vs the 600 mSv NASA career limit, a **DONKI space-weather advisory** (solar particle event within ±2 days → postpone), walk-back margin and point of no return, sunset and terrain shadow, expected air temperature |
 | Spacesuits and **carried equipment** affect mobility | **Mission setup**: Mars suit (104 kg) or lunar xEMU (170 kg) plus equipment; the carried weight on Mars must stay under NASA's 45 kg Earth-equivalent limit, or the plan is NO-GO |
 | A **route map** that **avoids obstacles such as large rocks** | A* on walking time; slopes above 20° and **rock outcrops / boulders** found in the 1 m HiRISE DTM are walls |
 | **Rovers** to transport the crew; astronauts **in pairs** | **Pressurized rover as safe haven**: the crew may never be more than a 30-minute walk from it; a two-person crew (EV1 + EV2) walks the plan |
-| **Point-of-view images** so the astronaut knows what to expect | **Ground view** on every science stop: the Perseverance Navcam panorama taken closest to it, turned toward the stop |
+| **Point-of-view images** so the astronaut knows what to expect | **Ground view** on every science stop: the Perseverance Navcam / Mastcam-Z frames taken from the rover position closest to it, facing the stop |
 | A format crews could use: habitat display, tablet, **HUD** | Planning view for the habitat, and an EVA **HUD** with mission clock, live walk-back margin, distance home, sun, temperature and dose |
 | A time frame | Pick any date and local solar time: sun, shadows, temperature climatology and DONKI events follow it |
 
@@ -53,11 +53,15 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | Surface + bedrock units | geologic | Mars 2020 science-team photogeologic map — Stack et al. (2020) | science stops, map layer |
 | Air temperature at 1.45 m | atmospheric | Perseverance MEDA, one Mars year — Hueso et al. (2024) | temperature at the time the crew walks |
 | Surface radiation | radiation | Curiosity RAD — Hassler et al. (2014): 0.64 mSv/day | EVA dose, HUD |
-| Space weather | radiation | NASA CCMC DONKI: solar particle events, CMEs modelled to reach Mars, X-class flares | go / postpone advisory for the date |
-| Ground-level panoramas | optical | Perseverance Navcam 360° mosaics + rover traverse (NASA/JPL MMGIS) | ground view at stops |
+| Space weather | radiation | NASA DONKI (looked up live for the EVA date): solar particle events, CMEs modelled to reach Mars, X-class flares | go / postpone advisory for the date |
+| Ground-level images | optical | Perseverance raw-image feed: 947 near-horizontal Navcam / Mastcam-Z frames from 97 rover positions in the site, with pointing | ground view at stops |
 | Sun, local solar time | — | Mars24 algorithm (NASA GISS) | light, shadow, darkness, mission clock |
 | EVA limits | — | NASA xEVA System ConOps: 20° slope, ~2 km/h, ≤ 8 h, ≤ 2 km | walls, speed, budget, radius |
 | Suit mass, carry limit, rover walkback | — | NASA Mars suit study — Ogilvie et al. (ICES 2026) | mission setup, GO checks |
+
+![CRISM minerals draped on the terrain: olivine in red, olivine + smectite in pink, high-Ca pyroxene in brown; the route card lists radiation dose, ground type and minerals crossed](docs/img/minerals.jpg)
+
+![Mission setup: Mars suit (104 kg) with 10 kg of equipment, 43 kg Earth-equivalent against the 45 kg limit; the pressurized rover parked at the start keeps the crew within a 30-minute walk](docs/img/mission.jpg)
 
 ## How a Marswalk is planned
 
@@ -92,7 +96,8 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 - The RAD dose rate was measured at Gale crater, about 1.8 km lower than Jezero; with less atmosphere above it, the real dose at Jezero is likely a little higher.
 - How slope changes suited walking speed is an assumption (Tobler shape). Time per stop, science-score weights, the 0.5 m rock-relief limit, the ±2-day SEP window and the 10 km/h rover speed are design choices, labelled as such in the app.
 - A 1 m DTM shows rocks of a few metres, not smaller ones. Jezero's landing area was chosen for being smooth, so on this site only a handful of cells exceed the 0.5 m rock-relief limit; the layer matters more on rougher terrain. CRISM mineral names are the closest match of each spectral class. Thermal-inertia classes are guidance.
-- Temperatures are a one-Mars-year climatology, not a forecast. DONKI covers past dates; for a future EVA the advisory says there is no data yet.
+- Temperatures are a one-Mars-year climatology, not a forecast. DONKI covers past dates and is queried live from api.nasa.gov with the public demo key (rate-limited); for a future EVA, or when the lookup fails, the advisory says there is no data.
+- Ground-view frame directions are mast azimuth + rover heading, accurate to a few degrees. Only the metadata is stored; the images load from mars.nasa.gov.
 
 ## Data & credits
 
@@ -103,7 +108,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 - Hueso, R., et al. (2024). *Derived environmental temperatures at Jezero crater from the Perseverance Air Temperature Sensors* (v2). Zenodo. [doi:10.5281/zenodo.11198655](https://doi.org/10.5281/zenodo.11198655) (CC BY 4.0)
 - Hassler, D. M., et al. (2014). *Mars' surface radiation environment measured with the Mars Science Laboratory's Curiosity rover.* Science 343, 1244797. [doi:10.1126/science.1244797](https://doi.org/10.1126/science.1244797)
 - NASA Community Coordinated Modeling Center. *DONKI — Space Weather Database Of Notifications, Knowledge, Information.* [kauai.ccmc.gsfc.nasa.gov/DONKI](https://kauai.ccmc.gsfc.nasa.gov/DONKI/)
-- NASA/JPL-Caltech. Mars 2020 Perseverance Navcam mosaics and rover waypoints (MMGIS).
+- NASA/JPL-Caltech. Mars 2020 Perseverance raw images (Navcam, Mastcam-Z) and rover waypoints (MMGIS).
 - Ogilvie, R., et al. (2026). *Mars Spacesuit Mass Requirements.* ICES-2026. [NASA NTRS 20260005410](https://ntrs.nasa.gov/citations/20260005410)
 - NASA-STD-3001 Volume 1, Rev B (2022): career effective dose limit 600 mSv.
 - Allison, M. & McEwen, M. (2000). Mars24 algorithm, NASA GISS. NASA EVA-EXP-0042 Rev B (2020), *Exploration EVA System ConOps*. NASA (2020), *EVA Lunar Surface ConOps*. Norcross, J., et al. (2009), NASA/TP-2009-214796. Tobler, W. (1993), NCGIA TR 93-1.
