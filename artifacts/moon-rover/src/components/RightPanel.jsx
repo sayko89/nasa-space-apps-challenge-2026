@@ -1,14 +1,17 @@
 /**
  * RightPanel — Mission Control
- * • Multi-waypoint management
- * • Route analysis (Risk%, Cost, descriptions)
- * • Illumination-aware sun dial
+ * • Multi-waypoint management, science EVA (DEM)
+ * • Route analysis (Marswalk GO/NO-GO in DEM mode; risk/cost on the Moon)
+ * • Mars time (DEM) / sun dial (Moon)
  * • 2D mini-map with zoom/pan/waypoints
- * • Heatmap viewer, AI Learning, Telemetry
+ * • Heatmap viewer, helmet / rover camera, telemetry, exports
  */
 
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
+import { PANEL_W, MAP_S, fs, UI_SCALE } from '../ui/layout';
+import { fmtHM, fmtSignedHM, fmtHourMin } from '../utils/format';
+import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend } from '../utils/heatmaps';
@@ -19,12 +22,14 @@ import { airTemp, diurnalCurve, K_TO_C } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
 
 const HALF = TERRAIN_SIZE / 2;
-const PW   = 218;  // panel width
-const MAP_S = 202; // mini-map px — fills panel width (218 - 8px×2 padding)
+const PW   = PANEL_W;   // panel width (src/ui/layout.js)
 
-const HEATMAP_OPTIONS = ['Elevation','Slope','Slope Angle','No-Go','EVA Range',
-  ...(SITE.geology ? GEOLOGY_LAYERS : []),
-  'Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
+// DEM: Mars layers only (rover-specific layers stay in the Moon mode)
+const HEATMAP_OPTIONS = IS_DEM
+  ? ['Elevation','Slope Angle','No-Go','EVA Range', ...(SITE.geology ? GEOLOGY_LAYERS : []), 'Illumination','Roughness']
+  : ['Elevation','Slope','Slope Angle','No-Go','EVA Range','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
+const HEATMAP_DEFAULT = IS_DEM ? (SITE.geology ? 'Geology: Surface' : 'Slope Angle') : 'Hazard Score';
+const CANVAS_FONT = (px, bold = false) => `${bold ? 'bold ' : ''}${fs(px)}px monospace`;
 const HM_COLORS = {
   'Elevation':'#e8a878','No-Go':'#ff4466','EVA Range':'#66ddff',
   'Slope':'#aaddaa','Slope Angle':'#88ccff','Roughness':'#ffcc88',
@@ -108,7 +113,7 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
         ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
         ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
         ctx.strokeStyle='#000';ctx.lineWidth=0.7;ctx.stroke();
-        ctx.fillStyle='#fff';ctx.font='bold 6.5px monospace';
+        ctx.fillStyle='#fff';ctx.font=CANVAS_FONT(6.5,true);
         const label=isStart?'S':isEnd?'E':`${i}`;
         ctx.fillText(label,x-(label.length>1?4:2.5),y+2.5);
       });
@@ -123,27 +128,28 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
       ctx.restore();
     }
 
-    // Rover arrow
+    // Rover arrow / crew marker. World heading h: forward = (sin h, cos h) in (x, z);
+    // map y grows with z, so the canvas rotation that turns "up" (0,-1) into it is π − h.
     if (roverPos) {
       const {x,y}=w2m(roverPos.x,roverPos.z,vx,vy,zoom);
-      ctx.save(); ctx.translate(x,y); ctx.rotate(roverPos.heading||0);
+      ctx.save(); ctx.translate(x,y); ctx.rotate(Math.PI-(roverPos.heading||0));
       ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(4,5.5);ctx.lineTo(0,3.5);ctx.lineTo(-4,5.5);ctx.closePath();
-      ctx.fillStyle='#FFD700';ctx.fill();ctx.strokeStyle='#806000';ctx.lineWidth=0.7;ctx.stroke();
+      ctx.fillStyle=IS_DEM?'#ffffff':'#FFD700';ctx.fill();ctx.strokeStyle=IS_DEM?'#c62828':'#806000';ctx.lineWidth=IS_DEM?1.2:0.7;ctx.stroke();
       ctx.restore();
     }
 
     // Pick hint
     if (pickMode) {
       ctx.fillStyle='rgba(0,0,0,0.40)';ctx.fillRect(0,H-18,W,18);
-      ctx.fillStyle='#88ffcc';ctx.font='7.5px monospace';
+      ctx.fillStyle='#88ffcc';ctx.font=CANVAS_FONT(7.5);
       ctx.fillText(` CLICK → ADD WAYPOINT ${waypoints?.length||0}+1`,4,H-6);
     }
 
     // Dust pick hint
     if (dustPickMode) {
       ctx.fillStyle='rgba(40,0,0,0.55)';ctx.fillRect(0,H-18,W,18);
-      ctx.fillStyle='#ffcc88';ctx.font='7.5px monospace';
-      ctx.fillText(' CLICK → PLACE DUST HAZARD',4,H-6);
+      ctx.fillStyle='#ffcc88';ctx.font=CANVAS_FONT(7.5);
+      ctx.fillText(IS_DEM ? ' CLICK → PLACE DUST DEVIL' : ' CLICK → PLACE DUST HAZARD',4,H-6);
     }
 
     // Dust cloud on minimap — soft multi-ring radial gradient
@@ -170,13 +176,13 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
       ctx.strokeStyle='rgba(220,160,60,0.7)';ctx.lineWidth=1.0;ctx.stroke();
       ctx.restore();
       // ☁ label
-      ctx.fillStyle='rgba(255,200,100,0.85)';ctx.font='bold 7px monospace';
-      ctx.fillText('☁ DUST',dcx+dr*1.4+2,dcy+3);
+      ctx.fillStyle='rgba(255,200,100,0.85)';ctx.font=CANVAS_FONT(7,true);
+      ctx.fillText(IS_DEM ? '☁ DUST DEVIL' : '☁ DUST',dcx+dr*1.4+2,dcy+3);
     }
 
     // Zoom badge
-    ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(W-32,3,29,13);
-    ctx.fillStyle='#88cc88';ctx.font='7px monospace';ctx.fillText(`${zoom.toFixed(1)}x`,W-28,12.5);
+    ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(W-36,3,33,15);
+    ctx.fillStyle='#88cc88';ctx.font=CANVAS_FONT(7);ctx.fillText(`${zoom.toFixed(1)}x`,W-32,14);
   }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode, ponr]);
 
   useEffect(() => { draw(); }, [draw]);
@@ -279,11 +285,11 @@ function SunDial({ angle, onChange }) {
 }
 
 // ---- Mars time (DEM): EVA start drives the Mars24 sun ----
-const fmtLtst = (h) => { const m = Math.round(h * 60) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
-const SEASONS_N = ['Kuzey ilkbaharı', 'Kuzey yazı', 'Kuzey sonbaharı', 'Kuzey kışı'];
-const COMPASS = ['K','KKD','KD','DKD','D','DGD','GD','GGD','G','GGB','GB','BGB','B','BKB','KB','KKB'];
+const fmtLtst = fmtHourMin;
+const SEASONS_N = ['Northern spring', 'Northern summer', 'Northern autumn', 'Northern winter'];
+const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 
-// Günlük sıcaklık eğrisi (MEDA ATS medyanı, p10–p90 bandı) + EVA başlangıç işareti
+// Diurnal air-temperature curve (MEDA ATS median, p10–p90 band) + EVA start marker
 function DiurnalTempChart({ bin, ltstH }) {
   const W = 200, H = 54, padL = 22, padB = 10, padT = 4;
   const n = bin.median.length;
@@ -320,41 +326,41 @@ function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
     const noonUtc = Date.parse(`${iso}T12:00:00Z`);
     if (Number.isFinite(noonUtc)) setEvaStartMs(msAtLtst(noonUtc, cur, lon));
   };
-  const row = { display: 'flex', justifyContent: 'space-between', fontSize: 7.5, color: 'rgba(160,200,160,0.8)', lineHeight: 1.6 };
+  const row = { display: 'flex', justifyContent: 'space-between', fontSize:fs(7.5), color: 'rgba(160,200,160,0.8)', lineHeight: 1.6 };
   const v = { color: '#e8e0c8' };
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
         <input type="date" value={utcDate} onChange={e => setDate(e.target.value)}
-          style={{ flex: 1, background: '#0a140a', color: '#aaffaa', border: '1px solid #234423', fontSize: 9, fontFamily: 'monospace', padding: '2px 4px' }} />
-        <span style={{ color: '#FFD700', fontSize: 13, fontWeight: 'bold' }}>{fmtLtst(cur)}</span>
+          style={{ flex: 1, background: '#0a140a', color: '#aaffaa', border: '1px solid #234423', fontSize:fs(9), fontFamily: 'monospace', padding: '2px 4px' }} />
+        <span style={{ color: '#FFD700', fontSize:fs(13), fontWeight: 'bold' }}>{fmtLtst(cur)}</span>
       </div>
       <input type="range" min={0} max={23.75} step={0.25} value={Math.round(cur * 4) / 4}
         onChange={e => setEvaStartMs(msAtLtst(evaStartMs, Number(e.target.value), lon))} style={{ width: '100%' }} />
-      <div style={{ color: '#554433', fontSize: 7, margin: '1px 0 4px' }}>EVA BAŞLANGICI — YEREL GERÇEK GÜNEŞ SAATİ (LTST)</div>
+      <div style={{ color: '#7a6a50', fontSize:fs(7), margin: '1px 0 4px' }}>EVA START — LOCAL TRUE SOLAR TIME (LTST)</div>
       <div style={row}><span>Sol (MSD)</span><span style={v}>{Math.floor(sun.msd)}</span></div>
-      <div style={row}><span>Mevsim</span><span style={v}>Ls {sun.ls.toFixed(1)}° · {SEASONS_N[Math.floor(sun.ls / 90) % 4]}</span></div>
-      <div style={row}><span>Güneş</span><span style={{ color: sun.elevationDeg > 0 ? '#FFD700' : '#8899cc' }}>
-        {sun.elevationDeg > 0 ? `${sun.elevationDeg.toFixed(1)}° yükseklik` : `ufkun ${(-sun.elevationDeg).toFixed(1)}° altında`}
+      <div style={row}><span>Season</span><span style={v}>Ls {sun.ls.toFixed(1)}° · {SEASONS_N[Math.floor(sun.ls / 90) % 4]}</span></div>
+      <div style={row}><span>Sun</span><span style={{ color: sun.elevationDeg > 0 ? '#FFD700' : '#8899cc' }}>
+        {sun.elevationDeg > 0 ? `${sun.elevationDeg.toFixed(1)}° high` : `${(-sun.elevationDeg).toFixed(1)}° below horizon`}
         {' · '}{COMPASS[Math.round(sun.azimuthDeg / 22.5) % 16]} {sun.azimuthDeg.toFixed(0)}°</span></div>
-      {ss && <div style={row}><span>Doğuş / batış</span><span style={v}>{fmtLtst(ss.riseLtst)} / {fmtLtst(ss.setLtst)} LTST</span></div>}
+      {ss && <div style={row}><span>Sunrise / sunset</span><span style={v}>{fmtLtst(ss.riseLtst)} / {fmtLtst(ss.setLtst)} LTST</span></div>}
       <div style={row}><span>UTC</span><span style={v}>{new Date(evaStartMs).toISOString().slice(0, 16).replace('T', ' ')}</span></div>
       {(() => {
         const a = airTemp(SITE.climate, sun.ls, cur);
         const bin = diurnalCurve(SITE.climate, sun.ls);
         if (!a || !bin) return SITE.climate ? null : (
-          <div style={{ color: '#4a6a4a', fontSize: 6.5, marginTop: 2 }}>Hava sıcaklığı: climate.json yok (python pipeline/build_climate.py)</div>
+          <div style={{ color: '#4a6a4a', fontSize:fs(6.5), marginTop: 2 }}>Air temperature: no climate.json (python pipeline/build_climate.py)</div>
         );
         return (
           <>
-            <div style={row}><span>Hava (1.45 m)</span><span style={{ color: '#ffcc88' }}>
+            <div style={row}><span>Air (1.45 m)</span><span style={{ color: '#ffcc88' }}>
               {K_TO_C(a.median).toFixed(0)} °C <span style={{ color: '#7a8a7a' }}>({K_TO_C(a.p10).toFixed(0)}…{K_TO_C(a.p90).toFixed(0)})</span></span></div>
             <DiurnalTempChart bin={bin} ltstH={cur} />
-            <div style={{ color: '#4a6a4a', fontSize: 6.5 }}>MEDA ATS, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sol · medyan, %10–90</div>
+            <div style={{ color: '#4a6a4a', fontSize:fs(6.5) }}>MEDA ATS, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sols · median, 10–90 %</div>
           </>
         );
       })()}
-      <div style={{ color: '#4a6a4a', fontSize: 6.5, marginTop: 2 }}>Mars24 (NASA GISS) · Allison &amp; McEwen 2000</div>
+      <div style={{ color: '#4a6a4a', fontSize:fs(6.5), marginTop: 2 }}>Mars24 (NASA GISS) · Allison &amp; McEwen 2000</div>
     </div>
   );
 }
@@ -368,54 +374,47 @@ const ROUTE_DESC = {
 };
 
 // ---- Marswalk (DEM) stats card body ----
-function fmtHM(sec) {
-  const m = Math.round(sec / 60);
-  return `${Math.floor(m / 60)} sa ${String(m % 60).padStart(2, '0')} dk`;
-}
-function fmtSignedHM(sec) {
-  return (sec < 0 ? '−' : '') + fmtHM(Math.abs(sec));
-}
 function MarswalkStats({ mode, s }) {
   const P = MARSWALK_PROFILE;
   const fail = (ok) => ok ? '#88dd99' : '#ff6655';
   return (
     <>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
-        <span style={{color:'rgba(160,200,160,0.8)',fontSize:7.5}}>
-          Gidiş <b style={{color:'#e8e0c8'}}>{fmtHM(s.walkTimeS)}</b>
-          {'  '}+ en hızlı dönüş <b style={{color:fail(s.checks.budget)}}>{fmtHM(s.returnTimeS)}</b>
+        <span style={{color:'rgba(160,200,160,0.8)',fontSize:fs(7.5)}}>
+          Walk <b style={{color:'#e8e0c8'}}>{fmtHM(s.walkTimeS)}</b>
+          {s.returnTimeS > 1 && <>{'  '}+ fastest return <b style={{color:fail(s.checks.budget)}}>{fmtHM(s.returnTimeS)}</b></>}
         </span>
         <span style={{
-          fontSize:7.5, fontWeight:'bold', padding:'1px 5px', borderRadius:3,
+          fontSize:fs(7.5), fontWeight:'bold', padding:'1px 5px', borderRadius:3,
           color: s.go ? '#0a1a0a' : '#fff', background: s.go ? '#44dd66' : '#cc3322',
         }}>{s.go ? 'GO' : 'NO-GO'}</span>
       </div>
-      <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55}}>
-        Toplam <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = bütçenin %{(s.budgetFrac*100).toFixed(0)}'i ({P.evaDurationH.value} sa)
-        {s.stopCount > 0 && <> · {s.stopCount} durakta {fmtHM(s.dwellTotalS)} örnekleme dahil</>}
+      <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55}}>
+        Total <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = {(s.budgetFrac*100).toFixed(0)}% of the {P.evaDurationH.value} h budget
+        {s.stopCount > 0 && <> · incl. {fmtHM(s.dwellTotalS)} sampling at {s.stopCount} stops</>}
         <br/>
-        Geri dönüş payı (en düşük): <span style={{color:fail(s.checks.budget)}}>{Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'eve yol yok'}</span>
-        {s.ponrIdx >= 0 && <span style={{color:'#ff6655'}}> · ⛔ dönüşü olmayan nokta: rotanın %{Math.round(s.ponrIdx / Math.max(1, s.marginS.length - 1) * 100)}'inde</span>}
+        Walk-back margin (min): <span style={{color:fail(s.checks.budget)}}>{Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'no path home'}</span>
+        {s.ponrIdx >= 0 && <span style={{color:'#ff6655'}}> · ⛔ point of no return at {Math.round(s.ponrIdx / Math.max(1, s.marginS.length - 1) * 100)}% of the route</span>}
         <br/>
-        Maks. eğim: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {P.maxWalkableSlopeDeg.value}°
+        Max slope: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {P.maxWalkableSlopeDeg.value}°
         <br/>
-        Dik zemin (&gt;{s.steepDeg.toFixed(0)}°): <span style={{color:'#e8c890'}}>%{(s.steepFrac*100).toFixed(0)}</span>
-        {' · '}Tırmanış {s.climbM.toFixed(0)} m · İniş {s.descentM.toFixed(0)} m
-        {' · '}Başlangıca uzaklık <span style={{color:fail(s.checks.radial)}}>{(s.maxRadialM/1000).toFixed(2)}</span> / {P.maxRadialDistanceKm.value} km
+        Steep ground (&gt;{s.steepDeg.toFixed(0)}°): <span style={{color:'#e8c890'}}>{(s.steepFrac*100).toFixed(0)}%</span>
+        {' · '}Climb {s.climbM.toFixed(0)} m · Descent {s.descentM.toFixed(0)} m
+        {' · '}Max distance from start <span style={{color:fail(s.checks.radial)}}>{(s.maxRadialM/1000).toFixed(2)}</span> / {P.maxRadialDistanceKm.value} km
       </div>
       {s.light && (
-        <div style={{color:'rgba(160,200,160,0.7)',fontSize:7,lineHeight:1.55,marginTop:1}}>
-          Işık (gidiş): gölgede <span style={{color:'#e8c890'}}>%{(s.light.shadowFrac*100).toFixed(0)}</span>
-          {s.light.darkFrac > 0 && <> · <span style={{color:'#8899cc'}}>karanlıkta %{(s.light.darkFrac*100).toFixed(0)}</span></>}
-          {' · '}{s.light.homeBySunset === null ? 'gün doğumu/batımı yok'
-            : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>gün batımından önce evde</span>
-            : <span style={{color:'#ffaa55'}}>⚠ gün ışığında tamamlanmıyor</span>}
-          {s.light.air && <><br/>Hava (1.45 m, EVA boyunca): <span style={{color:'#ffcc88'}}>
+        <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55,marginTop:1}}>
+          Light (walking): in terrain shadow <span style={{color:'#e8c890'}}>{(s.light.shadowFrac*100).toFixed(0)}%</span>
+          {s.light.darkFrac > 0 && <> · <span style={{color:'#8899cc'}}>in darkness {(s.light.darkFrac*100).toFixed(0)}%</span></>}
+          {' · '}{s.light.homeBySunset === null ? 'no sunrise/sunset'
+            : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>home before sunset</span>
+            : <span style={{color:'#ffaa55'}}>⚠ not completed in daylight</span>}
+          {s.light.air && <><br/>Air (1.45 m, during the EVA): <span style={{color:'#ffcc88'}}>
             {K_TO_C(s.light.air.minMedian).toFixed(0)}…{K_TO_C(s.light.air.maxMedian).toFixed(0)} °C</span>
-            {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (uç: {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
+            {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (extremes {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
         </div>
       )}
-      <div style={{color:'rgba(100,150,100,0.75)',fontSize:7,marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
+      <div style={{color:'rgba(100,150,100,0.75)',fontSize:fs(7),marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
     </>
   );
 }
@@ -424,35 +423,35 @@ function MarswalkStats({ mode, s }) {
 function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }) {
   return (
     <>
-      <div style={{display:'flex',alignItems:'center',gap:5,fontSize:7.5,color:'#9ab89a',marginBottom:4}}>
-        <span>Durak süresi</span>
+      <div style={{display:'flex',alignItems:'center',gap:5,fontSize:fs(7.5),color:'#9ab89a',marginBottom:4}}>
+        <span>Time per stop</span>
         <input type="range" min={5} max={60} step={5} value={dwellMin}
           onChange={e=>setDwellMin(Number(e.target.value))} style={{flex:1}}/>
-        <b style={{color:'#e8e0c8',width:34,textAlign:'right'}}>{dwellMin} dk</b>
+        <b style={{color:'#e8e0c8',width:44,textAlign:'right'}}>{dwellMin} min</b>
       </div>
-      <div style={{fontSize:6.5,color:'#7a6a4a',marginBottom:4}}>
-        Varsayım: kaynaklı durak süresi bulunamadı. Puan = farklı birim çeşitliliği
-        (ana kaya {SCIENCE_PARAMS.weights.bedrock}, yüzey {SCIENCE_PARAMS.weights.surface}, kontak {SCIENCE_PARAMS.weights.contact}) — tasarım tercihi.
+      <div style={{fontSize:fs(6.5),color:'#7a6a4a',marginBottom:4}}>
+        Assumption: no sourced time per stop was found. Score = diversity of distinct units
+        (bedrock {SCIENCE_PARAMS.weights.bedrock}, surface {SCIENCE_PARAMS.weights.surface}, contact {SCIENCE_PARAMS.weights.contact}) — a design choice.
       </div>
       <Btn disabled={busy || disabled} onClick={onPlan}
         style={{width:'100%',background:'rgba(70,40,0,0.55)',borderColor:'rgba(230,150,60,0.6)',color:'#ffbb66',fontWeight:'bold'}}>
         {busy ? 'SEARCHING…' : 'PLAN SCIENCE EVA'}
       </Btn>
       {science && (
-        <div style={{marginTop:5,fontSize:7.5,lineHeight:1.5,color:'#b8c8b0'}}>
+        <div style={{marginTop:5,fontSize:fs(7.5),lineHeight:1.5,color:'#b8c8b0'}}>
           <div>
-            {science.stops.length} durak / {science.candidates.length} aday ·
-            {' '}puan <b style={{color:'#ffcc66'}}>{science.score}</b>/{science.maxScore}
+            {science.stops.length} stops / {science.candidates.length} candidates ·
+            {' '}score <b style={{color:'#ffcc66'}}>{science.score}</b>/{science.maxScore}
             {' '}· plan {fmtHM(science.totalS)}
           </div>
           <ol style={{margin:'3px 0 0',paddingLeft:14,color:'#e0d0b0'}}>
             {science.stops.map((st, i) => (
-              <li key={i} title={st.tags.join('\n')}>{st.label}</li>
+              <li key={i} title={st.tags.join('\n')}><b style={{color:'#ffb347'}}>S{i + 1}</b> {st.label}</li>
             ))}
           </ol>
           {science.candidates.length > science.stops.length && (
             <div style={{color:'#7a8a7a',marginTop:2}}>
-              Elenen: {science.candidates.filter(c => !science.stops.some(st => st.idx === c.idx)).map(c => c.label).join('; ')}
+              Not chosen: {science.candidates.filter(c => !science.stops.some(st => st.idx === c.idx)).map(c => c.label).join('; ')}
             </div>
           )}
         </div>
@@ -463,7 +462,7 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
 
 function RouteAnalysis({ routes, activeRoute, onSelect }) {
   if (!routes) return (
-    <div style={{fontSize:8,color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
+    <div style={{fontSize:fs(8),color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
       Plan a path to see route analysis.
     </div>
   );
@@ -486,18 +485,18 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3}}>
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <div style={{width:7,height:7,borderRadius:'50%',background:color,boxShadow:`0 0 4px ${color}`}}/>
-                <span style={{color,fontSize:9,fontWeight:'bold',letterSpacing:0.5}}>{mode}</span>
+                <span style={{color,fontSize:fs(9),fontWeight:'bold',letterSpacing:0.5}}>{mode}</span>
               </div>
-              {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:8}}>{s.distance.toFixed(1)}m</span>}
+              {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:fs(8)}}>{s.distance.toFixed(1)}m</span>}
             </div>
             {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} />}
             {s && s.walkTimeS === undefined && (
               <>
-                <div style={{color:'rgba(160,200,160,0.7)',fontSize:7.5,marginBottom:2}}>
+                <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7.5),marginBottom:2}}>
                   Risk: <span style={{color:'#ffcc44'}}>{s.riskPercent.toFixed(1)}%</span>
                   {'  '}Cost: <span style={{color:'#88ccff'}}>{s.totalCost.toFixed(1)}</span>
                 </div>
-                <div style={{color:'rgba(100,150,100,0.75)',fontSize:7,lineHeight:1.5}}>
+                <div style={{color:'rgba(100,150,100,0.75)',fontSize:fs(7),lineHeight:1.5}}>
                   {ROUTE_DESC[mode]?.(s)}
                 </div>
               </>
@@ -510,9 +509,12 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
 }
 
 // ---- Heatmap ----
-function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
+function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drape = null, onDrape = null,
+  drapeOpacity = 0.6, setDrapeOpacity = () => {} }) {
   const ref=useRef(null);
-  const [sel,setSel]=useState('Hazard Score');
+  const [sel,setSel]=useState(HEATMAP_DEFAULT);
+  // keep the 3D drape on the selected layer
+  useEffect(() => { if (drape && drape !== sel) onDrape?.(sel); }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
   const [open,setOpen]=useState(false);
   const [tick,setTick]=useState(0);
   // Experience map is mutated in place (same array reference), so it needs a
@@ -526,15 +528,15 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
     if (!ref.current) return;
     const experienceMap = sel === 'Experience' ? learningModel?.getExperienceMap?.() : undefined;
     generateHeatmapCanvas(ref.current,sel,sunAngle,experienceMap,sunElevation);
-  }, [sel,sunAngle,sunElevation,tick,learningModel]);
+  }, [sel,sunAngle,sunElevation,tick,learningModel,refreshKey]);
   return (
     <div>
-      <Label>Parameter Heatmap</Label>
+      <Label>{IS_DEM ? 'Map Layers' : 'Parameter Heatmap'}</Label>
       <div style={{position:'relative',marginTop:4,marginBottom:5}}>
         <div onClick={()=>setOpen(o=>!o)} style={{
           background:'rgba(18,36,18,0.7)',border:'1px solid rgba(60,100,60,0.5)',
           borderRadius:3,padding:'3px 7px',cursor:'pointer',fontFamily:'monospace',
-          display:'flex',justifyContent:'space-between',fontSize:9,color:HM_COLORS[sel]||'#aaa',
+          display:'flex',justifyContent:'space-between',fontSize:fs(9),color:HM_COLORS[sel]||'#aaa',
         }}>
           {sel}<span style={{color:'#558855'}}>▼</span>
         </div>
@@ -543,7 +545,7 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
             background:'rgba(6,16,6,0.97)',border:'1px solid rgba(60,100,60,0.5)',borderRadius:3,overflow:'hidden'}}>
             {HEATMAP_OPTIONS.map(o=>(
               <div key={o} onClick={()=>{setSel(o);setOpen(false);}}
-                style={{padding:'4px 7px',fontSize:9,cursor:'pointer',fontFamily:'monospace',
+                style={{padding:'4px 7px',fontSize:fs(9),cursor:'pointer',fontFamily:'monospace',
                   color:HM_COLORS[o]||'#aaa',background:o===sel?'rgba(40,80,40,0.5)':'transparent'}}
                 onMouseEnter={e=>e.currentTarget.style.background='rgba(30,60,30,0.6)'}
                 onMouseLeave={e=>e.currentTarget.style.background=o===sel?'rgba(40,80,40,0.5)':'transparent'}
@@ -555,7 +557,7 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
       <canvas ref={ref} width={MAP_S} height={MAP_S}
         style={{width:MAP_S,height:MAP_S,display:'block',borderRadius:3,border:'1px solid rgba(80,120,60,0.3)'}}/>
       {geologyLegend(sel) ? (
-        <div style={{fontSize:7,color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
+        <div style={{fontSize:fs(7),color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
           {geologyLegend(sel).map(e => (
             <div key={e.name} style={{display:'flex',alignItems:'center',gap:4}}>
               <span style={{width:7,height:7,background:e.color,display:'inline-block',flexShrink:0}}/>
@@ -565,15 +567,28 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel }) {
           <div style={{color:'#6a7a6a'}}>Stack et al. 2020 (CC BY 4.0)</div>
         </div>
       ) : (
-      <div style={{display:'flex',justifyContent:'space-between',fontSize:7,color:'#558855',marginTop:2}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:fs(7),color:'#558855',marginTop:2}}>
         <span>LOW</span><span style={{color:HM_COLORS[sel]}}>{sel.toUpperCase()}</span><span>HIGH</span>
       </div>
+      )}
+      {IS_DEM && onDrape && (
+        <div style={{display:'flex',alignItems:'center',gap:5,marginTop:5}}>
+          <Btn active={!!drape} color="#ffbb66" onClick={() => onDrape(drape ? null : sel)}
+            style={{flex:'none',padding:'3px 7px'}}>
+            {drape ? '⛰ ON 3D TERRAIN ✓' : '⛰ DRAPE ON 3D TERRAIN'}
+          </Btn>
+          {drape && (
+            <input type="range" min={0.2} max={0.95} step={0.05} value={drapeOpacity} title="Layer opacity"
+              onChange={e => setDrapeOpacity(Number(e.target.value))} style={{flex:1}} />
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-// ---- Image Processing Preview (Rover Camera 3D) ----
+// ---- Image Processing Preview (Rover camera 3D / DEM: EV1 helmet camera) ----
+const CAM_H = Math.round(126 * UI_SCALE);
 function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, signalLost, signalQuality }) {
   const ref = useRef(null);
 
@@ -596,7 +611,7 @@ function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, signalLost
     const grid = sizeFrom(hMap) || sizeFrom(slopeMap) || sizeFrom(craterMask);
     if (!grid) {
       ctx.fillStyle = '#557755';
-      ctx.font = '8px monospace';
+      ctx.font = CANVAS_FONT(8);
       ctx.fillText('camera feed unavailable', 8, 16);
       return;
     }
@@ -634,18 +649,19 @@ function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, signalLost
     const rx = Math.cos(heading);
     const rz = -Math.sin(heading);
 
-    // Mount camera slightly toward rover nose so view feels like true front cam.
-    const camForwardOffset = 0.75;
+    // Mount camera slightly toward rover nose so view feels like true front cam
+    // (DEM: helmet camera at eye height).
+    const camForwardOffset = IS_DEM ? 0.2 : 0.75;
     const camX = (roverPos?.x ?? 0) + fx * camForwardOffset;
     const camZ = (roverPos?.z ?? 0) + fz * camForwardOffset;
 
     const camGround = sample(hMap, camX, camZ, 0);
-    const camY = camGround + 1.28;
-    const horizon = 60;
+    const camY = camGround + (IS_DEM ? 1.7 : 1.28);
+    const horizon = Math.round(H * 0.48);
     const fov = 95 * Math.PI / 180;
     const near = 1.2;
-    const far = 44;
-    const stepD = 0.48;
+    const far = IS_DEM ? 160 : 44;
+    const stepD = IS_DEM ? 1.2 : 0.48;
 
     const yBuffer = new Float32Array(W);
     yBuffer.fill(H);
@@ -667,7 +683,7 @@ function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, signalLost
         const crater = Math.max(0, Math.min(1, sample(craterMask, wx, wz, 0)));
         const edge = craterEdge(wx, wz);
 
-        const sy = horizon - ((h - camY) * 65) / Math.max(1.0, d);
+        const sy = horizon - ((h - camY) * 65 * UI_SCALE) / Math.max(1.0, d);
         if (sy >= yBuffer[sx]) continue;
 
         const hazard = Math.max(crater, slope * 0.66);
@@ -703,8 +719,8 @@ function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, signalLost
     ctx.moveTo(W / 2, H / 2 - 8);  ctx.lineTo(W / 2, H / 2 + 8);
     ctx.stroke();
     ctx.fillStyle = '#76d476';
-    ctx.font = '7px monospace';
-    ctx.fillText('EDGE DETECT: CRATER RIMS', 6, 10);
+    ctx.font = CANVAS_FONT(7);
+    ctx.fillText(IS_DEM ? 'SLOPE HAZARD VIEW' : 'EDGE DETECT: CRATER RIMS', 6, fs(10));
 
     // Subtle scan-lines for a terminal style readout.
     ctx.strokeStyle = 'rgba(120,180,120,0.08)';
@@ -753,39 +769,41 @@ function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, signalLost
       ctx.fillRect(0, 0, W, H);
       ctx.strokeStyle = 'rgba(255,90,90,0.68)';
       ctx.strokeRect(1, 1, W - 2, H - 2);
+      ctx.textAlign = 'center';
       ctx.fillStyle = '#ff7755';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText('OPTICAL SENSOR FAILURE', 18, H / 2 - 10);
+      ctx.font = CANVAS_FONT(11, true);
+      ctx.fillText('OPTICAL SENSOR FAILURE', W / 2, H / 2 - 10);
       ctx.fillStyle = '#ffb48a';
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText('SIGNAL LOST', 61, H / 2 + 8);
+      ctx.font = CANVAS_FONT(10, true);
+      ctx.fillText('SIGNAL LOST', W / 2, H / 2 + 8);
       ctx.fillStyle = '#ffd8b4';
-      ctx.font = '7px monospace';
-      ctx.fillText('NO SIGNAL - DUST INTERFERENCE', 34, H / 2 + 22);
+      ctx.font = CANVAS_FONT(7);
+      ctx.fillText('NO SIGNAL - DUST INTERFERENCE', W / 2, H / 2 + 22);
+      ctx.textAlign = 'start';
     }
   }, [slopeMap, craterMask, hMap, roverPos?.x, roverPos?.z, roverPos?.heading, signalLost, signalQuality]);
 
   return (
     <div>
-      <Label>Rover Front Camera (3D)</Label>
+      <Label>{IS_DEM ? 'EV1 Helmet Camera (slope hazard view)' : 'Rover Front Camera (3D)'}</Label>
       <div style={{ marginTop: 4 }}>
         <canvas
           ref={ref}
           width={MAP_S}
-          height={126}
+          height={CAM_H}
           style={{
             width: MAP_S,
-            height: 126,
+            height: CAM_H,
             display: 'block',
             borderRadius: 3,
             border: '1px solid rgba(80,120,60,0.3)',
             background: 'rgba(7,14,8,0.85)',
           }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7, color: '#557755', marginTop: 2 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize:fs(7), color: '#557755', marginTop: 2 }}>
           <span style={{ color: signalLost ? '#ff7755' : '#66cc66' }}>{signalLost ? 'NO SIGNAL' : 'SAFE'}</span>
-          <span style={{ color: signalLost ? '#ff9966' : '#8cd08c' }}>FRONT CAM + EDGE DETECT</span>
-          <span style={{ color: '#ff6644' }}>RIM / HAZARD</span>
+          <span style={{ color: signalLost ? '#ff9966' : '#8cd08c' }}>{IS_DEM ? 'HELMET CAM' : 'FRONT CAM + EDGE DETECT'}</span>
+          <span style={{ color: '#ff6644' }}>{IS_DEM ? 'STEEP' : 'RIM / HAZARD'}</span>
         </div>
       </div>
     </div>
@@ -805,7 +823,7 @@ function exportPNG() {
   const canvas = document.querySelector('canvas');
   if (!canvas) return false;
   canvas.toBlob(blob => {
-    if (blob) downloadBlob(blob, `moon_rover_${Date.now()}.png`);
+    if (blob) downloadBlob(blob, `${IS_DEM ? 'martian_map' : 'moon_rover'}_${Date.now()}.png`);
   }, 'image/png');
   return true;
 }
@@ -813,10 +831,13 @@ function exportPNG() {
 function exportJSON(waypoints, routes, activeRoute, sunAngleDeg) {
   const payload = {
     version: 1,
+    app: IS_DEM ? 'Martian Map' : 'Moon Rover',
+    site: IS_DEM ? { name: SITE.name, center: SITE.meta?.center } : null,
     timestamp: new Date().toISOString(),
     sunAngleDeg,
     activeRoute,
-    waypoints: waypoints.map(w => ({ x: +w.x.toFixed(2), z: +w.z.toFixed(2) })),
+    waypoints: waypoints.map(w => ({ x: +w.x.toFixed(2), z: +w.z.toFixed(2),
+      ...(w.dwellS ? { dwellS: w.dwellS, label: w.label } : {}) })),
     routes: routes
       ? Object.fromEntries(Object.entries(routes).map(([mode, r]) => [mode, {
           stats: r.stats,
@@ -824,8 +845,10 @@ function exportJSON(waypoints, routes, activeRoute, sunAngleDeg) {
         }]))
       : null,
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  downloadBlob(blob, `moon_rover_route_${Date.now()}.json`);
+  // typed arrays (elapsedS, marginS) → plain arrays
+  const json = JSON.stringify(payload, (k, v) => (ArrayBuffer.isView(v) ? Array.from(v, x => +x.toFixed(2)) : v), 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  downloadBlob(blob, `${IS_DEM ? 'martian_map_route' : 'moon_rover_route'}_${Date.now()}.json`);
 }
 
 function buildShareURL(waypoints, activeRoute, sunAngleDeg) {
@@ -852,6 +875,8 @@ export default function RightPanel({
   cameraMode, setCameraMode,
   wireframe, setWireframe,
   onStartRover, onStopRover, isRoving,
+  evaStatus = 'idle', onAbortEva = () => {}, onPauseEva = null,
+  drapeLayer = null, setDrapeLayer = null, drapeOpacity = 0.6, setDrapeOpacity = () => {},
   slopeMap, craterMask, hMap,
   learningModel, routeLog, showToast,
   dustMode, dustHazard, cameraSignalLost, cameraSignalQuality, onTriggerDustHazard, onDustPlaced, onClearDustHazard,
@@ -892,8 +917,8 @@ export default function RightPanel({
       {/* Header */}
       <div style={{padding:'7px 10px 5px',borderBottom:'1px solid rgba(35,70,35,0.4)',
         background:'rgba(0,14,0,0.7)',flexShrink:0}}>
-        <div style={{color:'#3dff55',fontSize:10,fontWeight:'bold',letterSpacing:2}}>{IS_DEM ? 'MARTIAN MAP' : 'MOON ROVER SIM'}</div>
-        <div style={{color:'#245524',fontSize:7,letterSpacing:1}}>{IS_DEM ? 'MARSWALK PLANNER' : 'MISSION CONTROL TERMINAL'}</div>
+        <div style={{color:'#3dff55',fontSize:fs(10),fontWeight:'bold',letterSpacing:2}}>{IS_DEM ? 'MARTIAN MAP' : 'MOON ROVER SIM'}</div>
+        <div style={{color:'#245524',fontSize:fs(7),letterSpacing:1}}>{IS_DEM ? 'MARSWALK PLANNER' : 'MISSION CONTROL TERMINAL'}</div>
       </div>
 
       <div style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
@@ -902,7 +927,7 @@ export default function RightPanel({
         <div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3}}>
             <Label>TOPOGRAPHIC MAP</Label>
-            <span style={{fontSize:7,color: dustPickMode?'#ffcc88':'#4a884a'}}>
+            <span style={{fontSize:fs(7),color: dustPickMode?'#ffcc88':'#4a884a'}}>
               {dustPickMode ? '☁ CLICK TO PLACE DUST' : pickMode ? '▶ CLICK TO PLACE WP' : 'SCROLL=ZOOM · DRAG=PAN'}
             </span>
           </div>
@@ -918,7 +943,7 @@ export default function RightPanel({
             dustPickMode={dustPickMode}
             onDustPlace={onDustPlaced}
           />
-          <div style={{fontSize:7,color:'#3a5a3a',marginTop:3,display:'flex',gap:4,justifyContent:'space-between'}}>
+          <div style={{fontSize:fs(7),color:'#3a5a3a',marginTop:3,display:'flex',gap:4,justifyContent:'space-between'}}>
             <span style={{color:startPos?'#22ff66':'#2a4a2a'}}>
               S: {startPos?`${startPos.x.toFixed(0)},${startPos.z.toFixed(0)}`:'--'}
             </span>
@@ -941,7 +966,7 @@ export default function RightPanel({
         <Sect label={`Waypoints (${waypoints.length})`}>
           {/* Waypoint list */}
           {waypoints.length > 0 && (
-            <div style={{marginBottom:5,maxHeight:58,overflowY:'auto',fontSize:8,fontFamily:'monospace',
+            <div style={{marginBottom:5,maxHeight:Math.round(58*UI_SCALE),overflowY:'auto',fontSize:fs(8),fontFamily:'monospace',
               background:'rgba(0,12,0,0.4)',borderRadius:3,padding:'3px 5px'}}>
               {waypoints.map((wp,i) => (
                 <div key={i} style={{display:'flex',alignItems:'center',gap:4,marginBottom:1}}>
@@ -990,10 +1015,10 @@ export default function RightPanel({
           <div style={{display:'flex',gap:7,alignItems:'center'}}>
             <SunDial angle={sunAngleDeg} onChange={setSunAngleDeg}/>
             <div style={{flex:1}}>
-              <div style={{color:'#FFD700',fontSize:14,fontWeight:'bold',marginBottom:3}}>{sunAngleDeg}°</div>
+              <div style={{color:'#FFD700',fontSize:fs(14),fontWeight:'bold',marginBottom:3}}>{sunAngleDeg}°</div>
               <input type="range" min={0} max={359} value={sunAngleDeg}
                 onChange={e=>setSunAngleDeg(Number(e.target.value))} style={{width:'100%'}}/>
-              <div style={{color:'#554433',fontSize:7,marginTop:2}}>
+              <div style={{color:'#554433',fontSize:fs(7),marginTop:2}}>
                 {['N','NE','E','SE','S','SW','W','NW','N'][Math.round(sunAngleDeg/45)%8]} — PATH FAVORS LIT ZONES
               </div>
             </div>
@@ -1002,14 +1027,14 @@ export default function RightPanel({
         )}
 
         {/* Route selector + start */}
-        <Sect label="Select Route">
+        <Sect label={IS_DEM ? 'Route & EVA' : 'Select Route'}>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,marginBottom:5}}>
             {Object.entries(ROUTE_COLORS)
               .filter(([mode]) => mode !== 'HOME_RETURN')
               .map(([mode,color])=>(
               <div key={mode} onClick={()=>setActiveRoute(mode)} style={{
                 padding:'5px 3px',textAlign:'center',cursor:'pointer',borderRadius:3,
-                fontSize:9,fontWeight:'bold',
+                fontSize:fs(9),fontWeight:'bold',
                 border:`1px solid ${activeRoute===mode?color:'rgba(40,70,40,0.35)'}`,
                 color:activeRoute===mode?color:'#446644',
                 background:activeRoute===mode?'rgba(0,0,0,0.5)':'rgba(6,12,6,0.35)',
@@ -1022,52 +1047,72 @@ export default function RightPanel({
               </div>
             ))}
           </div>
+          {IS_DEM ? (
+            <>
+              <Btn onClick={evaStatus==='playing' ? onPauseEva : onStartRover}
+                disabled={!routes||!routes[activeRoute]}
+                style={{width:'100%',padding:'7px 0',
+                  background:evaStatus==='playing'?'rgba(60,40,0,0.6)':'rgba(0,65,0,0.6)',
+                  border:`1px solid ${evaStatus==='playing'?'rgba(220,170,40,0.6)':'rgba(40,180,40,0.6)'}`,
+                  color:evaStatus==='playing'?'#ffd166':'#44ff88',fontSize:fs(10),fontWeight:'bold',letterSpacing:1}}>
+                {evaStatus==='playing' ? '❚❚  PAUSE EVA' : evaStatus==='paused' ? '▶  RESUME EVA'
+                  : evaStatus==='done' ? '↻  REPLAY EVA' : '▶  START EVA'}
+              </Btn>
+              {evaStatus !== 'idle' && (
+                <Row style={{marginTop:4}}>
+                  <Btn onClick={onAbortEva} color="#ff8a3a" disabled={evaStatus==='done' || evaStatus==='ready'}>⏏ ABORT EVA</Btn>
+                  <Btn onClick={onStopRover}>✕ CLOSE</Btn>
+                </Row>
+              )}
+            </>
+          ) : (
           <Btn onClick={isRoving?onStopRover:onStartRover}
             disabled={!routes||!routes[activeRoute]}
             style={{width:'100%',padding:'7px 0',
               background:isRoving?'rgba(65,0,0,0.6)':'rgba(0,65,0,0.6)',
               border:`1px solid ${isRoving?'rgba(180,40,40,0.6)':'rgba(40,180,40,0.6)'}`,
-              color:isRoving?'#ff5533':'#44ff88',fontSize:10,fontWeight:'bold',letterSpacing:1}}>
+              color:isRoving?'#ff5533':'#44ff88',fontSize:fs(10),fontWeight:'bold',letterSpacing:1}}>
             {isRoving?'■  STOP ROVER':'▶  START ROVER'}
           </Btn>
+          )}
         </Sect>
 
-        {/* ── Hazard Control ── */}
-        <Sect label="Hazard Control">
+        {/* ── Hazard Control (DEM: contingency) ── */}
+        <Sect label={IS_DEM ? 'Contingency' : 'Hazard Control'}>
           {/* Status banner */}
           {dustMode === DUST_STATES.INTERFERENCE && (
-            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:8,fontFamily:'monospace',
+            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:fs(8),fontFamily:'monospace',
               background:'rgba(60,20,0,0.7)',border:'1px solid rgba(255,120,0,0.6)',color:'#ffcc66',
               letterSpacing:0.4}}>
               ⚠ DUST INTERFERENCE DETECTED
             </div>
           )}
           {dustMode === DUST_STATES.SIGNAL_LOST && (
-            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:8,fontFamily:'monospace',
+            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:fs(8),fontFamily:'monospace',
               background:'rgba(65,0,0,0.72)',border:'1px solid rgba(255,80,80,0.68)',color:'#ff8a66',
               letterSpacing:0.4}}>
               ✖ SIGNAL LOST / OPTICAL SENSOR FAILURE
             </div>
           )}
           {dustMode === DUST_STATES.RETURN_HOME && (
-            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:8,fontFamily:'monospace',
+            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:fs(8),fontFamily:'monospace',
               background:'rgba(40,10,0,0.7)',border:'1px solid rgba(255,80,0,0.5)',color:'#ff9955',
               letterSpacing:0.4,animation:'slideDown 0.25s ease'}}>
-              ↩ RETURNING TO HOME BASE
+              {IS_DEM ? '↩ EVA ABORTED — CREW RETURNING TO THE HABITAT' : '↩ RETURNING TO HOME BASE'}
             </div>
           )}
           {dustMode === DUST_STATES.PRESENT && (
-            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:8,fontFamily:'monospace',
+            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:fs(8),fontFamily:'monospace',
               background:'rgba(24,24,24,0.62)',border:'1px solid rgba(150,150,150,0.45)',color:'#c9c9c9',
               letterSpacing:0.4}}>
-              ☁ DUST PRESENT - CONTINUOUS MONITORING
+              {IS_DEM ? '☁ DUST DEVIL — ROUTE LOOK-AHEAD ACTIVE' : '☁ DUST PRESENT - CONTINUOUS MONITORING'}
             </div>
           )}
           {dustMode === DUST_STATES.STOPPED && (
-            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:8,fontFamily:'monospace',
+            <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:fs(8),fontFamily:'monospace',
               background:'rgba(0,30,0,0.7)',border:'1px solid rgba(60,180,60,0.5)',color:'#88ffaa',
               letterSpacing:0.4}}>
-              ✓ Rover stopped safely.
+              {IS_DEM ? '✓ Crew safe at the habitat.' : '✓ Rover stopped safely.'}
             </div>
           )}
 
@@ -1078,7 +1123,7 @@ export default function RightPanel({
               drive is auto-triggered later, once the placed hazard causes
               sensor interference (see startReturnToHome() in App.jsx). */}
           <button onClick={onTriggerDustHazard} style={{
-            width:'100%',padding:'6px 0',fontSize:9,fontFamily:'monospace',fontWeight:'bold',
+            width:'100%',padding:'6px 0',fontSize:fs(9),fontFamily:'monospace',fontWeight:'bold',
             letterSpacing:0.7,cursor:'pointer',borderRadius:3,marginBottom:4,
             background: dustPickMode
               ? 'rgba(80,40,0,0.7)'
@@ -1090,25 +1135,32 @@ export default function RightPanel({
             display:'flex',alignItems:'center',justifyContent:'center',gap:5,
             boxShadow: dustPickMode ? '0 0 8px rgba(255,140,0,0.4)' : 'none',
           }}>
-            <span style={{fontSize:11}}>☁</span>
-            {dustPickMode ? '● PLACING DUST… (CANCEL)' : '☁ SIMULATE DUST HAZARD'}
+            <span style={{fontSize:fs(11)}}>☁</span>
+            {dustPickMode ? (IS_DEM ? '● PLACING DUST DEVIL… (CANCEL)' : '● PLACING DUST… (CANCEL)')
+              : (IS_DEM ? 'SIMULATE DUST DEVIL' : 'SIMULATE DUST HAZARD')}
           </button>
 
           {dustHazard && (
-            <div style={{fontSize:7,fontFamily:'monospace',color:'#b5b5b5',marginBottom:3}}>
-              CAM SIGNAL: <span style={{color:cameraSignalLost ? '#ff6655' : '#aaffaa'}}>{cameraSignalLost ? 'LOST' : `${Math.round((cameraSignalQuality ?? 1) * 100)}%`}</span>
+            <div style={{fontSize:fs(7),fontFamily:'monospace',color:'#b5b5b5',marginBottom:3}}>
+              {IS_DEM ? 'HELMET CAM SIGNAL' : 'CAM SIGNAL'}: <span style={{color:cameraSignalLost ? '#ff6655' : '#aaffaa'}}>{cameraSignalLost ? 'LOST' : `${Math.round((cameraSignalQuality ?? 1) * 100)}%`}</span>
             </div>
           )}
 
           {/* Dust hazard info + clear button */}
+          {IS_DEM && (
+            <div style={{fontSize:fs(6.5),color:'#7a6a4a',marginBottom:4,lineHeight:1.4}}>
+              A dust devil that lies on the route within the next {Math.round(600/60)} min of walking
+              aborts the EVA; the crew walks home on the fastest path. Radius is illustrative.
+            </div>
+          )}
           {dustHazard && (
             <div style={{display:'flex',alignItems:'center',gap:3}}>
-              <div style={{flex:1,fontSize:7,fontFamily:'monospace',color:'rgba(200,160,100,0.8)',
+              <div style={{flex:1,fontSize:fs(7),fontFamily:'monospace',color:'rgba(200,160,100,0.8)',
                 background:'rgba(40,20,0,0.4)',borderRadius:3,padding:'3px 5px'}}>
                 ☁ ({dustHazard.x.toFixed(0)},{dustHazard.z.toFixed(0)}) r={dustHazard.radius}m
               </div>
               <Btn onClick={onClearDustHazard} color="#ff8844"
-                style={{flex:'none',padding:'3px 7px',fontSize:7}}>
+                style={{flex:'none',padding:'3px 7px',fontSize:fs(7)}}>
                 CLEAR
               </Btn>
             </div>
@@ -1124,12 +1176,15 @@ export default function RightPanel({
         <Sect label="Camera">
           <Row>
             <Btn active={cameraMode==='free'}   onClick={()=>setCameraMode('free')}>FREE</Btn>
-            <Btn active={cameraMode==='follow'} onClick={()=>setCameraMode('follow')}>FOLLOW</Btn>
+            <Btn active={cameraMode==='follow'} onClick={()=>setCameraMode('follow')}>{IS_DEM ? 'FOLLOW EV1' : 'FOLLOW'}</Btn>
+            {IS_DEM && <Btn active={cameraMode==='overview'} onClick={()=>setCameraMode('overview')}>OVERVIEW</Btn>}
           </Row>
         </Sect>
 
         {/* Heatmap */}
-        <HeatmapViewer sunAngle={sunAngleDeg} sunElevation={sun?.elevationDeg} learningModel={learningModel}/>
+        <HeatmapViewer sunAngle={sunAngleDeg} sunElevation={sun?.elevationDeg} learningModel={learningModel}
+          refreshKey={routes} drape={drapeLayer} onDrape={setDrapeLayer}
+          drapeOpacity={drapeOpacity} setDrapeOpacity={setDrapeOpacity}/>
 
         {/* Image processing proof panel */}
         <ProcessingMapPreview
@@ -1141,22 +1196,26 @@ export default function RightPanel({
           signalQuality={cameraSignalQuality}
         />
 
-        {/* AI */}
+        {/* AI (rover traversal learning — Moon mode only) */}
+        {!IS_DEM && (
         <Sect label="AI Learning">
-          <div style={{fontSize:8,color:'#557755',lineHeight:1.9,fontFamily:'monospace'}}>
+          <div style={{fontSize:fs(8),color:'#557755',lineHeight:1.9,fontFamily:'monospace'}}>
             <div>Traversals:  <V>{lm.traversals}</V></div>
             <div>Cells known: <V>{lm.cellsKnown}</V></div>
             <div>Max hazard:  <V c={lm.maxHazard>0.7?'#ff6644':'#99ff99'}>{(lm.maxHazard||0).toFixed(3)}</V></div>
           </div>
         </Sect>
+        )}
 
         {/* Telemetry */}
-        <Sect label="Telemetry">
-          <div style={{fontFamily:'monospace',fontSize:8,color:'#557755',lineHeight:1.9}}>
-            <div>X: <V>{x.toFixed(1)}</V>  Z: <V>{z.toFixed(1)}</V></div>
-            <div>Speed: <V>{(speed*3.6).toFixed(1)}</V> km/h</div>
+        <Sect label={IS_DEM ? 'Telemetry (EV1)' : 'Telemetry'}>
+          <div style={{fontFamily:'monospace',fontSize:fs(8),color:'#557755',lineHeight:1.9}}>
+            <div>X: <V>{x.toFixed(1)}</V>  Z: <V>{z.toFixed(1)}</V> m</div>
+            {IS_DEM && (() => { const ll = localToLatLon(x, z); return ll && (
+              <div>Lat/Lon: <V>{ll.lat.toFixed(5)}°N {ll.lon.toFixed(5)}°E</V></div>); })()}
+            <div>Speed: <V>{(speed*3.6).toFixed(1)}</V> km/h{IS_DEM ? ' (mission time)' : ''}</div>
             <div>Heading: <V>{((heading*180/Math.PI+360)%360).toFixed(0)}°</V></div>
-            <div>Trail pts: <V>{trail}</V></div>
+            {!IS_DEM && <div>Trail pts: <V>{trail}</V></div>}
           </div>
         </Sect>
 
@@ -1170,12 +1229,12 @@ export default function RightPanel({
               if (!ok) { showToast?.('Could not capture scene — try again in a moment.', 'warning'); return; }
               showToast?.('PNG saved to Downloads.', 'info');
             }} style={{
-              width:'100%', padding:'6px 0', fontSize:9, fontFamily:'monospace',
+              width:'100%', padding:'6px 0', fontSize:fs(9), fontFamily:'monospace',
               fontWeight:'bold', letterSpacing:0.6, cursor:'pointer', borderRadius:3,
               background:'rgba(0,30,50,0.6)', border:'1px solid rgba(40,120,180,0.55)',
               color:'#66ccff', display:'flex', alignItems:'center', justifyContent:'center', gap:5,
             }}>
-              <span style={{fontSize:11}}>📷</span> EXPORT PNG
+              <span style={{fontSize:fs(11)}}>📷</span> EXPORT PNG
             </button>
 
             {/* JSON */}
@@ -1186,12 +1245,12 @@ export default function RightPanel({
               exportJSON(waypoints, routes, activeRoute, sunAngleDeg);
               showToast?.('JSON route file saved to Downloads.', 'info');
             }} style={{
-              width:'100%', padding:'6px 0', fontSize:9, fontFamily:'monospace',
+              width:'100%', padding:'6px 0', fontSize:fs(9), fontFamily:'monospace',
               fontWeight:'bold', letterSpacing:0.6, cursor:'pointer', borderRadius:3,
               background:'rgba(0,40,10,0.6)', border:'1px solid rgba(40,180,80,0.55)',
               color:'#66ff99', display:'flex', alignItems:'center', justifyContent:'center', gap:5,
             }}>
-              <span style={{fontSize:11}}>📄</span> EXPORT JSON
+              <span style={{fontSize:fs(11)}}>📄</span> EXPORT JSON
             </button>
 
             {/* Share link */}
@@ -1210,20 +1269,20 @@ export default function RightPanel({
                 window.prompt('Copy this link:', url);
               }
             }} style={{
-              width:'100%', padding:'6px 0', fontSize:9, fontFamily:'monospace',
+              width:'100%', padding:'6px 0', fontSize:fs(9), fontFamily:'monospace',
               fontWeight:'bold', letterSpacing:0.6, cursor:'pointer', borderRadius:3,
               background:'rgba(40,20,0,0.6)', border:'1px solid rgba(180,120,40,0.55)',
               color:'#ffcc66', display:'flex', alignItems:'center', justifyContent:'center', gap:5,
             }}>
-              <span style={{fontSize:11}}>🔗</span> {shareLabel}
+              <span style={{fontSize:fs(11)}}>🔗</span> {shareLabel}
             </button>
 
           </div>
         </Sect>
 
         {/* Log */}
-        <Sect label="Route Log">
-          <div style={{fontSize:7,color:'#3a5a3a',maxHeight:68,overflowY:'auto',fontFamily:'monospace'}}>
+        <Sect label={IS_DEM ? 'Mission Log' : 'Route Log'}>
+          <div style={{fontSize:fs(7),color:'#3a5a3a',maxHeight:Math.round(68*UI_SCALE),overflowY:'auto',fontFamily:'monospace'}}>
             {routeLog?.length
               ?routeLog.slice(-14).map((l,i)=>(
                 <div key={i} style={{color:l.includes('[ERR]')?'#ff6644':'#557755',marginBottom:1}}>{l}</div>
@@ -1249,7 +1308,7 @@ function Sect({ label, children }) {
   );
 }
 function Label({ children }) {
-  return <div style={{color:'#3a663a',fontSize:7,textTransform:'uppercase',letterSpacing:1.2}}>{children}</div>;
+  return <div style={{color:'#3a663a',fontSize:fs(7),textTransform:'uppercase',letterSpacing:1.2}}>{children}</div>;
 }
 function Row({ children, style={} }) {
   return <div style={{display:'flex',gap:3,...style}}>{children}</div>;
@@ -1260,7 +1319,7 @@ function V({ children, c }) {
 function Btn({ children, active, onClick, disabled, color, style={} }) {
   return (
     <button onClick={disabled?undefined:onClick} style={{
-      flex:1,padding:'4px 4px',fontSize:8,fontWeight:'bold',
+      flex:1,padding:'4px 4px',fontSize:fs(8),fontWeight:'bold',
       cursor:disabled?'default':'pointer',borderRadius:3,
       border:`1px solid ${active?(color||'rgba(60,180,60,0.7)'):'rgba(35,70,35,0.4)'}`,
       background:active?'rgba(0,50,0,0.5)':'rgba(6,14,6,0.4)',

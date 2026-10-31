@@ -48,7 +48,7 @@ function fail(name, reason) {
   site.name = name;
   site.loadError = reason;
   // eslint-disable-next-line no-console
-  console.warn(`[site] '${name}' yüklenemedi, prosedürel araziye dönülüyor: ${reason}`);
+  console.warn(`[site] '${name}' could not be loaded, falling back to procedural terrain: ${reason}`);
   return site;
 }
 
@@ -62,7 +62,7 @@ export async function loadSite(name = DEFAULT_SITE) {
     site.name = 'moon';
     return site;
   }
-  if (!/^[a-z0-9_-]+$/.test(name)) return fail(name, 'geçersiz site adı');
+  if (!/^[a-z0-9_-]+$/.test(name)) return fail(name, 'invalid site name');
 
   const base = `${import.meta.env.BASE_URL}sites/${name}/`;
   let meta;
@@ -72,13 +72,13 @@ export async function loadSite(name = DEFAULT_SITE) {
     // SPA fallback index.html döndürebilir — JSON değilse reddet
     meta = JSON.parse(await r.text());
   } catch (e) {
-    return fail(name, `meta.json okunamadı (${e.message}) — pipeline/build_site.py çalıştırıldı mı?`);
+    return fail(name, `meta.json could not be read (${e.message}) — did you run pipeline/build_site.py?`);
   }
 
   const n = meta?.grid?.n;
   const cell = meta?.grid?.cell_m;
-  if (!Number.isInteger(n) || n < 16 || !(cell > 0)) return fail(name, 'meta.json grid alanı geçersiz');
-  if (meta?.grid?.dtype !== 'float32-le') return fail(name, `desteklenmeyen dtype: ${meta?.grid?.dtype}`);
+  if (!Number.isInteger(n) || n < 16 || !(cell > 0)) return fail(name, 'meta.json grid field is invalid');
+  if (meta?.grid?.dtype !== 'float32-le') return fail(name, `unsupported dtype: ${meta?.grid?.dtype}`);
 
   let buf;
   try {
@@ -86,10 +86,10 @@ export async function loadSite(name = DEFAULT_SITE) {
     if (!r.ok) return fail(name, `grid.bin HTTP ${r.status}`);
     buf = await r.arrayBuffer();
   } catch (e) {
-    return fail(name, `grid.bin okunamadı (${e.message})`);
+    return fail(name, `grid.bin could not be read (${e.message})`);
   }
   if (buf.byteLength !== n * n * 4) {
-    return fail(name, `grid.bin boyutu ${buf.byteLength} B, beklenen ${n * n * 4} B`);
+    return fail(name, `grid.bin is ${buf.byteLength} B, expected ${n * n * 4} B`);
   }
 
   // Float32Array platform endianness'ını kullanır; tüm hedef tarayıcılar LE,
@@ -98,7 +98,7 @@ export async function loadSite(name = DEFAULT_SITE) {
   const raw = new Float32Array(n * n);
   for (let i = 0; i < raw.length; i++) raw[i] = dv.getFloat32(i * 4, true);
   for (let i = 0; i < raw.length; i++) {
-    if (!Number.isFinite(raw[i])) return fail(name, `grid.bin hücre ${i} sonlu değil`);
+    if (!Number.isFinite(raw[i])) return fail(name, `grid.bin cell ${i} is not finite`);
   }
 
   // Sahneyi y≈0 civarında tutmak için medyanı çıkar (mutlak değer meta'da)

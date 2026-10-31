@@ -13,7 +13,7 @@ import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
 import { evaWindowTemps } from './climate.js';
 import { param, MODE_WEIGHTS, SCIENCE_PARAMS } from '../config/marswalkProfile.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
-import { homeTimeMaps, walkbackProfile } from './walkback.js';
+import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
 
 const HALF = TERRAIN_SIZE / 2;
@@ -500,19 +500,23 @@ function computeLightStats(path, elapsedS, returnS, startMs, hMap) {
 // Science-stop dwell: waypoint w (w ≥ 1) ends A* segment w−1 at raw index
 // segEnds[w−1]. smoothPath keeps the point count, then keeps every `step`-th
 // point (+ the last), so raw index r ↦ smoothed index round(r/step).
+// Returns { map: Map(pathIdx → dwell s), list: [{ idx, dwellS, wp, label }] }.
 function dwellIndexMap(path, waypoints, segEnds, rawLen) {
   const m = new Map();
+  const list = [];
   const step = Math.max(1, Math.floor(rawLen / 200));
   for (let w = 1; w < waypoints.length; w++) {
     if (!(waypoints[w].dwellS > 0)) continue;
     const r = segEnds[w - 1];
     const i = r >= rawLen - 1 ? path.length - 1 : Math.min(path.length - 1, Math.round(r / step));
     m.set(i, (m.get(i) || 0) + waypoints[w].dwellS);
+    list.push({ idx: i, dwellS: waypoints[w].dwellS, wp: w, label: waypoints[w].label || null });
   }
-  return m;
+  return { map: m, list };
 }
 
-function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap, dwellAt = null) {
+function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap, dwell = null) {
+  const dwellAt = dwell ? dwell.map : null;
   const base = computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, null, 0);
   if (!base) return null;
   const out = pathWalkStats(path, getTerrainHeight);
@@ -551,6 +555,8 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     walkTimeS: out.timeS,
     dwellTotalS,
     stopCount: dwellAt ? dwellAt.size : 0,
+    stops: dwell ? dwell.list : [],          // [{ idx, dwellS, wp, label }] — EVA playback
+    elapsedS: wb.elapsed,                     // departure time at each path point (dwell incl.)
     returnTimeS: backS,
     roundTripS,
     budgetS,
@@ -593,8 +599,8 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
       const segEnds = [];
       const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge, segEnds);
       const path = smoothPath(rawPath);
-      const dwellAt = waypoints.some(w => w.dwellS > 0) ? dwellIndexMap(path, waypoints, segEnds, rawPath.length) : null;
-      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap, dwellAt) };
+      const dwell = waypoints.some(w => w.dwellS > 0) ? dwellIndexMap(path, waypoints, segEnds, rawPath.length) : null;
+      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap, dwell) };
     }
     return result;
   }
@@ -661,6 +667,31 @@ export function planScience(home, hMap, opts = {}) {
     totalS: r.tour.totalS, walkS: r.tour.walkS, dwellTotalS: r.tour.dwellTotalS,
     dwellS, budgetS,
   };
+}
+
+/**
+ * Fastest walk home from (x, z) on the cached home maps — the path the walk-back
+ * margin assumes (EVA abort). World polyline [[x,y,z], ...] starting at (x, z),
+ * plus its walking time. null if no home maps yet or home is unreachable.
+ */
+export function fastestReturnPath(x, z, hMap) {
+  const hm = _homeMaps;
+  if (!hm) return null;
+  const r = descendToHome(cellIndexAt(x, z), hm.toHome, hMap, getWallMap(), GRID_RES, CELL_SIZE);
+  if (!r) return null;
+  const pts = [[x, getTerrainHeight(x, z), z]];
+  for (const k of r.cells) {
+    const row = (k / GRID_RES) | 0, col = k - row * GRID_RES;
+    const { wx, wz } = gridToWorld(col, row);
+    pts.push([wx, getTerrainHeight(wx, wz), wz]);
+  }
+  return { path: pts, gridTimeS: r.timeS };
+}
+
+/** Fastest walking time home from (x, z) [s] (Infinity if unreachable / no maps). */
+export function toHomeTimeAt(x, z) {
+  const hm = _homeMaps;
+  return hm ? hm.toHome[cellIndexAt(x, z)] : Infinity;
 }
 
 /** Test-only access to internals (tests/marswalk.test.mjs). Not used by the app. */

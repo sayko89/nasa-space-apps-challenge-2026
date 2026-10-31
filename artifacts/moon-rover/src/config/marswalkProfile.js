@@ -1,18 +1,18 @@
 /**
- * Marswalk (astronot EVA) parametreleri — tek doğruluk noktası.
+ * Marswalk (astronaut EVA) parameters — single source of truth.
  *
- * Her değer: { value, unit, status, source, quote?, note? }
- *   status: 'sourced'     → NASA dokümanından; `source` + `quote` dolu
- *           'assumption'  → kaynaklı bir modelin bu probleme uyarlanması;
- *                           `note` neyin varsayıldığını açıkça söyler
- *           'design'      → planlama tercihi (fiziksel iddia değil)
- *           'placeholder' → GEÇİCİ, sunumda kullanılmamalı
+ * Every value: { value, unit, status, label, source, quote?, note? }
+ *   status: 'sourced'     → from a NASA document; `source` + `quote` filled in
+ *           'assumption'  → a sourced model adapted to this problem;
+ *                           `note` states exactly what is assumed
+ *           'design'      → a planning preference (not a physical claim)
+ *           'placeholder' → TEMPORARY, must not be used in a presentation
  *
- * ÖNEMLİ KISIT: Bulunabilen NASA EVA operasyon değerleri AY için yazılmış
- * (xEVA ConOps). Mars'a özgü resmi bir eğim/hız/mesafe limiti bulunamadı.
- * NASA'nın skafandrlı yürüme testi Mars yerçekiminde (3/8 g) geri yürüyüşü
- * kabul edilemez bulduğu için (TP-2009-214796) bu değerler Mars için
- * İYİMSER kabul edilmeli. Bkz. MARS_CAVEAT.
+ * IMPORTANT LIMITATION: the NASA EVA operations values we could find were
+ * written for the MOON (xEVA ConOps). No official Mars-specific slope / speed /
+ * distance limit was found. NASA's suited walking test found a walk-back at
+ * Mars gravity (3/8 g) not acceptable (TP-2009-214796), so treat these values
+ * as OPTIMISTIC for Mars. See MARS_CAVEAT.
  */
 
 const XEVA = 'NASA EVA-EXP-0042 Rev B, Exploration EVA System Concept of Operations (2020)';
@@ -23,33 +23,37 @@ export const MARSWALK_PROFILE = {
     value: 20,
     unit: 'deg',
     status: 'sourced',
+    label: 'max walkable slope',
     source: `${XEVA} §4.2.1.3`,
     url: XEVA_URL,
     quote: 'Walking up/down/across a slope of up to 20°',
-    note: 'Ay ConOps değeri. Bu eğimin üstündeki DEM hücreleri geçilmez duvar.',
+    note: 'Lunar ConOps value. DEM cells steeper than this are impassable walls.',
   },
   levelWalkSpeedKmh: {
     value: 2.0,
     unit: 'km/h',
     status: 'sourced',
+    label: 'level walking speed',
     source: `${XEVA} §4.2.1.3.1.1`,
     url: XEVA_URL,
     quote: 'Traverses assume an ~2 km/hr walking pace over relatively level regolith',
-    note: 'Dokümanda TBR (to be resolved) olarak işaretli.',
+    note: 'Marked TBR (to be resolved) in the document.',
   },
   evaDurationH: {
     value: 8,
     unit: 'h',
     status: 'sourced',
+    label: 'EVA duration budget',
     source: `${XEVA} §4.1.4`,
     url: XEVA_URL,
     quote: 'The xEVA suit will support EVAs of up to 8 hours in duration (6±2 hours).',
-    note: 'Planlama bütçesi. Ek 1 saatlik yedek O₂ (§4.2.1.1) yalnızca acil durum içindir, plana dahil edilmez.',
+    note: 'Planning budget. The extra hour of secondary O₂ (§4.2.1.1) is for emergencies only and is not planned against.',
   },
   maxRadialDistanceKm: {
     value: 2,
     unit: 'km',
     status: 'sourced',
+    label: 'max walking distance from the habitat',
     source: `${XEVA} §4.2.1.3.1`,
     url: XEVA_URL,
     quote: 'a walking traverse of up to 2 km away from the lander on the lunar surface (radial distance)',
@@ -58,35 +62,48 @@ export const MARSWALK_PROFILE = {
     value: 'tobler',
     unit: null,
     status: 'assumption',
+    label: 'walking speed vs. slope (Tobler shape)',
     source: 'Tobler, W. (1993). Three presentations on geographical analysis and modeling. NCGIA Technical Report 93-1.',
-    note: 'Eğimin hıza etkisi için NASA verisi bulunamadı. Tobler hiking fonksiyonu '
-        + '(Dünya, skafandrsız yürüyüş) yalnızca ŞEKİL olarak kullanılır: '
-        + 'v(g) = v0 · exp(-3.5·|g + 0.05|) / exp(-3.5·0.05), düz zeminde v0 = levelWalkSpeedKmh.',
+    note: 'No NASA data on how slope changes suited walking speed was found. Tobler\'s hiking function '
+        + '(Earth, unsuited) is used for its SHAPE only: '
+        + 'v(g) = v0 · exp(-3.5·|g + 0.05|) / exp(-3.5·0.05), with v0 = levelWalkSpeedKmh on level ground.',
   },
 };
 
 /**
- * Rota modlarının tercih ağırlıkları — fiziksel iddia DEĞİL, planlama tercihi.
- * Raporlanan süreler her modda aynı fiziksel modelle (Tobler+NASA hız) hesaplanır;
- * bu ağırlıklar yalnızca hangi yolun seçileceğini etkiler.
- *   slopeAversion: hücre süresi × (1 + k·(eğim/limit)²)  — dik zeminden uzak dur
- *   climbPenaltyS: her metre tırmanış için ek ceza [s]    — az tırmanış
+ * Crew size: EVAs are planned as a two-person crew (EV1 + EV2). Lunar concept,
+ * used here for Mars. Only the visual crew and the HUD use this.
  */
-export const MODE_WEIGHTS = {
-  FAST: { slopeAversion: 0,   climbPenaltyS: 0,  status: 'design', desc: 'En kısa yürüme süresi' },
-  SAFE: { slopeAversion: 4,   climbPenaltyS: 0,  status: 'design', desc: 'Eğim sınırından en uzak yol' },
-  ECO:  { slopeAversion: 0.5, climbPenaltyS: 60, status: 'design', desc: 'En az tırmanış (enerji/ısı yükü)' },
-  AUTO: { slopeAversion: 1.5, climbPenaltyS: 20, status: 'design', desc: 'Dengeli' },
+export const EVA_CREW = {
+  value: 2,
+  status: 'sourced',
+  label: 'EVA crew (EV1 + EV2)',
+  source: 'NASA, EVA Lunar Surface Concept of Operations (2020) — notional Design Reference EVA with EV1/EV2',
+  url: 'https://www.nasa.gov/wp-content/uploads/2020/01/topic_1-_eva_lunar_surface_concept_of_operations.pdf',
 };
 
 /**
- * Bilim EVA'sı (Aşama 6). Kaynaklı bir durak süresi veya bilimsel değer ölçeği
- * bulunamadı — hepsi tasarım tercihi/varsayım; arayüzde böyle etiketlenir.
- *   dwellMin    : her durakta örnekleme/gözlem süresi [dk] (kullanıcı değiştirebilir)
- *   weights     : farklı etiket başına puan (çeşitlilik); kontak = iki ana kaya biriminin sınırı
- *   interiorR   : "birim içinde" sayılmak için her yönde aynı birimde olması gereken hücre sayısı
- *   minHomeDistM: habitata bu mesafeden yakın hücreler durak adayı değildir
- *   maxCandidates: kesin (Held–Karp) optimizasyona giren en yakın aday sayısı
+ * Route-mode preference weights — NOT physical claims, planning preferences.
+ * Reported times use the same physical model (Tobler shape + NASA speed) in
+ * every mode; these weights only change which path is chosen.
+ *   slopeAversion: cell time × (1 + k·(slope/limit)²)  — stay away from steep ground
+ *   climbPenaltyS: extra penalty per metre climbed [s]   — climb less
+ */
+export const MODE_WEIGHTS = {
+  FAST: { slopeAversion: 0,   climbPenaltyS: 0,  status: 'design', desc: 'Shortest walking time' },
+  SAFE: { slopeAversion: 4,   climbPenaltyS: 0,  status: 'design', desc: 'Stays farthest from the slope limit' },
+  ECO:  { slopeAversion: 0.5, climbPenaltyS: 60, status: 'design', desc: 'Least climbing (energy / heat load)' },
+  AUTO: { slopeAversion: 1.5, climbPenaltyS: 20, status: 'design', desc: 'Balanced' },
+};
+
+/**
+ * Science EVA (Stage 6). No sourced stop duration or science-value scale was
+ * found — all design choices / assumptions, labelled as such in the UI.
+ *   dwellMin     : sampling / observation time per stop [min] (user adjustable)
+ *   weights      : points per distinct tag (diversity); contact = boundary of two bedrock units
+ *   interiorR    : cells in every direction that must be the same unit to count as "inside" it
+ *   minHomeDistM : cells closer than this to the habitat are not stop candidates
+ *   maxCandidates: nearest candidates that enter the exact (Held–Karp) optimisation
  */
 export const SCIENCE_PARAMS = {
   dwellMin: 20,
@@ -100,24 +117,23 @@ export const SCIENCE_PARAMS = {
 export const MARS_CAVEAT = {
   source: 'Norcross et al., NASA/TP-2009-214796, Feasibility of Performing a Suited 10-km Ambulation on the Moon',
   url: 'https://www.lpi.usra.edu/lunar/artemis/NorcrossEtAl_NASA-TP-2009-214796_EVA%20Walkback%20Test.pdf',
-  note: 'MKIII skafandrıyla 10 km geri yürüyüş Ay yerçekiminde yapılabilir bulundu; '
-      + 'Mars yerçekiminde (3/8 g) kabul edilemez — denekler tempolu yürürken neredeyse maksimum eforla çalıştı. '
-      + 'Ay ConOps değerleri Mars için iyimserdir.',
+  note: 'A 10 km suited walk-back was found feasible at lunar gravity but not acceptable at Mars gravity (3/8 g): '
+      + 'subjects worked near maximum effort to keep the pace. The lunar ConOps limits are optimistic for Mars.',
 };
 
-/** Bir parametrenin sayısal değeri (UI ve modeller bunu kullanır). */
+/** Numeric value of a parameter (UI and models use this). */
 export function param(key) {
   return MARSWALK_PROFILE[key].value;
 }
 
-/** Kaynağı bağlanmamış (placeholder) parametreler — HUD uyarısı için. */
+/** Parameters with no source yet (placeholder) — for the HUD warning. */
 export function placeholderParams() {
   return Object.entries(MARSWALK_PROFILE)
     .filter(([, p]) => p.status === 'placeholder')
     .map(([k]) => k);
 }
 
-/** Varsayım olarak işaretli parametreler — HUD'da ayrı gösterilir. */
+/** Parameters marked as assumptions — shown separately in the HUD. */
 export function assumptionParams() {
   return Object.entries(MARSWALK_PROFILE)
     .filter(([, p]) => p.status === 'assumption')
