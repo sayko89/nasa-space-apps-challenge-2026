@@ -37,17 +37,20 @@ SOURCES = {
     },
 }
 
-# CCMC's own DONKI web service: same database as api.nasa.gov/DONKI, no API key or rate limit.
-DONKI = 'https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/{kind}?startDate={start}&endDate={end}'
+# DONKI: CCMC's own web service first (no key), api.nasa.gov as a fallback. One request per
+# event type for the whole period keeps us far below the DEMO_KEY rate limit.
+DONKI_URLS = ['https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/{kind}?startDate={start}&endDate={end}',
+              'https://api.nasa.gov/DONKI/{kind}?startDate={start}&endDate={end}&api_key=DEMO_KEY']
+DONKI = DONKI_URLS[0]
 
 
-def get(url: str) -> bytes:
-    for attempt in range(4):
+def get(url: str, timeout: float = 120, attempts: int = 4) -> bytes:
+    for attempt in range(attempts):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
                 return r.read()
         except Exception as e:  # noqa: BLE001
-            if attempt == 3:
+            if attempt == attempts - 1:
                 raise
             print(f'  retry {attempt + 1}: {e}')
             time.sleep(5 * (attempt + 1))
@@ -74,22 +77,21 @@ def main() -> None:
         manifest['files'][rel] = {**meta, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
         print(f'{rel}: {len(data) / 1e6:.2f} MB')
 
-    # Space weather since landing (2021-02-18), in yearly chunks to keep requests small.
+    # Space weather since landing (2021-02-18): one request per type, CCMC first, then api.nasa.gov.
     events = {}
-    for kind in ['SEP', 'CME', 'FLR', 'GST', 'IPS']:
+    start, end = '2021-02-18', dt.date.today().isoformat()
+    for kind in ['SEP', 'CME', 'FLR']:
         events[kind] = []
-        for year in range(2021, dt.date.today().year + 1):
-            start = f'{year}-01-01' if year > 2021 else '2021-02-18'
-            end = min(dt.date(year, 12, 31), dt.date.today()).isoformat()
+        for tmpl in DONKI_URLS:
             try:
-                raw = get(DONKI.format(kind=kind, start=start, end=end))
-                items = json.loads(raw or b'[]') or []
+                raw = get(tmpl.format(kind=kind, start=start, end=end), timeout=60, attempts=2)
+                events[kind] = json.loads(raw or b'[]') or []
+                print(f'DONKI {kind}: {len(events[kind])} events from {tmpl.split("/")[2]}')
+                break
             except Exception as e:  # noqa: BLE001
-                errors[f'donki/{kind}/{year}'] = repr(e)
-                items = []
-            events[kind].extend(items)
-            time.sleep(1)
-        print(f'DONKI {kind}: {len(events[kind])} events')
+                errors[f'donki/{kind}/{tmpl.split("/")[2]}'] = repr(e)
+                print(f'DONKI {kind} via {tmpl.split("/")[2]}: FAILED {e}')
+        time.sleep(1)
     (OUT / 'donki').mkdir(parents=True, exist_ok=True)
     (OUT / 'donki' / 'events.json').write_text(json.dumps(events))
     manifest['files']['donki/events.json'] = {

@@ -1,4 +1,4 @@
-name: Fetch source data (2)
+name: Fetch source data (3)
 
 # Downloads the raw layer sources (Zenodo, NASA) and commits them, because the
 # processing scripts are run where these hosts are not reachable.
@@ -6,19 +6,20 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/fetch-sources-2.yml
+      - .github/workflows/fetch-sources-3.yml
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: fetch-sources-2
+  group: fetch-sources-3
   cancel-in-progress: false
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
