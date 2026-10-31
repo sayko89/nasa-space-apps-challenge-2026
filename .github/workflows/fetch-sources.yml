@@ -1,0 +1,38 @@
+name: Fetch source data
+
+# Downloads the raw layer sources (Zenodo, NASA) and commits them, because the
+# processing scripts are run where these hosts are not reachable.
+on:
+  push:
+    branches: [main]
+    paths:
+      - pipeline/fetch_sources.py
+      - .github/workflows/fetch-sources.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python pipeline/fetch_sources.py
+      - name: Describe the rasters and the CRISM legend
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin poppler-utils >/dev/null
+          mkdir -p pipeline/sources/_probe
+          gdalinfo -stats pipeline/sources/themis_ti/Jezero_Thermal_Inertia_v1.tiff > pipeline/sources/_probe/themis_ti.gdalinfo.txt 2>&1 || true
+          gdalinfo -stats pipeline/sources/crism/jezeroFinal.tif > pipeline/sources/_probe/crism.gdalinfo.txt 2>&1 || true
+          pdftotext -layout pipeline/sources/crism/Jezero_readme.pdf pipeline/sources/_probe/crism_readme.txt || true
+          pdftoppm -png -r 60 pipeline/sources/crism/Jezero_readme.pdf pipeline/sources/_probe/crism_readme || true
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add pipeline/sources
+          if git commit -m "data: fetch layer sources"; then git pull --rebase && git push; fi
