@@ -71,3 +71,36 @@ export function spaceWeatherAt(wx, startMs) {
     coverage: from && to ? [from, to] : null,
   };
 }
+
+/**
+ * Live DONKI lookup for one EVA date (browser), used when the bundled snapshot does not
+ * cover it. api.nasa.gov with the public DEMO_KEY (rate-limited per visitor IP).
+ * Resolves to a space_weather.json-like object, or null on any failure.
+ */
+const _live = new Map();
+export function fetchSpaceWeatherLive(startMs, apiKey = 'DEMO_KEY') {
+  const day = 86400e3, w = RADIATION.sepWindowDays.value * day;
+  const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const from = iso(startMs - w), to = iso(startMs + w);
+  const key = from + to;
+  if (_live.has(key)) return _live.get(key);
+  // CMEs take days to reach Mars: look for launches up to a week before the window
+  const q = (kind) => fetch(`https://api.nasa.gov/DONKI/${kind}?startDate=${kind === 'CME' ? iso(startMs - w - 7 * day) : from}&endDate=${to}&api_key=${apiKey}`)
+    .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))));
+  const p = Promise.all([q('SEP'), q('CME'), q('FLR')]).then(([sep, cme, flr]) => {
+    const events = [];
+    for (const e of sep || []) events.push({ type: 'SEP', time: e.eventTime, id: e.sepID, link: e.link });
+    for (const e of cme || []) {
+      for (const a of e.cmeAnalyses || []) for (const run of a.enlilList || []) for (const imp of run.impactList || []) {
+        if (String(imp.location).toLowerCase() === 'mars' && imp.arrivalTime && Math.abs(Date.parse(imp.arrivalTime.replace('Z', '') + 'Z') - startMs) <= w) {
+          events.push({ type: 'CME', time: imp.arrivalTime, id: e.activityID, speedKmS: a.speed, link: e.link });
+        }
+      }
+    }
+    for (const e of flr || []) if (String(e.classType || '').startsWith('X')) events.push({ type: 'FLR', time: e.peakTime || e.beginTime, class: e.classType, link: e.link });
+    for (const e of events) e.time = e.time.replace('Z', '') + 'Z';
+    return { format: 'martian-map-space-weather/1', coverage: [from, to], events, live: true };
+  }).catch(() => null);
+  _live.set(key, p);
+  return p;
+}

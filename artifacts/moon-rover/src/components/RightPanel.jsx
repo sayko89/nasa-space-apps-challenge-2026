@@ -14,7 +14,7 @@ import { fmtHM, fmtSignedHM, fmtHourMin } from '../utils/format';
 import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
-import { spaceWeatherAt, RADIATION } from '../utils/radiation';
+import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive } from '../utils/radiation';
 import { PovViewer, nearestPanorama } from './PovViewer';
 import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
@@ -414,11 +414,22 @@ function MissionPanel({ mission, setMission, start, disabled }) {
 
 // ---- Radiation / space weather (DONKI) for the EVA date ----
 function SpaceWeatherRow({ startMs }) {
-  const wx = spaceWeatherAt(SITE.spaceWeather, startMs);
+  const [live, setLive] = useState(null);
+  let wx = spaceWeatherAt(SITE.spaceWeather, startMs);
+  // Bundled snapshot doesn't cover this date (and it is in the past) → ask DONKI live
+  const needLive = wx.advisory === 'no-data' && startMs < Date.now();
+  useEffect(() => {
+    setLive(null);
+    if (!needLive) return;
+    let on = true;
+    fetchSpaceWeatherLive(startMs).then(r => { if (on) setLive(r); });
+    return () => { on = false; };
+  }, [needLive, Math.floor(startMs / 86400e3)]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (needLive && live) wx = spaceWeatherAt(live, startMs);
   const row = { display: 'flex', justifyContent: 'space-between', fontSize: fs(7.5), color: 'rgba(160,200,160,0.8)', lineHeight: 1.6 };
   const tag = wx.advisory === 'postpone' ? { t: '⚠ SEP — POSTPONE EVA', c: '#ff6655' }
     : wx.advisory === 'clear' ? { t: 'NO SEP ±' + RADIATION.sepWindowDays.value + ' d', c: '#88dd99' }
-    : { t: 'no DONKI data for this date', c: '#8899aa' };
+    : { t: startMs > Date.now() ? 'future date — no forecast' : 'no DONKI data for this date', c: '#8899aa' };
   return (
     <div style={{ marginTop: 4, borderTop: '1px solid rgba(60,90,60,0.3)', paddingTop: 3 }}>
       <div style={row}><span>Radiation (GCR)</span><span style={{ color: '#e8e0c8' }}>{RADIATION.gcrDoseEquivalentMSvPerDay.value} mSv/day</span></div>
@@ -428,7 +439,7 @@ function SpaceWeatherRow({ startMs }) {
           {e.type} · {e.time.slice(0, 16).replace('T', ' ')} UTC{e.class ? ` · ${e.class}` : ''}{e.speedKmS ? ` · ${Math.round(e.speedKmS)} km/s` : ''}{e.type === 'CME' ? ' · arrival at Mars (model)' : ''}
         </div>
       ))}
-      <div style={{ color: '#4a6a4a', fontSize: fs(6.5) }}>Curiosity RAD, Hassler et al. 2014 · NASA CCMC DONKI</div>
+      <div style={{ color: '#4a6a4a', fontSize: fs(6.5) }}>Curiosity RAD, Hassler et al. 2014 · NASA CCMC DONKI{live ? ' (live)' : ''}</div>
     </div>
   );
 }
