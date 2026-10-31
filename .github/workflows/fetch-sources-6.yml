@@ -1,4 +1,4 @@
-name: Fetch source data (5)
+name: Fetch source data (6)
 
 # Downloads the raw layer sources (Zenodo, NASA) and commits them, because the
 # processing scripts are run where these hosts are not reachable.
@@ -6,14 +6,14 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/fetch-sources-5.yml
+      - .github/workflows/fetch-sources-6.yml
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: fetch-sources-5
+  group: fetch-sources-6
   cancel-in-progress: false
 
 jobs:
@@ -77,7 +77,6 @@ jobs:
       - name: Perseverance panoramas inside the site
         if: always()
         run: |
-          pip install -q pillow
           python pipeline/build_pov.py 2>&1 | tail -40 >> pipeline/sources/_probe/fetch.log
 
       - name: Commit

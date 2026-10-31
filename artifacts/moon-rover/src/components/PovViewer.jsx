@@ -1,64 +1,33 @@
 /**
- * Ground view: the Perseverance Navcam panorama taken closest to a science stop,
- * turned toward the stop — "what the crew will see when they get there".
- * Data: public/sites/<site>/pov.json (pipeline/build_pov.py).
+ * Ground view: what Perseverance's cameras saw from the rover position closest to a
+ * science stop, looking toward it — "what the crew will see when they get there".
+ * Data: public/sites/<site>/pov.json (pipeline/build_pov.py); images load from mars.nasa.gov.
  */
-import { useEffect, useRef, useState } from 'react';
 import { SITE } from '../three/terrainGenerator';
 
-const FOV = 120;              // degrees of the panorama shown
-const MAX_DIST_M = 400;       // farther than this the photo says little about the stop
+const MAX_DIST_M = 400;       // farther than this the photos say little about the stop
+const angDiff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
-/** Nearest panorama to (x, z) and the bearing from it to the point (0° = north, clockwise). */
+/** Nearest rover position to (x, z), the bearing from it to the point and the frames facing it. */
 export function nearestPanorama(x, z) {
-  const list = SITE.pov?.panoramas;
+  const list = SITE.pov?.stations;
   if (!list?.length) return null;
   let best = null;
-  for (const p of list) {
-    const d = Math.hypot(p.x - x, p.z - z);
-    if (!best || d < best.dist) best = { pano: p, dist: d };
+  for (const st of list) {
+    const d = Math.hypot(st.x - x, st.z - z);
+    if (!best || d < best.dist) best = { station: st, dist: d };
   }
   if (!best || best.dist > MAX_DIST_M) return null;
-  const east = x - best.pano.x, north = -(z - best.pano.z);
+  const east = x - best.station.x, north = -(z - best.station.z);
   const bearing = (Math.atan2(east, north) * 180 / Math.PI + 360) % 360;
-  return { ...best, bearing };
+  const frames = [...best.station.frames].sort((a, b) => angDiff(a.az, bearing) - angDiff(b.az, bearing));
+  const facing = frames.slice(0, 3).sort((a, b) => ((a.az - bearing + 540) % 360) - ((b.az - bearing + 540) % 360));
+  return { ...best, bearing, facing, offBy: frames.length ? angDiff(frames[0].az, bearing) : null };
 }
-
-const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 export function PovViewer({ stop, label, onClose }) {
   const hit = nearestPanorama(stop.x, stop.z);
-  const ref = useRef(null);
-  const [img, setImg] = useState(null);
-  const [err, setErr] = useState(null);
-
-  useEffect(() => {
-    if (!hit) return;
-    const im = new Image();
-    im.onload = () => setImg(im);
-    im.onerror = () => setErr('Could not load the panorama.');
-    im.src = `${import.meta.env.BASE_URL}sites/${SITE.name}/${hit.pano.file}`;
-  }, [hit?.pano.file]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const cv = ref.current;
-    if (!cv || !img || !hit) return;
-    const ctx = cv.getContext('2d');
-    const [az0, az1] = hit.pano.az;
-    const pxPerDeg = img.width / (az1 - az0);
-    const w = FOV * pxPerDeg;
-    let sx = ((hit.bearing - FOV / 2 - az0) % 360 + 360) % 360 * pxPerDeg;
-    cv.width = Math.round(w); cv.height = img.height;
-    // draw with wrap-around at 360°
-    const first = Math.min(w, img.width - sx);
-    ctx.drawImage(img, sx, 0, first, img.height, 0, 0, first, img.height);
-    if (first < w) ctx.drawImage(img, 0, 0, w - first, img.height, first, 0, w - first, img.height);
-    // marker toward the stop
-    ctx.strokeStyle = '#ffb347'; ctx.lineWidth = Math.max(2, w / 400);
-    ctx.setLineDash([8, 6]);
-    ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, img.height); ctx.stroke();
-  }, [img, hit]);
-
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 10000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -70,18 +39,30 @@ export function PovViewer({ stop, label, onClose }) {
         </div>
         {!hit ? (
           <div style={{ fontSize: 12, padding: '24px 0', textAlign: 'center' }}>
-            No Perseverance panorama within {MAX_DIST_M} m of this stop. This part of the site has only been seen from orbit.
+            Perseverance never stopped within {MAX_DIST_M} m of this stop. This part of the site has only been seen from orbit.
           </div>
-        ) : err ? <div style={{ fontSize: 12 }}>{err}</div> : (
+        ) : (
           <>
-            <canvas ref={ref} style={{ width: '100%', display: 'block', borderRadius: 3, background: '#111' }} />
+            <div style={{ display: 'flex', gap: 4 }}>
+              {hit.facing.map((f, i) => (
+                <a key={i} href={f.link} target="_blank" rel="noreferrer" style={{ flex: 1, position: 'relative', display: 'block' }}
+                  title={`${f.camera} · sol ${f.sol} · azimuth ${f.az}° · elevation ${f.el.toFixed(0)}°`}>
+                  <img src={f.medium} alt={`${f.camera}, sol ${f.sol}, looking ${f.az}°`} loading="lazy"
+                    style={{ width: '100%', display: 'block', borderRadius: 3,
+                      outline: angDiff(f.az, hit.bearing) === hit.offBy ? '2px solid #ffb347' : 'none' }} />
+                  <span style={{ position: 'absolute', left: 4, bottom: 4, fontSize: 10, background: 'rgba(0,0,0,0.6)', padding: '1px 4px' }}>
+                    {COMPASS[Math.round(f.az / 45) % 8]} {Math.round(f.az)}°
+                  </span>
+                </a>
+              ))}
+            </div>
             <div style={{ fontSize: 11, marginTop: 6, lineHeight: 1.6 }}>
-              Looking <b>{COMPASS[Math.round(hit.bearing / 45) % 8]}</b> ({hit.bearing.toFixed(0)}°) toward the stop, which is
-              <b> {Math.round(hit.dist)} m</b> away (dashed line). Navcam mosaic taken by Perseverance on <b>sol {hit.pano.sol}</b>
-              {' '}(site/drive {hit.pano.rmc.replace('_', '/')}), {FOV}° of the 360° view shown.
+              From the rover position closest to this stop (<b>{Math.round(hit.dist)} m</b> away, sol {hit.station.sol}), looking
+              {' '}<b>{COMPASS[Math.round(hit.bearing / 45) % 8]}</b> ({hit.bearing.toFixed(0)}°) toward the stop. The outlined frame points
+              {' '}closest to it ({Math.round(hit.offBy)}° off). Click a frame for the original image.
             </div>
             <div style={{ fontSize: 10, color: '#7a8a7a', marginTop: 2 }}>
-              {SITE.pov.credit} · <a href={hit.pano.source} target="_blank" rel="noreferrer" style={{ color: '#ffb080' }}>full-resolution mosaic</a>
+              {SITE.pov.credit} · pointing ≈ mast azimuth + rover heading; frames load from mars.nasa.gov
             </div>
           </>
         )}

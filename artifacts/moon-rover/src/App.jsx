@@ -122,7 +122,7 @@ function SiteBadge({ collapsed, onToggle }) {
         <a href={SITE.layers.minerals.source.doi} target="_blank" rel="noreferrer" style={LINK}>Zenodo</a>, CC BY 4.0</div>}
       {SITE.layers?.rock && <div>ROCKS: relief within each 4 m cell of the 1 m HiRISE DTM (proxy for boulders / outcrops)</div>}
       <div>RADIATION: Curiosity RAD surface dose (Hassler et al. 2014){SITE.spaceWeather ? ' · space weather: NASA CCMC DONKI' : ''}</div>
-      {SITE.pov && <div>GROUND VIEW: Perseverance Navcam panoramas ({SITE.pov.panoramas.length} in this site), NASA/JPL-Caltech</div>}
+      {SITE.pov && <div>GROUND VIEW: Perseverance Navcam / Mastcam-Z frames from {SITE.pov.stations.length} rover positions in this site, NASA/JPL-Caltech</div>}
       <div>SUIT &amp; ROVER: Ogilvie et al., ICES 2026 (NASA) — suit masses, carry limit, 30-min rover walkback</div>
       <div style={{color:'#ffaa55', marginTop:3}}>
         ⚠ These EVA limits were written for the Moon — optimistic for Mars.{' '}

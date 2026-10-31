@@ -1,57 +1,62 @@
 #!/usr/bin/env python3
 """
-build_pov.py — Perseverance ground-level panoramas inside the site.
+build_pov.py — Perseverance ground-level views inside the site.
 
-For every rover waypoint (pipeline/sources/m20/M20_waypoints.json) that lies inside the
-site grid and has a 360° Navcam mosaic, downloads the mosaic from NASA's MMGIS server,
-scales it to a web-friendly width and writes
+For every rover position (site/drive) in pipeline/sources/m20/M20_waypoints.json that lies
+inside the site grid, looks up the images Perseverance took there in NASA's public Mars 2020
+raw-image feed and keeps the near-horizontal Navcam and Mastcam-Z frames with their
+pointing. Writes artifacts/moon-rover/public/sites/<site>/pov.json:
 
-  artifacts/moon-rover/public/sites/<site>/pov/<RMC>.jpg
-  artifacts/moon-rover/public/sites/<site>/pov.json   index with position (site x/z, m),
-                                                       sol, azimuth / elevation extent
+  { panoramas: [ { rmc, sol, x, z, yaw, frames: [ { az, el, camera, small, medium, link } ] } ] }
 
-so the app can show "what the crew will see" at each science stop: the panorama taken
-closest to it, turned toward the stop. Needs network access (runs in GitHub Actions).
+  x, z   site metres (east, south) of the rover position
+  az     approximate pointing azimuth from north = mast azimuth (rover frame) + rover yaw
 
-    python pipeline/build_pov.py [--width 2048]
+The app shows, for a science stop, the frames from the nearest rover position that look
+toward the stop. Images are loaded from mars.nasa.gov by the browser (credit NASA/JPL-Caltech);
+only the metadata is stored here. Needs network access (runs in GitHub Actions).
+
+    python pipeline/build_pov.py
 """
 from __future__ import annotations
 
 import argparse
-import concurrent.futures as cf
-import io
 import json
 import math
+import re
 import time
 import urllib.request
 from pathlib import Path
 
-from PIL import Image
-
-Image.MAX_IMAGE_PIXELS = None
 ROOT = Path(__file__).resolve().parent.parent
-MMGIS = 'https://mars.nasa.gov/mmgis-maps/M20/'
-UA = {'User-Agent': 'Mozilla/5.0 (martian-map data pipeline; +https://github.com/sayko89/nasa-space-apps-challenge-2026)'}
+FEED = 'https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&sol={sol}'
+UA = {'User-Agent': 'martian-map data pipeline (+https://github.com/sayko89/nasa-space-apps-challenge-2026)'}
+CAMERAS = ('NAVCAM_LEFT', 'NAVCAM_RIGHT', 'MCZ_LEFT', 'MCZ_RIGHT')
 
 
-def get(url: str) -> bytes:
-    for attempt in range(4):
+def get_json(url: str):
+    for attempt in range(3):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=180) as r:
-                return r.read()
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+                return json.load(r)
         except Exception as e:  # noqa: BLE001
-            if attempt == 3:
+            if attempt == 2:
                 raise
-            print(f'  retry {attempt + 1}: {e}')
+            print(f'  retry {attempt + 1}: {e}', flush=True)
             time.sleep(5 * (attempt + 1))
-    raise RuntimeError(url)
+
+
+def num(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--site', default='jezero')
-    ap.add_argument('--width', type=int, default=2048)
-    ap.add_argument('--workers', type=int, default=8)
+    ap.add_argument('--max-frames', type=int, default=24, help='per rover position, spread over azimuth')
     args = ap.parse_args(argv)
     site_dir = ROOT / 'artifacts/moon-rover/public/sites' / args.site
     meta = json.loads((site_dir / 'meta.json').read_text())
@@ -59,56 +64,79 @@ def main(argv=None):
     lat0, lon0 = meta['center']['lat_deg'], meta['center']['lon_deg_east']
     half = meta['grid']['span_m'] / 2
     wp = json.loads((ROOT / 'pipeline/sources/m20/M20_waypoints.json').read_text())
-    out_dir = site_dir / 'pov'
-    out_dir.mkdir(parents=True, exist_ok=True)
-    index, errors, jobs = [], {}, []
+
+    stations = {}
     for f in wp['features']:
         p = f['properties']
-        x = R * math.cos(math.radians(lat0)) * math.radians(p['lon'] - lon0)   # east [m]
-        z = -R * math.radians(p['lat'] - lat0)                                  # south [m]
+        x = R * math.cos(math.radians(lat0)) * math.radians(p['lon'] - lon0)
+        z = -R * math.radians(p['lat'] - lat0)
         if abs(x) > half or abs(z) > half:
             continue
-        pano = next((im for im in p.get('images') or [] if im.get('isPanoramic')), None)
-        if not pano:
+        stations[(int(p['site']), int(p['drive']))] = {
+            'rmc': p['RMC'], 'sol': int(p['sol']), 'x': round(x, 2), 'z': round(z, 2),
+            'lat': p['lat'], 'lon': p['lon'], 'yaw': num(p.get('yaw')) or 0.0, 'frames': [],
+        }
+    sols = sorted({s['sol'] for s in stations.values()})
+    # images at a position can be taken on later sols, before the next drive
+    sols = sorted({s + d for s in sols for d in range(0, 3)})
+    errors = {}
+    for sol in sols:
+        try:
+            feed = get_json(FEED.format(sol=sol))
+        except Exception as e:  # noqa: BLE001
+            errors[sol] = repr(e)
+            print(f'sol {sol}: FAILED {e}', flush=True)
             continue
-        jobs.append((p, pano, x, z))
-
-    def fetch(job):
-        p, pano, x, z = job
-        dst = out_dir / f"{p['RMC']}.jpg"
-        if not dst.exists():
-            im = Image.open(io.BytesIO(get(MMGIS + pano['url']))).convert('RGB')
-            h = round(im.height * args.width / im.width)
-            im.resize((args.width, h), Image.LANCZOS).save(dst, quality=72, optimize=True, progressive=True)
-            print(f"{p['RMC']} sol {p['sol']}: {im.width}x{im.height} -> {dst.stat().st_size // 1024} kB", flush=True)
-        return job
-
-    with cf.ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = {ex.submit(fetch, j): j for j in jobs}
-        for fut in cf.as_completed(futs):
-            p, pano, x, z = futs[fut]
-            try:
-                fut.result()
-            except Exception as e:  # noqa: BLE001
-                errors[p['RMC']] = repr(e)
-                print(f"{p['RMC']}: FAILED {e}", flush=True)
+        n = 0
+        for im in feed.get('images') or []:
+            cam = (im.get('camera') or {}).get('instrument', '')
+            if cam not in CAMERAS:
                 continue
-            index.append({
-                'rmc': p['RMC'], 'sol': p['sol'], 'x': round(x, 2), 'z': round(z, 2),
-                'lat': p['lat'], 'lon': p['lon'], 'yaw': p.get('yaw'),
-                'file': f"pov/{p['RMC']}.jpg",
-                'az': [float(pano['azmin']), float(pano['azmax'])],
-                'el': [float(pano['elmin']), float(pano['elmax'])],
-                'source': MMGIS + pano['url'],
+            try:
+                key = (int(im.get('site')), int(im.get('drive')))
+            except (TypeError, ValueError):
+                continue
+            st = stations.get(key)
+            ext = im.get('extended') or {}
+            az, el = num(ext.get('mastAz')), num(ext.get('mastEl'))
+            if not st or az is None or el is None or not (-25 <= el <= 10):
+                continue
+            files = im.get('image_files') or {}
+            if not files.get('medium'):
+                continue
+            st['frames'].append({
+                'az': round((az + st['yaw']) % 360, 1), 'mastAz': az, 'el': el, 'camera': cam,
+                'small': files.get('small'), 'medium': files['medium'], 'link': im.get('link'),
+                'sol': sol, 'utc': im.get('date_taken_utc'),
             })
-    index.sort(key=lambda e: (e['sol'], e['rmc']))
+            n += 1
+        print(f'sol {sol}: {n} frames', flush=True)
+        time.sleep(0.5)
+
+    out = []
+    for st in stations.values():
+        fr = st['frames']
+        if not fr:
+            continue
+        # keep one frame per ~15° of azimuth, preferring Mastcam-Z colour, then el closest to −8°
+        fr.sort(key=lambda f: (round(f['az'] / 15), 0 if f['camera'].startswith('MCZ') else 1, abs(f['el'] + 8)))
+        keep, seen = [], set()
+        for f in fr:
+            b = round(f['az'] / 15) % 24
+            if b in seen:
+                continue
+            seen.add(b)
+            keep.append(f)
+        st['frames'] = sorted(keep, key=lambda f: f['az'])[: args.max_frames]
+        out.append(st)
+    out.sort(key=lambda s: (s['sol'], s['rmc']))
     (site_dir / 'pov.json').write_text(json.dumps({
-        'format': 'martian-map-pov/1',
-        'note': 'Navcam 360° cylindrical mosaics; azimuth measured clockwise from north in the rover site frame.',
-        'credit': 'NASA/JPL-Caltech (Mars 2020 Perseverance Navcam mosaics, MMGIS)',
-        'panoramas': index, 'errors': errors,
-    }, indent=1))
-    print(f'{len(index)} panoramas, {len(errors)} errors')
+        'format': 'martian-map-pov/2',
+        'note': 'Frame azimuth ≈ mast azimuth + rover yaw (from north, clockwise); approximate.',
+        'credit': 'NASA/JPL-Caltech (Mars 2020 Perseverance raw images)',
+        'stations': out, 'errors': errors,
+    }, separators=(',', ':')))
+    print(f'{len(out)} rover positions with frames, {sum(len(s["frames"]) for s in out)} frames, {len(errors)} errors')
 
 
 if __name__ == '__main__':

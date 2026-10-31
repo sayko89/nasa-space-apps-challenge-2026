@@ -123,7 +123,7 @@ export async function loadSite(name = DEFAULT_SITE) {
   site.climate = await loadClimate(base);
   site.geology = await loadGeology(base, n);
   site.layers = await loadJson(base, 'layers.json', (j) => decodeLayers(j, n));
-  site.pov = await loadJson(base, 'pov.json', (j) => (j?.format === 'martian-map-pov/1' && Array.isArray(j.panoramas) ? j : null));
+  site.pov = await loadJson(base, 'pov.json', (j) => (j?.format === 'martian-map-pov/2' && Array.isArray(j.stations) && j.stations.length ? j : null));
   site.spaceWeather = await loadJson(base, 'space_weather.json', (j) => (j?.format === 'martian-map-space-weather/1' ? j : null));
   return site;
 }
