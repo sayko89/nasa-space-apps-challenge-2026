@@ -23,6 +23,7 @@ jobs:
           python-version: "3.12"
       - run: python pipeline/fetch_sources.py 2>&1 | tee fetch.log
       - run: mkdir -p pipeline/sources/_probe && cp fetch.log pipeline/sources/_probe/fetch.log
+        if: always()
       - name: Describe the rasters and the CRISM legend
         if: always()
         run: |
@@ -32,6 +33,19 @@ jobs:
           gdalinfo -stats pipeline/sources/crism/jezeroFinal.tif > pipeline/sources/_probe/crism.gdalinfo.txt 2>&1 || true
           pdftotext -layout pipeline/sources/crism/Jezero_readme.pdf pipeline/sources/_probe/crism_readme.txt || true
           pdftoppm -png -r 60 pipeline/sources/crism/Jezero_readme.pdf pipeline/sources/_probe/crism_readme || true
+          curl -sL https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/ > pipeline/sources/_probe/trn_hirise_listing.html || true
+          curl -sL https://planetarymaps.usgs.gov/mosaic/mars2020_trn/ > pipeline/sources/_probe/trn_listing.html || true
+      - name: Cut the 1 m HiRISE DTM window (rock / roughness layer)
+        if: always()
+        run: |
+          mkdir -p pipeline/sources/hirise
+          # Source is eqc with lat_ts=0: x = R*lon, y = R*lat (radians). Window = site (2044 m) + 300 m margin,
+          # widened east-west by 1/cos(lat) because the source projection stretches it.
+          read X0 Y0 X1 Y1 <<< $(python3 -c "import math;R=3396190;la,lo=18.44,77.45;h=1172;k=1/math.cos(math.radians(la));x=R*math.radians(lo);y=R*math.radians(la);print(x-h*k,y+h,x+h*k,y-h)")
+          gdal_translate -q -projwin $X0 $Y0 $X1 $Y1 -co COMPRESS=DEFLATE -co PREDICTOR=3 -co TILED=YES \
+            /vsicurl/https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif \
+            pipeline/sources/hirise/jezero_dtm_1m_window.tif || echo "DTM window failed" >> pipeline/sources/_probe/fetch.log
+          gdalinfo -stats pipeline/sources/hirise/jezero_dtm_1m_window.tif > pipeline/sources/_probe/dtm_window.gdalinfo.txt 2>&1 || true
       - name: Commit
         if: always()
         run: |

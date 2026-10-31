@@ -37,7 +37,8 @@ SOURCES = {
     },
 }
 
-DONKI = 'https://api.nasa.gov/DONKI/{kind}?startDate={start}&endDate={end}&api_key=DEMO_KEY'
+# CCMC's own DONKI web service: same database as api.nasa.gov/DONKI, no API key or rate limit.
+DONKI = 'https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/{kind}?startDate={start}&endDate={end}'
 
 
 def get(url: str) -> bytes:
@@ -56,9 +57,13 @@ def get(url: str) -> bytes:
 def main() -> None:
     manifest = {'fetched_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'files': {}}
     errors = {}
+    old = json.loads((OUT / 'manifest.json').read_text()).get('files', {}) if (OUT / 'manifest.json').exists() else {}
     for rel, meta in SOURCES.items():
         path = OUT / rel
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and rel in old:  # already fetched and recorded
+            manifest['files'][rel] = old[rel]
+            continue
         try:
             data = get(meta['url'])
         except Exception as e:  # noqa: BLE001 — keep going, report at the end
@@ -83,7 +88,7 @@ def main() -> None:
                 errors[f'donki/{kind}/{year}'] = repr(e)
                 items = []
             events[kind].extend(items)
-            time.sleep(2.5)  # DEMO_KEY rate limit
+            time.sleep(1)
         print(f'DONKI {kind}: {len(events[kind])} events')
     (OUT / 'donki').mkdir(parents=True, exist_ok=True)
     (OUT / 'donki' / 'events.json').write_text(json.dumps(events))
