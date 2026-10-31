@@ -1,4 +1,4 @@
-name: Fetch source data (4)
+name: Fetch source data (5)
 
 # Downloads the raw layer sources (Zenodo, NASA) and commits them, because the
 # processing scripts are run where these hosts are not reachable.
@@ -6,14 +6,14 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/fetch-sources-4.yml
+      - .github/workflows/fetch-sources-5.yml
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: fetch-sources-4
+  group: fetch-sources-5
   cancel-in-progress: false
 
 jobs:
@@ -39,6 +39,33 @@ jobs:
           pdftoppm -png -r 60 pipeline/sources/crism/Jezero_readme.pdf pipeline/sources/_probe/crism_readme || true
           curl -sL https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/ > pipeline/sources/_probe/trn_hirise_listing.html || true
           curl -sL https://planetarymaps.usgs.gov/mosaic/mars2020_trn/ > pipeline/sources/_probe/trn_listing.html || true
+      - name: DONKI over IPv4 (CCMC host is unreachable over IPv6 from the runners)
+        if: always()
+        run: |
+          mkdir -p pipeline/sources/donki/raw
+          for k in SEP CME FLR; do
+            curl -4 -sS --max-time 300 --retry 3 -o pipeline/sources/donki/raw/$k.json \
+              "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/$k?startDate=2021-02-18&endDate=$(date -u +%F)" \
+              && echo "DONKI $k: $(python3 -c "import json;print(len(json.load(open('pipeline/sources/donki/raw/$k.json'))))") events (curl -4)" >> pipeline/sources/_probe/fetch.log \
+              || echo "DONKI $k curl -4 failed" >> pipeline/sources/_probe/fetch.log
+          done
+          python3 - <<'PY'
+          import json, pathlib
+          d = pathlib.Path('pipeline/sources/donki')
+          ev = json.loads((d / 'events.json').read_text()) if (d / 'events.json').exists() else {}
+          for k in ['SEP', 'CME', 'FLR']:
+              f = d / 'raw' / f'{k}.json'
+              try:
+                  data = json.loads(f.read_text() or '[]')
+              except Exception:
+                  continue
+              if isinstance(data, list) and len(data) > len(ev.get(k) or []):
+                  ev[k] = data
+          (d / 'events.json').write_text(json.dumps(ev))
+          print({k: len(v) for k, v in ev.items()})
+          PY
+          rm -rf pipeline/sources/donki/raw
+
       - name: Commit sources
         if: always()
         run: |
