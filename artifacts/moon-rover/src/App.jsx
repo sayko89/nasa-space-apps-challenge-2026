@@ -4,6 +4,7 @@
  * toast notifications.
  */
 
+import { DEFAULT_MISSION, ROVER } from './config/mission';
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import RightPanel from './components/RightPanel';
 import EvaHud from './components/EvaHud';
@@ -115,6 +116,14 @@ function SiteBadge({ collapsed, onToggle }) {
         <a href={SITE.geology.source?.doi} target="_blank" rel="noreferrer" style={LINK}>DOI</a>, CC BY 4.0
       </div>}
       <div>SUN: Mars24 algorithm (NASA GISS; Allison &amp; McEwen 2000)</div>
+      {SITE.layers?.thermal && <div>THERMAL: THEMIS thermal inertia (Mars Odyssey) — Edwards &amp; Buz 2021,{' '}
+        <a href={SITE.layers.thermal.source.doi} target="_blank" rel="noreferrer" style={LINK}>Zenodo</a>, CC BY 4.0</div>}
+      {SITE.layers?.minerals && <div>MINERALS: CRISM dominant mineralogy (MRO) — Parente et al. 2021,{' '}
+        <a href={SITE.layers.minerals.source.doi} target="_blank" rel="noreferrer" style={LINK}>Zenodo</a>, CC BY 4.0</div>}
+      {SITE.layers?.rock && <div>ROCKS: relief within each 4 m cell of the 1 m HiRISE DTM (proxy for boulders / outcrops)</div>}
+      <div>RADIATION: Curiosity RAD surface dose (Hassler et al. 2014){SITE.spaceWeather ? ' · space weather: NASA CCMC DONKI' : ''}</div>
+      {SITE.pov && <div>GROUND VIEW: Perseverance Navcam panoramas ({SITE.pov.panoramas.length} in this site), NASA/JPL-Caltech</div>}
+      <div>SUIT &amp; ROVER: Ogilvie et al., ICES 2026 (NASA) — suit masses, carry limit, 30-min rover walkback</div>
       <div style={{color:'#ffaa55', marginTop:3}}>
         ⚠ These EVA limits were written for the Moon — optimistic for Mars.{' '}
         <a href={MARS_CAVEAT.url} target="_blank" rel="noreferrer" style={{color:'#ffcc88'}} title={MARS_CAVEAT.note}>Why?</a>
@@ -159,6 +168,8 @@ export default function App() {
   // Stage 6 — science EVA (geology stops). null = none planned
   const [science, setScience] = useState(null);
   const [scienceDwellMin, setScienceDwellMin] = useState(SCIENCE_PARAMS.dwellMin);
+  // Suit, equipment and rover safe haven (config/mission.js)
+  const [mission, setMission] = useState(DEFAULT_MISSION);
   const [isPlanningScience, setIsPlanningScience] = useState(false);
   const autoPlanRef = useRef(false);   // plan as soon as the science waypoints are committed
   const [badgeCollapsed, setBadgeCollapsed] = useState(false);
@@ -393,7 +404,7 @@ export default function App() {
     setTimeout(async () => {
       try {
         const planned = await planRoutes(waypoints, getMaps(), sunAngleDeg, learningModel.getExperienceMap(),
-          evaStartMs != null ? { startMs: evaStartMs } : {});
+          { ...(evaStartMs != null ? { startMs: evaStartMs } : {}), mission });
         // Waypoints changed / re-planned meanwhile → drop this stale result
         if (mySeq !== planSeqRef.current) return;
         setRoutes(planned);
@@ -421,7 +432,7 @@ export default function App() {
         if (mySeq === planSeqRef.current) setIsPlanning(false);
       }
     }, 30);
-  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel, evaStartMs]);
+  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel, evaStartMs, mission]);
 
   // Science waypoints committed → plan them (runs after the invalidation effect above)
   useEffect(() => {
@@ -438,7 +449,8 @@ export default function App() {
     addLog(`Science EVA: choosing stops (dwell ${scienceDwellMin} min/stop)...`);
     try {
       const t0 = performance.now();
-      const res = await planScience(home, getMaps(), { dwellMin: scienceDwellMin });
+      const res = await planScience(home, getMaps(), { dwellMin: scienceDwellMin,
+        ...(mission.rover ? { maxReturnS: ROVER.walkbackMin.value * 60 } : {}) });
       if (!res || res.stops.length === 0) {
         showToast('No geology stop fits the EVA budget from this start.', 'warning');
         addLog('Science EVA: no feasible stop.');
@@ -462,7 +474,7 @@ export default function App() {
     } finally {
       setIsPlanningScience(false);
     }
-  }, [waypoints, getMaps, scienceDwellMin, addLog, showToast]);
+  }, [waypoints, getMaps, scienceDwellMin, addLog, showToast, mission]);
 
   // ---- Rover / EVA control ----
   const handleStartRover = useCallback(() => {
@@ -717,6 +729,16 @@ export default function App() {
     return () => clearTimeout(id);
   }, [evaStartMs]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // DEM: suit / equipment / rover changed → re-plan so the GO checks follow
+  const lastMissionRef = useRef(mission);
+  useEffect(() => {
+    if (!IS_DEM || mission === lastMissionRef.current) return;
+    lastMissionRef.current = mission;
+    if (!routes || waypoints.length < 2) return;
+    const id = setTimeout(() => handlePlanPath(), 300);
+    return () => clearTimeout(id);
+  }, [mission]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Re-plan when sun angle changes significantly (10° threshold)
   const lastSunRef = useRef(sunAngleDeg);
   useEffect(() => {
@@ -838,6 +860,7 @@ export default function App() {
         onPlanScience={handlePlanScience}
         isPlanningScience={isPlanningScience}
         scienceDwellMin={scienceDwellMin} setScienceDwellMin={setScienceDwellMin}
+        mission={mission} setMission={setMission}
         sunAngleDeg={sunAngleDeg}   setSunAngleDeg={setSunAngleDeg}
         sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs}
         cameraMode={cameraMode}     setCameraMode={setCameraMode}

@@ -16,6 +16,7 @@ import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
 import { evaDoseMSv, careerFraction } from './radiation.js';
+import { carryCheck, ROVER } from '../config/mission.js';
 import { thermalClass } from '../terrain/layers.js';
 
 const HALF = TERRAIN_SIZE / 2;
@@ -550,7 +551,7 @@ export function computeLayerStats(path) {
   };
 }
 
-function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap, dwell = null) {
+function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap, dwell = null, mission = null) {
   const dwellAt = dwell ? dwell.map : null;
   const base = computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, null, 0);
   if (!base) return null;
@@ -579,8 +580,15 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
   const dwellTotalS = dwellAt ? [...dwellAt.values()].reduce((a, b) => a + b, 0) : 0;
   const backS = wb.returnFromEndS;
   const roundTripS = wb.roundTripS;
+  // Farthest the crew ever is from home (= the rover, in rover mode), as walking time
+  let maxReturnS = 0;
+  for (const p of path) { const t = homeMaps.toHome[cellIndexAt(p[0], p[2])]; if (Number.isFinite(t) && t > maxReturnS) maxReturnS = t; }
+  const carry = carryCheck(mission);
+  const roverLimitS = ROVER.walkbackMin.value * 60;
   const checks = {
     budget: wb.ponrIdx < 0,                 // walk-back margin ≥ 0 everywhere
+    carry: carry.ok,                        // suit + equipment weight within what a crew member can carry
+    ...(mission?.rover ? { rover: maxReturnS <= roverLimitS } : {}),
     radial: maxRadialM <= param('maxRadialDistanceKm') * 1000,
     slope: maxSlopeDeg <= param('maxWalkableSlopeDeg'),
   };
@@ -609,10 +617,12 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     marginS: wb.margin,
     light: computeLightStats(path, wb.elapsed, backS, startMs, hMap),
     layers: computeLayerStats(path),
+    carry,
+    rover: mission?.rover ? { maxReturnS, limitS: roverLimitS } : null,
     // Whole EVA is spent outside the habitat/rover: GCR dose for the round trip incl. stops
     radiation: { doseMSv: evaDoseMSv(roundTripS), careerFrac: careerFraction(evaDoseMSv(roundTripS)) },
     checks,
-    go: checks.budget && checks.radial && checks.slope,
+    go: Object.values(checks).every(Boolean),
   };
 }
 
@@ -638,7 +648,7 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
       const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge, segEnds);
       const path = smoothPath(rawPath);
       const dwell = waypoints.some(w => w.dwellS > 0) ? dwellIndexMap(path, waypoints, segEnds, rawPath.length) : null;
-      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap, dwell) };
+      result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap, dwell, opts.mission || null) };
     }
     return result;
   }
@@ -694,6 +704,7 @@ export function planScience(home, hMap, opts = {}) {
     weights: SCIENCE_PARAMS.weights, interiorR: SCIENCE_PARAMS.interiorR,
     minHomeDistM: SCIENCE_PARAMS.minHomeDistM, maxCandidates: SCIENCE_PARAMS.maxCandidates,
     minerals: SITE.layers?.minerals || null,
+    maxReturnS: opts.maxReturnS ?? null,
   });
   const toWorld = (c) => { const { wx, wz } = gridToWorld(c.col, c.row); return { ...c, x: wx, z: wz }; };
   return {

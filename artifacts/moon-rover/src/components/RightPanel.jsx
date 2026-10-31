@@ -15,6 +15,8 @@ import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { spaceWeatherAt, RADIATION } from '../utils/radiation';
+import { PovViewer, nearestPanorama } from './PovViewer';
+import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
 import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS } from '../config/marswalkProfile';
@@ -368,6 +370,48 @@ function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
   );
 }
 
+// ---- Mission setup: suit, equipment load, rover safe haven ----
+function MissionPanel({ mission, setMission, start, disabled }) {
+  const c = carryCheck(mission);
+  const set = (k, v) => setMission({ ...mission, [k]: v });
+  const drive = mission.rover && start ? roverDrive(start.x, start.z) : null;
+  const row = { display: 'flex', alignItems: 'center', gap: 5, fontSize: fs(7.5), color: '#9ab89a', marginBottom: 4 };
+  return (
+    <div style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
+      <div style={row}>
+        <span style={{ width: 54 }}>Suit</span>
+        {Object.entries(SUITS).map(([k, s]) => (
+          <Btn key={k} active={mission.suit === k} color="#88ccff" onClick={() => set('suit', k)}
+            style={{ flex: 1, padding: '2px 4px' }}>{s.label} · {s.massKg} kg</Btn>
+        ))}
+      </div>
+      <div style={row}>
+        <span style={{ width: 54 }}>Equipment</span>
+        <input type="range" min={0} max={40} step={1} value={mission.equipmentKg}
+          onChange={e => set('equipmentKg', Number(e.target.value))} style={{ flex: 1 }} />
+        <b style={{ color: '#e8e0c8', width: 40, textAlign: 'right' }}>{mission.equipmentKg} kg</b>
+      </div>
+      <div style={{ fontSize: fs(7), color: c.ok ? '#88dd99' : '#ff6655', lineHeight: 1.5 }}>
+        Carried weight on Mars: {c.earthEqKg.toFixed(1)} kg Earth-equivalent / {c.limitKg} kg limit
+        {c.ok ? ` · up to ${c.maxEquipmentKg.toFixed(0)} kg of equipment` : ' · NO-GO: too heavy to walk with'}
+      </div>
+      <div style={{ ...row, marginTop: 5 }}>
+        <Btn active={mission.rover} color="#ffbb66" onClick={() => set('rover', !mission.rover)} style={{ flex: 1 }}>
+          {mission.rover ? '✓ PRESSURIZED ROVER PARKED AT START' : 'PRESSURIZED ROVER AS SAFE HAVEN'}
+        </Btn>
+      </div>
+      {mission.rover && (
+        <div style={{ fontSize: fs(7), color: '#b8c8b0', lineHeight: 1.5 }}>
+          The rover drives the crew to the start point and waits there; the crew must stay within a
+          {' '}<b>{ROVER.walkbackMin.value}-minute walk</b> of it.
+          {drive && <> Drive from the habitat: {drive.km.toFixed(2)} km, ~{Math.round(drive.minutes)} min (straight line, {ROVER.driveSpeedKmh.value} km/h).</>}
+        </div>
+      )}
+      <div style={{ fontSize: fs(6.5), color: '#6a7a6a', marginTop: 2 }}>Suit masses, carry limit, walkback: Ogilvie et al., ICES 2026 (NASA)</div>
+    </div>
+  );
+}
+
 // ---- Radiation / space weather (DONKI) for the EVA date ----
 function SpaceWeatherRow({ startMs }) {
   const wx = spaceWeatherAt(SITE.spaceWeather, startMs);
@@ -438,6 +482,12 @@ function MarswalkStats({ mode, s }) {
             {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (extremes {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
         </div>
       )}
+      {(s.carry || s.rover) && (
+        <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55,marginTop:1}}>
+          {s.carry && <>Carried weight: <span style={{color:fail(s.checks.carry)}}>{s.carry.earthEqKg.toFixed(1)} kg</span> / {s.carry.limitKg} kg Earth-eq. ({s.carry.suit.label})</>}
+          {s.rover && <><br/>Farthest from the rover: <span style={{color:fail(s.checks.rover)}}>{fmtHM(s.rover.maxReturnS)}</span> walk / {Math.round(s.rover.limitS / 60)} min limit</>}
+        </div>
+      )}
       {(s.radiation || s.layers) && (
         <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55,marginTop:1}}>
           {s.radiation && <>Radiation (GCR, Curiosity RAD): <span style={{color:'#e8c890'}}>{s.radiation.doseMSv.toFixed(2)} mSv</span>
@@ -457,6 +507,7 @@ function MarswalkStats({ mode, s }) {
 
 // ---- Stage 6: science EVA (geology stops) ----
 function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }) {
+  const [pov, setPov] = useState(null);
   return (
     <>
       <div style={{display:'flex',alignItems:'center',gap:5,fontSize:fs(7.5),color:'#9ab89a',marginBottom:4}}>
@@ -469,6 +520,7 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
         Assumption: no sourced time per stop was found. Score = diversity of distinct units
         (bedrock {SCIENCE_PARAMS.weights.bedrock}, surface {SCIENCE_PARAMS.weights.surface}, contact {SCIENCE_PARAMS.weights.contact}) — a design choice.
       </div>
+      {pov && <PovViewer stop={pov.stop} label={pov.label} onClose={() => setPov(null)} />}
       <Btn disabled={busy || disabled} onClick={onPlan}
         style={{width:'100%',background:'rgba(70,40,0,0.55)',borderColor:'rgba(230,150,60,0.6)',color:'#ffbb66',fontWeight:'bold'}}>
         {busy ? 'SEARCHING…' : 'PLAN SCIENCE EVA'}
@@ -482,7 +534,12 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
           </div>
           <ol style={{margin:'3px 0 0',paddingLeft:14,color:'#e0d0b0'}}>
             {science.stops.map((st, i) => (
-              <li key={i} title={st.tags.join('\n')}><b style={{color:'#ffb347'}}>S{i + 1}</b> {st.label}</li>
+              <li key={i} title={st.tags.join('\n')}><b style={{color:'#ffb347'}}>S{i + 1}</b> {st.label}
+                {nearestPanorama(st.x, st.z) && (
+                  <span onClick={() => setPov({ stop: st, label: `S${i + 1} ${st.label}` })}
+                    style={{marginLeft:4,color:'#ffcc88',cursor:'pointer',textDecoration:'underline'}}>ground view</span>
+                )}
+              </li>
             ))}
           </ol>
           {science.candidates.length > science.stops.length && (
@@ -930,6 +987,7 @@ export default function RightPanel({
   isPlanning = false,
   hasGeology = false, science = null, onPlanScience = () => {}, isPlanningScience = false,
   scienceDwellMin = 20, setScienceDwellMin = () => {},
+  mission = DEFAULT_MISSION, setMission = () => {},
   sunAngleDeg, setSunAngleDeg,
   sun = null, evaStartMs = null, setEvaStartMs = () => {},
   cameraMode, setCameraMode,
@@ -1057,6 +1115,12 @@ export default function RightPanel({
             </Btn>
           </Row>
         </Sect>
+
+        {IS_DEM && (
+        <Sect label="Mission setup">
+          <MissionPanel mission={mission} setMission={setMission} start={waypoints?.[0]} disabled={isRoving} />
+        </Sect>
+        )}
 
         {hasGeology && (
         <Sect label="Science EVA">

@@ -64,7 +64,8 @@ function isInterior(geo, i, r) {
  * @param {object} geo      decodeGeology çıktısı
  * @param {object} home     { homeIdx, fromHome, toHome }
  * @param {object} o        { cellM, wall, budgetS, dwellS, maxRadialM, interiorR=2, minHomeDistM=0, maxCandidates=12,
- *                            minerals? (CRISM layer: { code, classes }) — adds one candidate per detected mineral }
+ *                            minerals? (CRISM layer: { code, classes }) — adds one candidate per detected mineral,
+ *                            maxReturnS? — only cells this close (walking time) to home, e.g. the rover's 30 min }
  * @returns {Array<{id,idx,row,col,kind,tags,label,rtS}>}
  */
 export function candidateStops(geo, home, o) {
@@ -82,6 +83,7 @@ export function candidateStops(geo, home, o) {
     if (wall && wall[i]) continue;
     const rt = home.fromHome[i] + home.toHome[i];
     if (!Number.isFinite(rt) || rt + dwellS > budgetS) continue;
+    if (o.maxReturnS != null && home.toHome[i] > o.maxReturnS) continue;   // rover safe haven: stay within reach
     const row = (i / n) | 0, col = i - row * n;
     const dHome = Math.hypot(row - hr, col - hc);
     if (dHome * cellM > maxRadialM || dHome < minHomeCells) continue;

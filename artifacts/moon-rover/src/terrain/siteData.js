@@ -31,6 +31,7 @@ export const site = {
   geology: null,        // geology.json çözülmüş (Stack et al. 2020) — isteğe bağlı
   layers: null,         // layers.json: THEMIS thermal inertia, CRISM minerals, HiRISE rock relief — optional
   spaceWeather: null,   // space_weather.json: DONKI events (SEP, CME, flares) — optional
+  pov: null,            // pov.json: Perseverance Navcam panoramas inside the site — optional
   loadError: null,
 };
 
@@ -122,6 +123,7 @@ export async function loadSite(name = DEFAULT_SITE) {
   site.climate = await loadClimate(base);
   site.geology = await loadGeology(base, n);
   site.layers = await loadJson(base, 'layers.json', (j) => decodeLayers(j, n));
+  site.pov = await loadJson(base, 'pov.json', (j) => (j?.format === 'martian-map-pov/1' && Array.isArray(j.panoramas) ? j : null));
   site.spaceWeather = await loadJson(base, 'space_weather.json', (j) => (j?.format === 'martian-map-space-weather/1' ? j : null));
   return site;
 }
