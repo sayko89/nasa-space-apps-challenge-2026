@@ -200,3 +200,23 @@ test('geology.json (gerçek veri) bağımsız referansla aynı', { skip: !fs.exi
     assert.deepEqual([geo.surfaceUnits[geo.surface[i]], geo.bedrockUnits[geo.bedrock[i]]], [s, b], rc);
   }
 });
+
+test('CRISM minerals: one candidate per detected mineral, M: tag scored, chosen when it adds diversity', () => {
+  const geo = synthGeo();
+  // Mg-carbonate patch (rows 50..56, cols 40..46) in otherwise mineral-free ground
+  const code = new Uint8Array(N * N);
+  for (let r = 50; r < 57; r++) for (let c = 40; c < 47; c++) code[r * N + c] = 1;
+  const minerals = { code, classes: ['none', 'Mg-carbonate'] };
+  const homeIdx = 60 * N + 60;
+  const home = WB.homeTimeMaps(homeIdx, hm, P.getWallMap(), N, CELL);
+  const o = { cellM: CELL, budgetS: 3600, dwellS: 120, maxRadialM: 2000, weights: { ...W, mineral: 2 }, interiorR: 2, minerals };
+  const r = S.planScienceEva(geo, home, hm, P.getWallMap(), o);
+  const mc = r.candidates.filter(c => c.kind === 'mineral');
+  assert.equal(mc.length, 1);
+  assert.ok(mc[0].tags.includes('M:Mg-carbonate'));
+  assert.match(mc[0].label, /Mg-carbonate \(CRISM\)/);
+  assert.ok(r.tour.tags.includes('M:Mg-carbonate'), 'the mineral is worth the detour within the budget');
+  // without the layer nothing mineral-related appears
+  const r0 = S.planScienceEva(geo, home, hm, P.getWallMap(), { ...o, minerals: null });
+  assert.ok(!r0.candidates.some(c => c.tags.some(t => t[0] === 'M')));
+});

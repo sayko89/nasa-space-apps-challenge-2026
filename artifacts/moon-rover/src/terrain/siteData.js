@@ -16,6 +16,7 @@
  */
 
 import { decodeGeology } from './geology.js';
+import { decodeLayers } from './layers.js';
 
 export const site = {
   mode: 'procedural',
@@ -28,6 +29,8 @@ export const site = {
   meta: null,
   climate: null,        // climate.json (MEDA ATS iklimolojisi) — isteğe bağlı
   geology: null,        // geology.json çözülmüş (Stack et al. 2020) — isteğe bağlı
+  layers: null,         // layers.json: THEMIS thermal inertia, CRISM minerals, HiRISE rock relief — optional
+  spaceWeather: null,   // space_weather.json: DONKI events (SEP, CME, flares) — optional
   loadError: null,
 };
 
@@ -118,6 +121,8 @@ export async function loadSite(name = DEFAULT_SITE) {
   site.loadError = null;
   site.climate = await loadClimate(base);
   site.geology = await loadGeology(base, n);
+  site.layers = await loadJson(base, 'layers.json', (j) => decodeLayers(j, n));
+  site.spaceWeather = await loadJson(base, 'space_weather.json', (j) => (j?.format === 'martian-map-space-weather/1' ? j : null));
   return site;
 }
 
@@ -131,6 +136,17 @@ async function loadClimate(base) {
     return c;
   } catch {
     return null;      // SPA fallback HTML veya ağ hatası → iklim katmanı yok
+  }
+}
+
+/** Optional JSON file next to grid.bin; null if missing or invalid. */
+async function loadJson(base, file, decode) {
+  try {
+    const r = await fetch(base + file, { cache: 'no-cache' });
+    if (!r.ok) return null;
+    return decode(JSON.parse(await r.text()));
+  } catch {
+    return null;
   }
 }
 

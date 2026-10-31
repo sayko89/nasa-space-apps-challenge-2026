@@ -58,6 +58,41 @@ export function geologyLegend(type) {
     .filter(e => e.pct > 0);
 }
 
+// Extra data layers (layers.json): heatmap name → site.layers key
+const DATA_LAYER = {
+  'Thermal Inertia (THEMIS)': 'thermal',
+  'Minerals (CRISM)': 'minerals',
+  'Rock Relief (HiRISE)': 'rock',
+};
+/** Data-layer heatmaps available for this site (only those whose data loaded). */
+export function dataLayerOptions() {
+  const L = SITE.layers;
+  return L ? Object.keys(DATA_LAYER).filter(k => L[DATA_LAYER[k]]) : [];
+}
+// Fixed display ranges so the colours mean the same thing on every site.
+const DATA_RANGE = { thermal: [150, 450], rock: [0, 2] };
+
+/**
+ * Legend for a data layer:
+ *   categorical → { kind: 'classes', entries: [{ name, color, pct }], source }
+ *   continuous  → { kind: 'range', lo, hi, unit, source, note }
+ * null if `type` is not a data layer.
+ */
+export function dataLayerLegend(type) {
+  const key = DATA_LAYER[type], L = SITE.layers?.[key];
+  if (!L) return null;
+  const src = L.source ? `${L.source.creators?.split(',')[0] ?? ''} ${L.source.year ?? ''} · ${L.source.mission ?? ''} · ${L.source.license ?? ''}`.trim() : '';
+  if (key === 'minerals') {
+    const cnt = new Array(L.classes.length).fill(0);
+    for (const v of L.code) cnt[v]++;
+    const entries = L.classes.map((name, k) => ({ name: k === 0 ? 'no detection' : name,
+      color: `rgb(${L.colors[k].join(',')})`, pct: 100 * cnt[k] / L.code.length })).filter(e => e.pct > 0);
+    return { kind: 'classes', entries, source: src, note: 'Darker shade = medium confidence' };
+  }
+  const [lo, hi] = DATA_RANGE[key];
+  return { kind: 'range', lo, hi, unit: L.unit, source: src, note: L.note };
+}
+
 let _heightMap = null;
 let _slopeMap = null;
 let _craterMask = null;
@@ -91,6 +126,34 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45, sunEleva
   // Build the parameter map
   let paramMap;
   let maxVal = 1;
+
+  const dataKey = DATA_LAYER[type];
+  if (dataKey) {
+    const L = SITE.layers?.[dataKey];
+    for (let py = 0; py < H; py++) for (let px2 = 0; px2 < W; px2++) {
+      const k = Math.floor((py / H) * GRID_RES) * GRID_RES + Math.floor((px2 / W) * GRID_RES);
+      const i = (py * W + px2) * 4;
+      let c = [40, 40, 40], a = 120;
+      if (L && dataKey === 'minerals') {
+        const code = L.code[k];
+        if (code) {
+          c = L.colors[code];
+          if (L.confidence[k] === 1) c = c.map(v => Math.round(v * 0.6)); // medium confidence = darker, as in the source key
+          a = 225;
+        }
+      } else if (L) {
+        const v = L.values[k];
+        if (Number.isFinite(v)) {
+          const [lo, hi] = DATA_RANGE[dataKey];
+          c = thermalColor((v - lo) / (hi - lo));
+          a = 210;
+        }
+      }
+      px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = a;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return;
+  }
 
   const geoLayer = GEO_LAYER[type];
   if (geoLayer) {

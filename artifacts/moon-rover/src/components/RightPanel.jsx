@@ -14,7 +14,8 @@ import { fmtHM, fmtSignedHM, fmtHourMin } from '../utils/format';
 import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
-import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend } from '../utils/heatmaps';
+import { spaceWeatherAt, RADIATION } from '../utils/radiation';
+import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
 import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
@@ -26,11 +27,12 @@ const PW   = PANEL_W;   // panel width (src/ui/layout.js)
 
 // DEM: Mars layers only (rover-specific layers stay in the Moon mode)
 const HEATMAP_OPTIONS = IS_DEM
-  ? ['Elevation','Slope Angle','No-Go','EVA Range', ...(SITE.geology ? GEOLOGY_LAYERS : []), 'Illumination','Roughness']
+  ? ['Elevation','Slope Angle','No-Go','EVA Range', ...(SITE.geology ? GEOLOGY_LAYERS : []), ...dataLayerOptions(), 'Illumination','Roughness']
   : ['Elevation','Slope','Slope Angle','No-Go','EVA Range','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
 const HEATMAP_DEFAULT = IS_DEM ? (SITE.geology ? 'Geology: Surface' : 'Slope Angle') : 'Hazard Score';
 const CANVAS_FONT = (px, bold = false) => `${bold ? 'bold ' : ''}${fs(px)}px monospace`;
 const HM_COLORS = {
+  'Thermal Inertia (THEMIS)':'#ff9966','Minerals (CRISM)':'#66ffcc','Rock Relief (HiRISE)':'#ddbb88',
   'Elevation':'#e8a878','No-Go':'#ff4466','EVA Range':'#66ddff',
   'Slope':'#aaddaa','Slope Angle':'#88ccff','Roughness':'#ffcc88',
   'Slip Risk':'#ff8844','Illumination':'#ffffaa','Hazard Score':'#ff6655','Traversability':'#44ffaa',
@@ -361,6 +363,28 @@ function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
         );
       })()}
       <div style={{ color: '#4a6a4a', fontSize:fs(6.5), marginTop: 2 }}>Mars24 (NASA GISS) · Allison &amp; McEwen 2000</div>
+      <SpaceWeatherRow startMs={evaStartMs} />
+    </div>
+  );
+}
+
+// ---- Radiation / space weather (DONKI) for the EVA date ----
+function SpaceWeatherRow({ startMs }) {
+  const wx = spaceWeatherAt(SITE.spaceWeather, startMs);
+  const row = { display: 'flex', justifyContent: 'space-between', fontSize: fs(7.5), color: 'rgba(160,200,160,0.8)', lineHeight: 1.6 };
+  const tag = wx.advisory === 'postpone' ? { t: '⚠ SEP — POSTPONE EVA', c: '#ff6655' }
+    : wx.advisory === 'clear' ? { t: 'NO SEP ±' + RADIATION.sepWindowDays.value + ' d', c: '#88dd99' }
+    : { t: 'no DONKI data for this date', c: '#8899aa' };
+  return (
+    <div style={{ marginTop: 4, borderTop: '1px solid rgba(60,90,60,0.3)', paddingTop: 3 }}>
+      <div style={row}><span>Radiation (GCR)</span><span style={{ color: '#e8e0c8' }}>{RADIATION.gcrDoseEquivalentMSvPerDay.value} mSv/day</span></div>
+      <div style={row}><span>Space weather</span><span style={{ color: tag.c, fontWeight: 'bold' }}>{tag.t}</span></div>
+      {wx.near.slice(0, 3).map((e, i) => (
+        <div key={i} style={{ fontSize: fs(6.5), color: e.type === 'SEP' ? '#ff8877' : '#9aa8b8' }}>
+          {e.type} · {e.time.slice(0, 16).replace('T', ' ')} UTC{e.class ? ` · ${e.class}` : ''}{e.speedKmS ? ` · ${Math.round(e.speedKmS)} km/s` : ''}{e.type === 'CME' ? ' · arrival at Mars (model)' : ''}
+        </div>
+      ))}
+      <div style={{ color: '#4a6a4a', fontSize: fs(6.5) }}>Curiosity RAD, Hassler et al. 2014 · NASA CCMC DONKI</div>
     </div>
   );
 }
@@ -412,6 +436,18 @@ function MarswalkStats({ mode, s }) {
           {s.light.air && <><br/>Air (1.45 m, during the EVA): <span style={{color:'#ffcc88'}}>
             {K_TO_C(s.light.air.minMedian).toFixed(0)}…{K_TO_C(s.light.air.maxMedian).toFixed(0)} °C</span>
             {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (extremes {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
+        </div>
+      )}
+      {(s.radiation || s.layers) && (
+        <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55,marginTop:1}}>
+          {s.radiation && <>Radiation (GCR, Curiosity RAD): <span style={{color:'#e8c890'}}>{s.radiation.doseMSv.toFixed(2)} mSv</span>
+            <span style={{color:'#7a8a7a'}}> = {(s.radiation.careerFrac * 100).toFixed(3)}% of the 600 mSv career limit</span></>}
+          {s.layers?.thermal && <><br/>Ground (THEMIS TI): <span style={{color:'#e8c890'}}>{Math.round(s.layers.thermal.median)}</span>
+            <span style={{color:'#7a8a7a'}}> · {s.layers.thermal.cls}</span></>}
+          {s.layers?.rock && <><br/>Largest rock relief on route: <span style={{color: s.layers.rock.maxReliefM > s.layers.rock.limitM ? '#ff6655' : '#e8c890'}}>
+            {s.layers.rock.maxReliefM.toFixed(2)} m</span><span style={{color:'#7a8a7a'}}> / {s.layers.rock.limitM} m limit</span></>}
+          {s.layers?.minerals?.length > 0 && <><br/>Minerals crossed (CRISM): <span style={{color:'#88ddcc'}}>
+            {s.layers.minerals.slice(0, 3).map(m => `${m.name} ${(m.share * 100).toFixed(0)}%`).join(' · ')}</span></>}
         </div>
       )}
       <div style={{color:'rgba(100,150,100,0.75)',fontSize:fs(7),marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
@@ -556,7 +592,9 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drap
       </div>
       <canvas ref={ref} width={MAP_S} height={MAP_S}
         style={{width:MAP_S,height:MAP_S,display:'block',borderRadius:3,border:'1px solid rgba(80,120,60,0.3)'}}/>
-      {geologyLegend(sel) ? (
+      {dataLayerLegend(sel) ? (
+        <DataLayerLegend lg={dataLayerLegend(sel)} />
+      ) : geologyLegend(sel) ? (
         <div style={{fontSize:fs(7),color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
           {geologyLegend(sel).map(e => (
             <div key={e.name} style={{display:'flex',alignItems:'center',gap:4}}>
@@ -583,6 +621,28 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drap
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function DataLayerLegend({ lg }) {
+  return (
+    <div style={{fontSize:fs(7),color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
+      {lg.kind === 'classes' ? lg.entries.map(e => (
+        <div key={e.name} style={{display:'flex',alignItems:'center',gap:4}}>
+          <span style={{width:7,height:7,background:e.color,display:'inline-block',flexShrink:0}}/>
+          <span style={{flex:1}}>{e.name}</span><span>{e.pct.toFixed(1)}%</span>
+        </div>
+      )) : (
+        <>
+          <div style={{height:6,borderRadius:2,background:'linear-gradient(90deg,#0000ff,#00ffff,#00ff00,#ffff00,#ff0000)'}}/>
+          <div style={{display:'flex',justifyContent:'space-between'}}>
+            <span>{lg.lo}</span><span style={{color:'#7a8a7a'}}>{lg.unit}</span><span>{lg.hi}+</span>
+          </div>
+        </>
+      )}
+      {lg.note && <div style={{color:'#7a8a7a'}}>{lg.note}</div>}
+      <div style={{color:'#6a7a6a'}}>{lg.source}</div>
     </div>
   );
 }

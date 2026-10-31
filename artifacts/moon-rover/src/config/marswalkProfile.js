@@ -58,6 +58,14 @@ export const MARSWALK_PROFILE = {
     url: XEVA_URL,
     quote: 'a walking traverse of up to 2 km away from the lander on the lunar surface (radial distance)',
   },
+  maxRockReliefM: {
+    value: 1.0,
+    unit: 'm',
+    status: 'design',
+    source: 'Rock relief from the 1 m HiRISE DTM (pipeline/build_layers.py)',
+    note: 'Cells whose relief (after removing the local slope) exceeds this are treated as boulders / outcrops the crew walks around. '
+        + 'No sourced suited-EVA obstacle height was found; 1 m is a planning choice.',
+  },
   slopeSpeedModel: {
     value: 'tobler',
     unit: null,
@@ -107,7 +115,7 @@ export const MODE_WEIGHTS = {
  */
 export const SCIENCE_PARAMS = {
   dwellMin: 20,
-  weights: { bedrock: 2, surface: 1, contact: 3 },
+  weights: { bedrock: 2, surface: 1, contact: 3, mineral: 2 },
   interiorR: 2,
   minHomeDistM: 20,
   maxCandidates: 12,

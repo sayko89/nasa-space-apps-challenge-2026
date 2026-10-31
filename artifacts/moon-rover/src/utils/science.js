@@ -29,13 +29,23 @@ export const MAX_EXACT_STOPS = 14;
 
 export { decodeRle, decodeGeology } from '../terrain/geology.js';
 
-/** Hücrenin örneklediği etiketler. */
-function cellTags(geo, i) {
+/** Tags a stop at cell i samples: bedrock (B:), surface (S:) and, with a CRISM layer, mineral (M:). */
+function cellTags(geo, i, min) {
   const t = [];
   const b = geo.bedrockUnits[geo.bedrock[i]], s = geo.surfaceUnits[geo.surface[i]];
   if (b) t.push('B:' + b);
   if (s) t.push('S:' + s);
+  const m = min && min.code[i] ? min.classes[min.code[i]] : null;
+  if (m) t.push('M:' + m);
   return t;
+}
+
+/** Whole (2r+1)² neighbourhood shows the same CRISM mineral (any confidence)? */
+function isMineralInterior(min, n, i, r) {
+  const row = (i / n) | 0, col = i - row * n, m = min.code[i];
+  if (!m || row < r || col < r || row >= n - r || col >= n - r) return false;
+  for (let dr = -r; dr <= r; dr++) for (let dc = -r; dc <= r; dc++) if (min.code[i + dr * n + dc] !== m) return false;
+  return true;
 }
 
 /** (2r+1)² komşuluğun tamamı aynı birim çiftinde mi? */
@@ -53,7 +63,8 @@ function isInterior(geo, i, r) {
 /**
  * @param {object} geo      decodeGeology çıktısı
  * @param {object} home     { homeIdx, fromHome, toHome }
- * @param {object} o        { cellM, wall, budgetS, dwellS, maxRadialM, interiorR=2, minHomeDistM=0, maxCandidates=12 }
+ * @param {object} o        { cellM, wall, budgetS, dwellS, maxRadialM, interiorR=2, minHomeDistM=0, maxCandidates=12,
+ *                            minerals? (CRISM layer: { code, classes }) — adds one candidate per detected mineral }
  * @returns {Array<{id,idx,row,col,kind,tags,label,rtS}>}
  */
 export function candidateStops(geo, home, o) {
@@ -77,6 +88,7 @@ export function candidateStops(geo, home, o) {
     if (geo.bedrock[i] || geo.surface[i]) {
       if (isInterior(geo, i, r)) consider(`U:${geo.surface[i]}:${geo.bedrock[i]}`, i, rt, 'unit');
     }
+    if (o.minerals && isMineralInterior(o.minerals, n, i, 1)) consider(`M:${o.minerals.code[i]}`, i, rt, 'mineral');
     // Ana kaya kontağı: sağ veya alt komşu farklı (ikisi de haritalı) ana kaya birimi
     const b = geo.bedrock[i];
     if (b) for (const k of [col + 1 < n ? i + 1 : -1, row + 1 < n ? i + n : -1]) {
@@ -90,11 +102,14 @@ export function candidateStops(geo, home, o) {
   const list = [...best.values()].sort((a, b) => a.rt - b.rt).slice(0, maxC);
   return list.map((c, j) => {
     const row = (c.idx / n) | 0, col = c.idx - row * n;
-    let tags = cellTags(geo, c.idx), label;
+    let tags = cellTags(geo, c.idx, o.minerals), label;
     if (c.kind === 'contact') {
       const [a, b] = c.pair.map(k => geo.bedrockUnits[k]);
       tags = ['B:' + a, 'B:' + b, `C:${a} | ${b}`];
       label = `Contact: ${a} / ${b}`;
+    } else if (c.kind === 'mineral') {
+      const unit = tags.filter(t => t[0] === 'B' || t[0] === 'S').reverse().map(t => t.slice(2)).join(' on ');
+      label = `${tags.find(t => t[0] === 'M').slice(2)} (CRISM)${unit ? ' — ' + unit : ''}`;
     } else {
       label = [...tags].reverse().map(t => t.slice(2)).join(' on ') || 'Unmapped';
     }
@@ -102,9 +117,9 @@ export function candidateStops(geo, home, o) {
   });
 }
 
-/** Etiket ağırlığı (B/S/C önekine göre). */
+/** Tag weight by prefix: B bedrock, S surface, M mineral (CRISM), C contact. */
 function tagWeight(tag, w) {
-  return tag[0] === 'B' ? w.bedrock : tag[0] === 'S' ? w.surface : w.contact;
+  return tag[0] === 'B' ? w.bedrock : tag[0] === 'S' ? w.surface : tag[0] === 'M' ? (w.mineral ?? 2) : w.contact;
 }
 
 /** Farklı etiketler kümesinin puanı. */

@@ -15,6 +15,8 @@ import { param, MODE_WEIGHTS, SCIENCE_PARAMS } from '../config/marswalkProfile.j
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
+import { evaDoseMSv, careerFraction } from './radiation.js';
+import { thermalClass } from '../terrain/layers.js';
 
 const HALF = TERRAIN_SIZE / 2;
 
@@ -122,6 +124,12 @@ export function getWallMap() {
     const slope = buildSlopeMap(buildHeightMap());       // rise/run
     const limit = Math.tan((param('maxWalkableSlopeDeg') * Math.PI) / 180);
     for (let i = 0; i < slope.length; i++) if (slope[i] > limit) _wallMap[i] = 1;
+    // Rock outcrops / large boulders from the 1 m DTM (layers.json), when available
+    const rock = SITE.layers?.rock?.values;
+    if (rock && rock.length === _wallMap.length) {
+      const lim = param('maxRockReliefM');
+      for (let i = 0; i < rock.length; i++) if (rock[i] > lim) _wallMap[i] = 1;
+    }
     // buildSlopeMap leaves the 1-cell border at 0; block it so routes never
     // run along the unverifiable grid edge.
     for (let k = 0; k < GRID_RES; k++) {
@@ -515,6 +523,33 @@ function dwellIndexMap(path, waypoints, segEnds, rawLen) {
   return { map: m, list };
 }
 
+/** What the extra data layers say along a route (null fields when a layer is missing). */
+export function computeLayerStats(path) {
+  const L = SITE.layers;
+  if (!L || !path?.length) return null;
+  const ti = [], minerals = new Map();
+  let rockMax = 0, rockN = 0, n = 0;
+  const rockLim = param('maxRockReliefM');
+  for (const p of path) {
+    const { col, row } = worldToGrid(p[0], p[2]);
+    const k = row * GRID_RES + col;
+    n++;
+    if (L.thermal) { const v = L.thermal.values[k]; if (Number.isFinite(v)) ti.push(v); }
+    if (L.rock) { const v = L.rock.values[k]; if (Number.isFinite(v)) { rockMax = Math.max(rockMax, v); if (v > 0.5 * rockLim) rockN++; } }
+    if (L.minerals && L.minerals.code[k]) {
+      const name = L.minerals.classes[L.minerals.code[k]];
+      minerals.set(name, (minerals.get(name) || 0) + 1);
+    }
+  }
+  ti.sort((a, b) => a - b);
+  const tiMedian = ti.length ? ti[ti.length >> 1] : null;
+  return {
+    thermal: L.thermal && ti.length ? { median: tiMedian, min: ti[0], max: ti[ti.length - 1], cls: thermalClass(L.thermal, tiMedian) } : null,
+    rock: L.rock ? { maxReliefM: rockMax, roughShare: n ? rockN / n : 0, limitM: rockLim } : null,
+    minerals: L.minerals ? [...minerals.entries()].map(([name, c]) => ({ name, share: c / n })).sort((a, b) => b.share - a.share) : null,
+  };
+}
+
 function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps, startMs, hMap, dwell = null) {
   const dwellAt = dwell ? dwell.map : null;
   const base = computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, null, 0);
@@ -573,6 +608,9 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     ponrPoint: wb.ponrIdx >= 0 ? path[wb.ponrIdx] : null,
     marginS: wb.margin,
     light: computeLightStats(path, wb.elapsed, backS, startMs, hMap),
+    layers: computeLayerStats(path),
+    // Whole EVA is spent outside the habitat/rover: GCR dose for the round trip incl. stops
+    radiation: { doseMSv: evaDoseMSv(roundTripS), careerFrac: careerFraction(evaDoseMSv(roundTripS)) },
     checks,
     go: checks.budget && checks.radial && checks.slope,
   };
@@ -655,6 +693,7 @@ export function planScience(home, hMap, opts = {}) {
     cellM: CELL_SIZE, budgetS, dwellS, maxRadialM: param('maxRadialDistanceKm') * 1000,
     weights: SCIENCE_PARAMS.weights, interiorR: SCIENCE_PARAMS.interiorR,
     minHomeDistM: SCIENCE_PARAMS.minHomeDistM, maxCandidates: SCIENCE_PARAMS.maxCandidates,
+    minerals: SITE.layers?.minerals || null,
   });
   const toWorld = (c) => { const { wx, wz } = gridToWorld(c.col, c.row); return { ...c, x: wx, z: wz }; };
   return {
