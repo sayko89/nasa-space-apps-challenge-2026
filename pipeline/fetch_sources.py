@@ -55,10 +55,16 @@ def get(url: str) -> bytes:
 
 def main() -> None:
     manifest = {'fetched_utc': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'files': {}}
+    errors = {}
     for rel, meta in SOURCES.items():
         path = OUT / rel
         path.parent.mkdir(parents=True, exist_ok=True)
-        data = get(meta['url'])
+        try:
+            data = get(meta['url'])
+        except Exception as e:  # noqa: BLE001 — keep going, report at the end
+            errors[rel] = repr(e)
+            print(f'{rel}: FAILED {e}')
+            continue
         path.write_bytes(data)
         manifest['files'][rel] = {**meta, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
         print(f'{rel}: {len(data) / 1e6:.2f} MB')
@@ -70,8 +76,12 @@ def main() -> None:
         for year in range(2021, dt.date.today().year + 1):
             start = f'{year}-01-01' if year > 2021 else '2021-02-18'
             end = min(dt.date(year, 12, 31), dt.date.today()).isoformat()
-            raw = get(DONKI.format(kind=kind, start=start, end=end))
-            items = json.loads(raw or b'[]') or []
+            try:
+                raw = get(DONKI.format(kind=kind, start=start, end=end))
+                items = json.loads(raw or b'[]') or []
+            except Exception as e:  # noqa: BLE001
+                errors[f'donki/{kind}/{year}'] = repr(e)
+                items = []
             events[kind].extend(items)
             time.sleep(2.5)  # DEMO_KEY rate limit
         print(f'DONKI {kind}: {len(events[kind])} events')
@@ -81,6 +91,7 @@ def main() -> None:
         'url': DONKI.format(kind='<SEP|CME|FLR|GST|IPS>', start='2021-02-18', end='today'),
         'citation': 'NASA CCMC Space Weather Database Of Notifications, Knowledge, Information (DONKI)',
     }
+    manifest['errors'] = errors
     (OUT / 'manifest.json').write_text(json.dumps(manifest, indent=2))
 
 
