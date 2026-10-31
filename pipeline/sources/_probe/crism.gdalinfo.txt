@@ -1,0 +1,76 @@
+Driver: GTiff/GeoTIFF
+Files: pipeline/sources/crism/jezeroFinal.tif
+Size is 614, 751
+Coordinate System is:
+PROJCRS["unnamed",
+    BASEGEOGCRS["D_Mars_2000_Sphere",
+        DATUM["unnamed",
+            ELLIPSOID["unnamed",3396190,0,
+                LENGTHUNIT["metre",1,
+                    ID["EPSG",9001]]]],
+        PRIMEM["Reference meridian",0,
+            ANGLEUNIT["degree",0.0174532925199433,
+                ID["EPSG",9122]]]],
+    CONVERSION["Equidistant Cylindrical",
+        METHOD["Equidistant Cylindrical",
+            ID["EPSG",1028]],
+        PARAMETER["Latitude of 1st standard parallel",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8823]],
+        PARAMETER["Longitude of natural origin",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["(E)",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]],
+        AXIS["(N)",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]]]
+Data axis to CRS axis mapping: 1,2
+Origin = (4579898.672600000165403,1110579.692000000039116)
+Pixel Size = (36.000000000000000,-36.000000000000000)
+Metadata:
+  AREA_OR_POINT=Area
+  TIFFTAG_XRESOLUTION=1
+  TIFFTAG_YRESOLUTION=1
+Image Structure Metadata:
+  INTERLEAVE=PIXEL
+Corner Coordinates:
+Upper Left  ( 4579898.673, 1110579.692) ( 77d15'56.38"E, 18d44'10.14"N)
+Lower Left  ( 4579898.673, 1083543.692) ( 77d15'56.38"E, 18d16'48.13"N)
+Upper Right ( 4602002.673, 1110579.692) ( 77d38'18.85"E, 18d44'10.14"N)
+Lower Right ( 4602002.673, 1083543.692) ( 77d38'18.85"E, 18d16'48.13"N)
+Center      ( 4590950.673, 1097061.692) ( 77d27' 7.61"E, 18d30'29.14"N)
+Band 1 Block=614x1 Type=Byte, ColorInterp=Red
+  Minimum=0.000, Maximum=255.000, Mean=134.068, StdDev=111.518
+  Metadata:
+    STATISTICS_MAXIMUM=255
+    STATISTICS_MEAN=134.06845595666
+    STATISTICS_MINIMUM=0
+    STATISTICS_STDDEV=111.51795029046
+    STATISTICS_VALID_PERCENT=100
+Band 2 Block=614x1 Type=Byte, ColorInterp=Green
+  Minimum=0.000, Maximum=255.000, Mean=121.837, StdDev=110.379
+  Metadata:
+    STATISTICS_MAXIMUM=255
+    STATISTICS_MEAN=121.83735692258
+    STATISTICS_MINIMUM=0
+    STATISTICS_STDDEV=110.37887230221
+    STATISTICS_VALID_PERCENT=100
+Band 3 Block=614x1 Type=Byte, ColorInterp=Blue
+  Minimum=0.000, Maximum=255.000, Mean=99.335, StdDev=115.198
+  Metadata:
+    STATISTICS_MAXIMUM=255
+    STATISTICS_MEAN=99.334721999332
+    STATISTICS_MINIMUM=0
+    STATISTICS_STDDEV=115.19824184411
+    STATISTICS_VALID_PERCENT=100

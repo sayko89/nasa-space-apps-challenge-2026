@@ -1,0 +1,74 @@
+{
+  "fetched_utc": "2026-10-31T01:01:51+00:00",
+  "files": {
+    "themis_ti/Jezero_Thermal_Inertia_v1.tiff": {
+      "url": "https://zenodo.org/records/4931348/files/Jezero_Thermal_Inertia_v1.tiff?download=1",
+      "citation": "Edwards, C. S. & Buz, J. (2021). THEMIS-derived Thermal Inertia of Jezero Crater, Mars. Zenodo. doi:10.5281/zenodo.4931348 (CC BY 4.0)",
+      "bytes": 1721889,
+      "sha256": "84401e7717d43ae80cbd80213b91bd141ee48197eb8648293197447c43c2829c"
+    },
+    "crism/jezeroFinal.tif": {
+      "url": "https://zenodo.org/records/5575824/files/jezeroFinal.tif?download=1",
+      "citation": "Parente, M., Saranathan, A. M., Itoh, Y., Tarnas, J. D., Seelos, F. P., Mustard, J. F. (2021). Map of the dominant mineralogy over and around the Mars2020 landing ellipse. Zenodo. doi:10.5281/zenodo.5575824 (CC BY 4.0)",
+      "bytes": 1389881,
+      "sha256": "53a35f0e73e26bedbd1e332916e0ec23502f76f3927015546bfff607d0a47ebe"
+    },
+    "crism/Jezero_readme.pdf": {
+      "url": "https://zenodo.org/records/5575824/files/Jezero_readme.pdf?download=1",
+      "bytes": 292772,
+      "sha256": "0b7abde80affbdd8d36c276c101f8e8e20cb75042029027014265c05886b8183"
+    },
+    "crism/jezeroEM.png": {
+      "url": "https://zenodo.org/records/5575824/files/jezeroEM.png?download=1",
+      "bytes": 79999,
+      "sha256": "ad93b03b98dea009e249945dd4099c1b5b163a80c5f19645fa1ff02ca7b7bdbb"
+    },
+    "crism/mineralSpectra_mapped_v2.sli.hdr": {
+      "url": "https://zenodo.org/records/5575824/files/mineralSpectra_mapped_v2.sli.hdr?download=1",
+      "bytes": 3234,
+      "sha256": "849b5e80ee31c13f98130878aacd580b7bbdab0c6e2282b3a6fbf9a70f5ea95e"
+    },
+    "m20/M20_waypoints.json": {
+      "url": "https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json",
+      "citation": "NASA/JPL-Caltech, Mars 2020 Perseverance rover waypoints (MMGIS)",
+      "bytes": 603126,
+      "sha256": "bd143ee69241229926abd373e6305b8bbb326d6b5a7b4a8d6935262696f93dc4"
+    },
+    "donki/events.json": {
+      "url": "https://api.nasa.gov/DONKI/<SEP|CME|FLR|GST|IPS>?startDate=2021-02-18&endDate=today&api_key=DEMO_KEY",
+      "citation": "NASA CCMC Space Weather Database Of Notifications, Knowledge, Information (DONKI)"
+    }
+  },
+  "errors": {
+    "donki/SEP/2021": "<HTTPError 503: 'Service Unavailable'>",
+    "donki/SEP/2022": "<HTTPError 503: 'Service Unavailable'>",
+    "donki/SEP/2023": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/SEP/2024": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/SEP/2025": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/SEP/2026": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/CME/2021": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/CME/2022": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/CME/2023": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/CME/2024": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/CME/2025": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/CME/2026": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/FLR/2021": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/FLR/2022": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/FLR/2023": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/FLR/2024": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/FLR/2025": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/FLR/2026": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/GST/2021": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/GST/2022": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/GST/2023": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/GST/2024": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/GST/2025": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/GST/2026": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/IPS/2021": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/IPS/2022": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/IPS/2023": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/IPS/2024": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/IPS/2025": "<HTTPError 429: 'Too Many Requests'>",
+    "donki/IPS/2026": "<HTTPError 429: 'Too Many Requests'>"
+  }
+}

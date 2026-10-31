@@ -1,0 +1,60 @@
+Driver: GTiff/GeoTIFF
+Files: pipeline/sources/themis_ti/Jezero_Thermal_Inertia_v1.tiff
+Size is 890, 890
+Coordinate System is:
+PROJCRS["SimpleCylindrical Mars",
+    BASEGEOGCRS["GCS_Mars",
+        DATUM["D_Mars",
+            ELLIPSOID["Mars",3396190,0,
+                LENGTHUNIT["metre",1,
+                    ID["EPSG",9001]]]],
+        PRIMEM["Reference_Meridian",0,
+            ANGLEUNIT["degree",0.0174532925199433,
+                ID["EPSG",9122]]]],
+    CONVERSION["Equidistant Cylindrical",
+        METHOD["Equidistant Cylindrical",
+            ID["EPSG",1028]],
+        PARAMETER["Latitude of 1st standard parallel",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8823]],
+        PARAMETER["Longitude of natural origin",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["easting",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]],
+        AXIS["northing",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]]]
+Data axis to CRS axis mapping: 1,2
+Origin = (4564100.000000000000000,1141100.000000000000000)
+Pixel Size = (100.000000000000000,-100.000000000000000)
+Metadata:
+  AREA_OR_POINT=Area
+Image Structure Metadata:
+  COMPRESSION=DEFLATE
+  INTERLEAVE=BAND
+Corner Coordinates:
+Upper Left  ( 4564100.000, 1141100.000) ( 76d59'56.86"E, 19d15' 3.77"N)
+Lower Left  ( 4564100.000, 1052100.000) ( 76d59'56.86"E, 17d44'58.43"N)
+Upper Right ( 4653100.000, 1141100.000) ( 78d30' 2.20"E, 19d15' 3.77"N)
+Lower Right ( 4653100.000, 1052100.000) ( 78d30' 2.20"E, 17d44'58.43"N)
+Center      ( 4608600.000, 1096600.000) ( 77d44'59.53"E, 18d30' 1.10"N)
+Band 1 Block=890x2 Type=Float32, ColorInterp=Gray
+  Minimum=42.423, Maximum=1655.328, Mean=254.694, StdDev=76.141
+  NoData Value=0
+  Metadata:
+    STATISTICS_MAXIMUM=1655.3276367188
+    STATISTICS_MEAN=254.69354934684
+    STATISTICS_MINIMUM=42.423244476318
+    STATISTICS_STDDEV=76.140807471249
+    STATISTICS_VALID_PERCENT=62.36
