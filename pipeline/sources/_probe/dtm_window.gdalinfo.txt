@@ -1,0 +1,61 @@
+Driver: GTiff/GeoTIFF
+Files: pipeline/sources/hirise/jezero_dtm_1m_window.tif
+Size is 2471, 2344
+Coordinate System is:
+PROJCRS["Equirectangular Mars 2000 Sphere IAU",
+    BASEGEOGCRS["D_Mars_2000_Sphere",
+        DATUM["Mars_2000_(Sphere)",
+            ELLIPSOID["Mars_2000_Sphere_IAU",3396190,0,
+                LENGTHUNIT["metre",1,
+                    ID["EPSG",9001]]]],
+        PRIMEM["Reference_Meridian",0,
+            ANGLEUNIT["degree",0.0174532925199433,
+                ID["EPSG",9122]]]],
+    CONVERSION["Equidistant Cylindrical",
+        METHOD["Equidistant Cylindrical",
+            ID["EPSG",1028]],
+        PARAMETER["Latitude of 1st standard parallel",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8823]],
+        PARAMETER["Longitude of natural origin",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["easting",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]],
+        AXIS["northing",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]]]
+Data axis to CRS axis mapping: 1,2
+Origin = (4589589.000000000000000,1094198.000000000000000)
+Pixel Size = (1.000000000000000,-1.000000000000000)
+Metadata:
+  AREA_OR_POINT=Area
+Image Structure Metadata:
+  COMPRESSION=DEFLATE
+  INTERLEAVE=BAND
+  PREDICTOR=3
+Corner Coordinates:
+Upper Left  ( 4589589.000, 1094198.000) ( 77d25'44.91"E, 18d27'35.22"N)
+Lower Left  ( 4589589.000, 1091854.000) ( 77d25'44.91"E, 18d25'12.85"N)
+Upper Right ( 4592060.000, 1094198.000) ( 77d28'14.99"E, 18d27'35.22"N)
+Lower Right ( 4592060.000, 1091854.000) ( 77d28'14.99"E, 18d25'12.85"N)
+Center      ( 4590824.500, 1093026.000) ( 77d26'59.95"E, 18d26'24.04"N)
+Band 1 Block=256x256 Type=Float32, ColorInterp=Gray
+  Minimum=-2612.584, Maximum=-2544.730, Mean=-2574.016, StdDev=12.322
+  NoData Value=-3.4028227e+38
+  Metadata:
+    STATISTICS_MAXIMUM=-2544.7302246094
+    STATISTICS_MEAN=-2574.016410376
+    STATISTICS_MINIMUM=-2612.5837402344
+    STATISTICS_STDDEV=12.321522813065
+    STATISTICS_VALID_PERCENT=100
