@@ -1,0 +1,37 @@
+name: Fetch ground-view metadata
+
+# Perseverance raw-image metadata (NASA public feed) for rover positions inside the site.
+on:
+  push:
+    branches: [main]
+    paths:
+      - pipeline/build_pov.py
+      - .github/workflows/fetch-pov.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-pov
+  cancel-in-progress: true
+
+jobs:
+  pov:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: |
+          mkdir -p pipeline/sources/_probe
+          python pipeline/build_pov.py 2>&1 | tee pipeline/sources/_probe/pov.log | tail -5
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add artifacts/moon-rover/public/sites pipeline/sources/_probe/pov.log
+          if git commit -m "data: Perseverance ground-view metadata"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi
