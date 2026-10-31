@@ -121,7 +121,7 @@ export function tagScore(tags, w) {
  */
 export function optimizeTour(T, stops, o) {
   const k = stops.length;
-  if (k > MAX_EXACT_STOPS) throw new Error(`en fazla ${MAX_EXACT_STOPS} aday`);
+  if (k > MAX_EXACT_STOPS) throw new Error(`at most ${MAX_EXACT_STOPS} candidates`);
   const { budgetS, dwellS, weights } = o;
   // Etiketleri bit'lere çevir
   const tagIds = new Map();
@@ -129,7 +129,7 @@ export function optimizeTour(T, stops, o) {
     if (!tagIds.has(t)) tagIds.set(t, tagIds.size);
     return m | (1 << tagIds.get(t));
   }, 0));
-  if (tagIds.size > 30) throw new Error('çok fazla farklı etiket');
+  if (tagIds.size > 30) throw new Error('too many distinct tags');
   const tagW = [...tagIds.keys()].map(t => tagWeight(t, weights));
   const scoreOfBits = (bits) => { let s = 0; for (let t = 0; t < tagW.length; t++) if (bits >> t & 1) s += tagW[t]; return s; };
 

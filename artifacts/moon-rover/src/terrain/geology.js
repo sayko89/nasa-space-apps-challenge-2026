@@ -7,10 +7,10 @@ export function decodeRle(rle, len) {
   const out = new Uint8Array(len);
   let p = 0;
   for (const [v, c] of rle) {
-    if (p + c > len) throw new Error('RLE grid boyutunu aşıyor');
+    if (p + c > len) throw new Error('RLE exceeds the grid size');
     out.fill(v, p, p + c); p += c;
   }
-  if (p !== len) throw new Error(`RLE ${p} hücre, beklenen ${len}`);
+  if (p !== len) throw new Error(`RLE has ${p} cells, expected ${len}`);
   return out;
 }
 

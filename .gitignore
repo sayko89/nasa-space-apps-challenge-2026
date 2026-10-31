@@ -54,3 +54,7 @@ Thumbs.db
 # Python
 __pycache__/
 pipeline/.cache/
+
+# Python virtual environments
+.venv/
+venv/

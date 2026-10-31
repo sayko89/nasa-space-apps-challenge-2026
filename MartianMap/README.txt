@@ -1,8 +1,8 @@
-MARTIAN MAP — Marswalk Planner (NASA Space Apps 2026, Team PERIAPSIS)
+MARTIAN MAP — Marswalk Planner (TUA Astro Hackathon · NASA Space Apps 2026, Team PERIAPSIS)
 
 RUN
-  Windows     : double-click Baslat-Windows.bat
-  macOS/Linux : in a terminal, ./baslat-mac-linux.sh
+  Windows     : double-click Start-Windows.bat
+  macOS/Linux : in a terminal, ./start-mac-linux.sh
   Your browser opens http://127.0.0.1:8765/ by itself.
   Needs: Python 3 (no extra packages) and a recent browser (Chrome / Edge / Firefox).
   Note: double-clicking app/index.html does NOT work (browser security rules).
@@ -15,10 +15,10 @@ QUICK TOUR
   4. Map Layers        - DRAPE ON 3D TERRAIN shows geology / slope / EVA range on the terrain
 
 ONLINE VERSION (no install)
-  https://ugurfurkanyesil-rgb.github.io/final/
+  https://sayko89.github.io/tua-astro-hackathon/
 
 SOURCE CODE
-  https://github.com/ugurfurkanyesil-rgb/final
+  https://github.com/sayko89/tua-astro-hackathon
 
 DATA SOURCES
   Terrain : USGS Astrogeology, Mars 2020 TRN HiRISE DTM Mosaic — doi:10.5066/P9REJ9JN

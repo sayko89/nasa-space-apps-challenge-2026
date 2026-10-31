@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Martian Map — yerel başlatıcı. Uygulamayı http://127.0.0.1:<port>/ adresinde açar.
-(index.html'e çift tıklamak çalışmaz: tarayıcı file:// üzerinden veri dosyalarını ve Web Worker'ı engeller.)"""
+"""Martian Map — local launcher. Opens the app at http://127.0.0.1:<port>/.
+(Double-clicking index.html does not work: browsers block data files and Web Workers over file://.)"""
 import functools, http.server, mimetypes, os, socket, sys, threading, webbrowser
 
 APP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app")
-# Windows kayıt defteri .js'yi text/plain verebilir → ES modülleri yüklenmez. Açıkça ayarla.
+# The Windows registry may map .js to text/plain, which breaks ES modules. Set types explicitly.
 for ext, typ in {".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json",
                  ".css": "text/css", ".svg": "image/svg+xml", ".bin": "application/octet-stream",
                  ".stl": "application/octet-stream", ".wasm": "application/wasm"}.items():
@@ -24,14 +24,14 @@ def free_port(start=8765):
         with socket.socket() as s:
             if s.connect_ex(("127.0.0.1", p)) != 0:
                 return p
-    sys.exit("Boş port bulunamadı")
+    sys.exit("No free port found")
 
 
 if __name__ == "__main__":
     port = free_port()
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", port), functools.partial(Handler, directory=APP))
     url = f"http://127.0.0.1:{port}/"
-    print(f"Martian Map çalışıyor: {url}\nKapatmak için bu pencereyi kapatın (veya Ctrl+C).")
+    print(f"Martian Map is running at {url}\nClose this window (or press Ctrl+C) to stop it.")
     threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:
         srv.serve_forever()
