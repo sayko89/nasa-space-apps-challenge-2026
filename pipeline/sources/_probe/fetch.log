@@ -10,3 +10,43 @@ DONKI CME via api.nasa.gov: FAILED HTTP Error 503: Service Unavailable
 DONKI FLR via kauai.ccmc.gsfc.nasa.gov: FAILED <urlopen error [Errno 101] Network is unreachable>
   retry 1: HTTP Error 503: Service Unavailable
 DONKI FLR via api.nasa.gov: FAILED HTTP Error 503: Service Unavailable
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+10_1114: FAILED HTTP Error 403: Forbidden
+9_9436: FAILED HTTP Error 403: Forbidden
+9_9314: FAILED HTTP Error 403: Forbidden
+11_0: FAILED HTTP Error 403: Forbidden
+10_516: FAILED HTTP Error 403: Forbidden
+10_0: FAILED HTTP Error 403: Forbidden
+9_7894: FAILED HTTP Error 403: Forbidden
+  retry 1: HTTP Error 403: Forbidden
+  retry 1: HTTP Error 403: Forbidden
+  retry 1: HTTP Error 403: Forbidden
+  retry 1: HTTP Error 403: Forbidden
+  retry 1: HTTP Error 403: Forbidden
+  retry 1: HTTP Error 403: Forbidden
+11_108: FAILED HTTP Error 403: Forbidden
+  retry 2: HTTP Error 403: Forbidden
+  retry 2: HTTP Error 403: Forbidden
+  retry 2: HTTP Error 403: Forbidden
+  retry 2: HTTP Error 403: Forbidden
+  retry 2: HTTP Error 403: Forbidden
+  retry 2: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+  retry 3: HTTP Error 403: Forbidden
+11_1110: FAILED HTTP Error 403: Forbidden
+12_0: FAILED HTTP Error 403: Forbidden
+13_0: FAILED HTTP Error 403: Forbidden
+13_2448: FAILED HTTP Error 403: Forbidden
+13_1280: FAILED HTTP Error 403: Forbidden
+11_2472: FAILED HTTP Error 403: Forbidden
+0 panoramas, 110 errors
