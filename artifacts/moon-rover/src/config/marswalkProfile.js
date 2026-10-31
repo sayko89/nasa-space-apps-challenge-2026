@@ -59,12 +59,12 @@ export const MARSWALK_PROFILE = {
     quote: 'a walking traverse of up to 2 km away from the lander on the lunar surface (radial distance)',
   },
   maxRockReliefM: {
-    value: 1.0,
+    value: 0.5,
     unit: 'm',
     status: 'design',
     source: 'Rock relief from the 1 m HiRISE DTM (pipeline/build_layers.py)',
     note: 'Cells whose relief (after removing the local slope) exceeds this are treated as boulders / outcrops the crew walks around. '
-        + 'No sourced suited-EVA obstacle height was found; 1 m is a planning choice.',
+        + 'No sourced suited-EVA obstacle height was found; 0.5 m is a planning choice. The 1 m DTM resolves rocks of a few metres only.',
   },
   slopeSpeedModel: {
     value: 'tobler',

@@ -12,6 +12,7 @@ import { evaSnapshot, SPEEDS } from '../utils/evaPlayback';
 import { fmtClock, fmtHM, fmtSignedHM, fmtHourMin, fmtDist } from '../utils/format';
 import { K_TO_C } from '../utils/climate';
 import { param } from '../config/marswalkProfile';
+import { evaDoseMSv } from '../utils/radiation';
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
@@ -186,6 +187,9 @@ export default function EvaHud({ playback, right = 12, onAbort, onStop }) {
             ? `MEDA p10–p90: ${K_TO_C(air.p10).toFixed(0)}…${K_TO_C(air.p90).toFixed(0)} °C` : air ? 'MEDA climatology' : 'no climate data'}>
           {sun ? (sun.elevationDeg > 0 ? `${sun.elevationDeg.toFixed(0)}°` : 'night') : '—'}
           {air ? <span style={{ color: '#ffcc88' }}> · {K_TO_C(air.median).toFixed(0)} °C</span> : null}
+        </Tile>
+        <Tile label="DOSE (GCR)" sub="Curiosity RAD rate">
+          {evaDoseMSv(snap.t).toFixed(3)} mSv
         </Tile>
       </div>
 

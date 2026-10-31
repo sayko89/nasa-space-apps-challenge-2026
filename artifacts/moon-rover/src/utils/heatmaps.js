@@ -70,7 +70,7 @@ export function dataLayerOptions() {
   return L ? Object.keys(DATA_LAYER).filter(k => L[DATA_LAYER[k]]) : [];
 }
 // Fixed display ranges so the colours mean the same thing on every site.
-const DATA_RANGE = { thermal: [150, 450], rock: [0, 2] };
+const DATA_RANGE = { thermal: [150, 450], rock: [0, 0.6] };
 
 /**
  * Legend for a data layer:
