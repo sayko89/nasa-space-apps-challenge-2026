@@ -13,3 +13,43 @@ DONKI FLR via api.nasa.gov: FAILED HTTP Error 503: Service Unavailable
 DONKI SEP curl -4 failed
 DONKI CME curl -4 failed
 DONKI FLR curl -4 failed
+sol 287: 15 frames
+sol 288: 82 frames
+sol 328: 147 frames
+sol 329: 40 frames
+sol 330: 22 frames
+sol 333: 85 frames
+sol 334: 15 frames
+sol 335: 25 frames
+sol 336: 15 frames
+sol 337: 23 frames
+sol 340: 49 frames
+sol 341: 144 frames
+sol 342: 369 frames
+sol 343: 59 frames
+sol 344: 321 frames
+sol 345: 6 frames
+sol 350: 95 frames
+sol 351: 136 frames
+sol 352: 0 frames
+sol 353: 126 frames
+sol 354: 244 frames
+sol 355: 36 frames
+sol 356: 460 frames
+sol 357: 307 frames
+sol 358: 0 frames
+sol 359: 36 frames
+sol 360: 99 frames
+sol 361: 53 frames
+sol 362: 35 frames
+sol 363: 269 frames
+sol 364: 100 frames
+sol 379: 33 frames
+sol 380: 15 frames
+sol 381: 0 frames
+sol 382: 216 frames
+sol 383: 233 frames
+sol 384: 192 frames
+sol 385: 21 frames
+sol 386: 0 frames
+97 rover positions with frames, 947 frames, 0 errors
