@@ -190,6 +190,23 @@ SITE_PRESETS = {
             "native_resolution_m": 1.0,
         },
     },
+    "gale": {
+        "label": "Gale Crater — Mount Sharp boxwork",
+        # Centre is chosen from Curiosity's own waypoints during the boxwork campaign
+        # (pipeline/fetch_gale.py → pipeline/sources/msl/gale_center.json), passed as --lat/--lon.
+        "center_source": "Curiosity waypoints during the boxwork campaign (NASA/JPL MMGIS); "
+                         "see pipeline/sources/msl/gale_center.json",
+        "src": "https://planetarymaps.usgs.gov/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif",
+        "dataset": {
+            "title": "MSL Gale Merged DEM 1m (v3)",
+            "publisher": "USGS Astrogeology Science Center / PDS Annex",
+            "page": "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m",
+            "citation": "Parker, T. and Calef III, F. J. (2016). MSL Gale Merged DEM 1m, v3. "
+                        "PDS Annex, U.S. Geological Survey.",
+            "instrument": "MRO HiRISE stereo DTMs merged with CTX / HRSC, controlled to MOLA",
+            "native_resolution_m": 1.0,
+        },
+    },
 }
 
 # Uzaktan GeoTIFF okumasını hızlandıran GDAL ayarları

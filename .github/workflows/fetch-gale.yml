@@ -1,0 +1,79 @@
+name: Fetch Gale site (Mount Sharp boxwork)
+
+# Second site. Downloads Curiosity's waypoints, picks the site centre on the boxwork campaign
+# track, cuts a 1 m window of the USGS MSL Gale merged DEM, builds the 4 m site grid and the
+# Curiosity ground-view metadata, and commits it all (these hosts are not reachable where the
+# rest of the pipeline runs). Runs when this file changes, or by hand.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/fetch-gale.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-gale
+  cancel-in-progress: true
+
+jobs:
+  gale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin >/dev/null
+          pip install -q -r pipeline/requirements.txt
+          mkdir -p pipeline/sources/_probe pipeline/sources/hirise pipeline/sources/msl
+
+      - name: Curiosity waypoints and site centre
+        run: python pipeline/fetch_gale.py 2>&1 | tee pipeline/sources/_probe/gale_fetch.log
+
+      - name: Cut the 1 m DEM window
+        env:
+          DEM: https://planetarymaps.usgs.gov/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif
+        run: |
+          set -o pipefail
+          LAT=$(python3 -c "import json;print(json.load(open('pipeline/sources/msl/gale_center.json'))['lat'])")
+          LON=$(python3 -c "import json;print(json.load(open('pipeline/sources/msl/gale_center.json'))['lon'])")
+          export GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR CPL_VSIL_CURL_ALLOWED_EXTENSIONS=.tif GDAL_HTTP_MAX_RETRY=5 GDAL_HTTP_RETRY_DELAY=3
+          gdalinfo /vsicurl/$DEM > pipeline/sources/_probe/gale_dem.gdalinfo.txt 2>&1 || true
+          # Window = site (2044 m) + 300 m margin each side, as a lon/lat box around the centre.
+          read W N E S <<< $(python3 -c "import math;R=3396190;la,lo=$LAT,$LON;h=1322;d=math.degrees(h/R);k=1/math.cos(math.radians(la));print(lo-d*k,la+d,lo+d*k,la-d)")
+          cut() { gdal_translate -q -projwin_srs "+proj=longlat +R=3396190 +no_defs" -projwin $W $N $E $S \
+                    -co COMPRESS=DEFLATE -co PREDICTOR=3 -co TILED=YES -co ZLEVEL=9 "$1" pipeline/sources/hirise/gale_dtm_1m_window.tif; }
+          if ! cut /vsicurl/$DEM; then
+            echo "range read failed, downloading the whole mosaic (3.6 GB)"
+            curl -sSL --retry 3 -o /tmp/gale.tif $DEM && cut /tmp/gale.tif
+          fi
+          rm -f pipeline/sources/hirise/*.aux.xml
+          gdalinfo -stats pipeline/sources/hirise/gale_dtm_1m_window.tif > pipeline/sources/_probe/gale_dtm_window.gdalinfo.txt
+          rm -f pipeline/sources/hirise/*.aux.xml
+          ls -la pipeline/sources/hirise
+
+      - name: Site grid (4 m)
+        run: |
+          LAT=$(python3 -c "import json;print(json.load(open('pipeline/sources/msl/gale_center.json'))['lat'])")
+          LON=$(python3 -c "import json;print(json.load(open('pipeline/sources/msl/gale_center.json'))['lon'])")
+          python pipeline/build_site.py --site gale --src pipeline/sources/hirise/gale_dtm_1m_window.tif --lat $LAT --lon $LON \
+            2>&1 | tee pipeline/sources/_probe/gale_site.log
+
+      - name: Curiosity ground views
+        if: always()
+        run: python pipeline/build_pov.py --site gale --rover msl 2>&1 | tail -40 > pipeline/sources/_probe/gale_pov.log || true
+
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add pipeline/sources web/public/sites
+          if git commit -m "data: Gale site — Curiosity waypoints, 1 m DEM window, site grid, ground views"; then
+            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+          fi
