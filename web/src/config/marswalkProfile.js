@@ -112,13 +112,16 @@ export const MODE_WEIGHTS = {
  *   interiorR    : cells in every direction that must be the same unit to count as "inside" it
  *   minHomeDistM : cells closer than this to the habitat are not stop candidates
  *   maxCandidates: nearest candidates that enter the exact (Held–Karp) optimisation
+ *   maxChemCandidates: extra "re-sample" candidates at rocks whose ChemCam chemistry stands out
+ *                  (> 2 × RMSEP from their layer's mean); chemistry weight per distinct anomaly
  */
 export const SCIENCE_PARAMS = {
   dwellMin: 20,
-  weights: { bedrock: 2, surface: 1, contact: 3, mineral: 2 },
+  weights: { bedrock: 2, surface: 1, contact: 3, mineral: 2, chemistry: 2 },
   interiorR: 2,
   minHomeDistM: 20,
   maxCandidates: 12,
+  maxChemCandidates: 2,
   status: 'design',
 };
 

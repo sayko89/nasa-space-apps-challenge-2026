@@ -65,7 +65,10 @@ function isInterior(geo, i, r) {
  * @param {object} home     { homeIdx, fromHome, toHome }
  * @param {object} o        { cellM, wall, budgetS, dwellS, maxRadialM, interiorR=2, minHomeDistM=0, maxCandidates=12,
  *                            minerals? (CRISM layer: { code, classes }) — adds one candidate per detected mineral,
- *                            maxReturnS? — only cells this close (walking time) to home, e.g. the rover's 30 min }
+ *                            maxReturnS? — only cells this close (walking time) to home, e.g. the rover's 30 min,
+ *                            chemCells? Map(cellIdx → [{tag, name, sol, diff}]) — rocks whose measured chemistry
+ *                            stands out (ChemCam); one "re-sample" candidate per distinct tag, at most
+ *                            maxChemCandidates (2), added after the unit candidates }
  * @returns {Array<{id,idx,row,col,kind,tags,label,rtS}>}
  */
 export function candidateStops(geo, home, o) {
@@ -75,9 +78,10 @@ export function candidateStops(geo, home, o) {
   const minHomeCells = (o.minHomeDistM ?? 0) / cellM;
   const hr = (home.homeIdx / n) | 0, hc = home.homeIdx - hr * n;
   const best = new Map();              // anahtar → { idx, rt }
-  const consider = (key, i, rt, kind, extra) => {
-    const cur = best.get(key);
-    if (!cur || rt < cur.rt) best.set(key, { idx: i, rt, kind, ...extra });
+  const bestChem = new Map();          // 'X:<oxide high|low>' → nearest measured rock with that anomaly
+  const consider = (key, i, rt, kind, extra, map = best) => {
+    const cur = map.get(key);
+    if (!cur || rt < cur.rt) map.set(key, { idx: i, rt, kind, ...extra });
   };
   for (let i = 0; i < N; i++) {
     if (wall && wall[i]) continue;
@@ -91,6 +95,8 @@ export function candidateStops(geo, home, o) {
       if (isInterior(geo, i, r)) consider(`U:${geo.surface[i]}:${geo.bedrock[i]}`, i, rt, 'unit');
     }
     if (o.minerals && isMineralInterior(o.minerals, n, i, 1)) consider(`M:${o.minerals.code[i]}`, i, rt, 'mineral');
+    const chem = o.chemCells?.get(i);
+    if (chem) for (const a of chem) consider(`X:${a.tag}`, i, rt, 'chemistry', { chem: a }, bestChem);
     // Ana kaya kontağı: sağ veya alt komşu farklı (ikisi de haritalı) ana kaya birimi
     const b = geo.bedrock[i];
     if (b) for (const k of [col + 1 < n ? i + 1 : -1, row + 1 < n ? i + n : -1]) {
@@ -102,6 +108,8 @@ export function candidateStops(geo, home, o) {
     }
   }
   const list = [...best.values()].sort((a, b) => a.rt - b.rt).slice(0, maxC);
+  const maxX = Math.min(o.maxChemCandidates ?? 2, MAX_EXACT_STOPS - list.length);
+  if (maxX > 0) list.push(...[...bestChem.values()].sort((a, b) => a.rt - b.rt).slice(0, maxX));
   return list.map((c, j) => {
     const row = (c.idx / n) | 0, col = c.idx - row * n;
     let tags = cellTags(geo, c.idx, o.minerals), label;
@@ -109,6 +117,10 @@ export function candidateStops(geo, home, o) {
       const [a, b] = c.pair.map(k => geo.bedrockUnits[k]);
       tags = ['B:' + a, 'B:' + b, `C:${a} | ${b}`];
       label = `Contact: ${a} / ${b}`;
+    } else if (c.kind === 'chemistry') {
+      const a = c.chem;
+      tags = [...tags, 'X:' + a.tag];
+      label = `Re-sample ${a.name} — ChemCam ${a.tag} (${a.diff > 0 ? '+' : ''}${a.diff.toFixed(1)} wt%, sol ${a.sol})`;
     } else if (c.kind === 'mineral') {
       const unit = tags.filter(t => t[0] === 'B' || t[0] === 'S').reverse().map(t => t.slice(2)).join(' on ');
       label = `${tags.find(t => t[0] === 'M').slice(2)} (CRISM)${unit ? ' — ' + unit : ''}`;
@@ -119,9 +131,10 @@ export function candidateStops(geo, home, o) {
   });
 }
 
-/** Tag weight by prefix: B bedrock, S surface, M mineral (CRISM), C contact. */
+/** Tag weight by prefix: B bedrock, S surface, M mineral (CRISM), X measured chemistry (ChemCam), C contact. */
 function tagWeight(tag, w) {
-  return tag[0] === 'B' ? w.bedrock : tag[0] === 'S' ? w.surface : tag[0] === 'M' ? (w.mineral ?? 2) : w.contact;
+  return tag[0] === 'B' ? w.bedrock : tag[0] === 'S' ? w.surface : tag[0] === 'M' ? (w.mineral ?? 2)
+    : tag[0] === 'X' ? (w.chemistry ?? 2) : w.contact;
 }
 
 /** Farklı etiketler kümesinin puanı. */

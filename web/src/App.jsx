@@ -126,6 +126,7 @@ function SiteBadge({ collapsed, onToggle }) {
       {SITE.layers?.rock && <div>ROCKS: relief within each 4 m cell of the 1 m HiRISE DTM (proxy for boulders / outcrops)</div>}
       <div>RADIATION: Curiosity RAD surface dose (Hassler et al. 2014){radiationIsLocal() ? ', measured in this crater' : ''}{SITE.spaceWeather ? ' · space weather: NASA CCMC DONKI' : ''}</div>
       {SITE.pov && <div>GROUND VIEW: {SITE.pov.rover || 'Perseverance'} {SITE.pov.rover === 'Curiosity' ? 'Navcam / Mastcam' : 'Navcam / Mastcam-Z'} frames from {SITE.pov.stations.length} rover positions in this site, {SITE.pov.credit?.split(' (')[0] || 'NASA/JPL-Caltech'}</div>}
+      {SITE.chemistry && <div>CHEMISTRY: {SITE.chemistry.source?.title}, {SITE.chemistry.stats?.targets} targets in this site (sols {SITE.chemistry.stats?.sols?.join('–')}), {SITE.chemistry.source?.publisher}</div>}
       {!SITE.climate && <div style={{color:'#bb9977'}}>AIR TEMPERATURE: no climatology for this site yet — the plan uses sun and shadow only.</div>}
       <div>SUIT &amp; ROVER: Ogilvie et al., ICES 2026 (NASA) — suit masses, carry limit, 30-min rover walkback</div>
       <div style={{color:'#ffaa55', marginTop:3}}>

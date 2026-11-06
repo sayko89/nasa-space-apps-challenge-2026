@@ -16,6 +16,7 @@ import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive } from '../utils/radiation';
 import { PovViewer, nearestPanorama } from './PovViewer';
+import { ChemistryCard, hasChemistry } from './ChemistryCard';
 import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
@@ -88,6 +89,18 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
       g.addColorStop(0,'rgba(90,10,0,0.32)'); g.addColorStop(0.7,'rgba(60,20,0,0.10)'); g.addColorStop(1,'transparent');
       ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
       ctx.beginPath();ctx.arc(cx,cy,r*1.05,0,Math.PI*2);ctx.strokeStyle='rgba(210,200,175,0.38)';ctx.lineWidth=0.8;ctx.stroke();
+    }
+
+    // ChemCam targets (rock chemistry measured by the rover) — small cyan diamonds
+    if (SITE.chemistry?.targets) {
+      ctx.fillStyle='rgba(120,210,255,0.85)'; ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=0.6;
+      const s=Math.max(1.6, 1.2*Math.sqrt(zoom));
+      for (const t of SITE.chemistry.targets) {
+        const {x,y}=w2m(t.x,t.z,vx,vy,zoom);
+        if (x<-5||y<-5||x>W+5||y>H+5) continue;
+        ctx.beginPath(); ctx.moveTo(x,y-s); ctx.lineTo(x+s,y); ctx.lineTo(x,y+s); ctx.lineTo(x-s,y); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+      }
     }
 
     // Routes
@@ -519,6 +532,7 @@ function MarswalkStats({ mode, s }) {
 // ---- Stage 6: science EVA (geology stops) ----
 function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }) {
   const [pov, setPov] = useState(null);
+  const [chemStop, setChemStop] = useState(null);
   return (
     <>
       <div style={{display:'flex',alignItems:'center',gap:5,fontSize:fs(7.5),color:'#9ab89a',marginBottom:4}}>
@@ -529,9 +543,10 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
       </div>
       <div style={{fontSize:fs(6.5),color:'#7a6a4a',marginBottom:4}}>
         Assumption: no sourced time per stop was found. Score = diversity of distinct units
-        (bedrock {SCIENCE_PARAMS.weights.bedrock}, surface {SCIENCE_PARAMS.weights.surface}, contact {SCIENCE_PARAMS.weights.contact}) — a design choice.
+        (bedrock {SCIENCE_PARAMS.weights.bedrock}, surface {SCIENCE_PARAMS.weights.surface}, contact {SCIENCE_PARAMS.weights.contact}{SITE.chemistry ? `, ChemCam standout ${SCIENCE_PARAMS.weights.chemistry}` : ''}) — a design choice.
       </div>
       {pov && <PovViewer stop={pov.stop} label={pov.label} onClose={() => setPov(null)} />}
+      {chemStop && <ChemistryCard stop={chemStop.stop} label={chemStop.label} onClose={() => setChemStop(null)} />}
       <Btn disabled={busy || disabled} onClick={onPlan}
         style={{width:'100%',background:'rgba(70,40,0,0.55)',borderColor:'rgba(230,150,60,0.6)',color:'#ffbb66',fontWeight:'bold'}}>
         {busy ? 'SEARCHING…' : 'PLAN SCIENCE EVA'}
@@ -549,6 +564,10 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
                 {nearestPanorama(st.x, st.z) && (
                   <span onClick={() => setPov({ stop: st, label: `S${i + 1} ${st.label}` })}
                     style={{marginLeft:4,color:'#ffcc88',cursor:'pointer',textDecoration:'underline'}}>ground view</span>
+                )}
+                {hasChemistry(st.x, st.z) && (
+                  <span onClick={() => setChemStop({ stop: st, label: `S${i + 1} ${st.label}` })}
+                    style={{marginLeft:4,color:'#88ccff',cursor:'pointer',textDecoration:'underline'}}>chemistry</span>
                 )}
               </li>
             ))}

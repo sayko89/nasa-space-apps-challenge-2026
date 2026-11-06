@@ -51,7 +51,7 @@ function ensureWorker() {
     const siteMsg = {
       mode: SITE.mode, name: SITE.name, gridRes: SITE.gridRes, cellM: SITE.cellM,
       sizeM: SITE.sizeM, heights: SITE.heights, heightOrigin: SITE.heightOrigin, meta: SITE.meta,
-      climate: SITE.climate, geology: SITE.geology, layers: SITE.layers,
+      climate: SITE.climate, geology: SITE.geology, layers: SITE.layers, chemistry: SITE.chemistry,
     };
     const r = await call('init', { site: siteMsg });
     // eslint-disable-next-line no-console
