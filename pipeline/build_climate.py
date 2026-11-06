@@ -14,7 +14,7 @@ Kullanılan dosyalar ("Processed data for analysis.zip", 22.7 MB):
   Fig 9/ATS_DER_5mins_averages.xlsx       SOL, LTST, sigma, mean  (1.45 m, 5 dk ortalama, K)
   Figs 4-7/Fourier_series_fit_145cm.xlsx  SOL, Ls, ...            (sol → Ls eşlemesi)
 
-Çıktı: artifacts/moon-rover/public/sites/<site>/climate.json
+Çıktı: web/public/sites/<site>/climate.json
   Ls dilimi (varsayılan 10°) × 288 LTST dilimi (5 dk) için, o dilimdeki tüm
   solların 5 dk ortalamalarının medyanı, %10 ve %90'lık değerleri ve sol sayısı.
   Veri ~1 Mars yılını kapsar (sol 16–700); "iklimoloji" = gözlenen yıl(lar).
@@ -73,7 +73,7 @@ def parse_args(argv=None):
     p.add_argument("--ls-bin", type=float, default=10.0, help="Ls dilim genişliği [°]")
     here = os.path.dirname(os.path.abspath(__file__))
     p.add_argument("--cache", default=os.path.join(here, ".cache"))
-    p.add_argument("--out", default=os.path.join(here, "..", "artifacts", "moon-rover", "public", "sites"))
+    p.add_argument("--out", default=os.path.join(here, "..", "web", "public", "sites"))
     return p.parse_args(argv)
 
 

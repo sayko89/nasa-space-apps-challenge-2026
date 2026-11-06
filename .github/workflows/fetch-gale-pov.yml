@@ -1,0 +1,39 @@
+name: Fetch Gale ground views (Curiosity)
+
+# Curiosity raw-image metadata (NASA public API) for rover positions inside the Gale site.
+# Runs when this file or the builder changes, or by hand.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/fetch-gale-pov.yml
+      - pipeline/build_pov.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-gale-pov
+  cancel-in-progress: true
+
+jobs:
+  pov:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: |
+          mkdir -p pipeline/sources/_probe
+          python pipeline/build_pov.py --site gale --rover msl 2>&1 | tee pipeline/sources/_probe/gale_pov.log | tail -8
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add web/public/sites/gale pipeline/sources/_probe/gale_pov.log
+          if git commit -m "data: Curiosity ground-view metadata for the Gale site"; then
+            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+          fi

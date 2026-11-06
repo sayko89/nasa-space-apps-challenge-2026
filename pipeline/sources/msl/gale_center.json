@@ -1,0 +1,22 @@
+{
+  "lat": -4.811478,
+  "lon": 137.383982,
+  "rule": "window of 2044 m (minus 150 m margin) holding the most Curiosity waypoints driven on or after sol 4540 (boxwork campaign), centred on them",
+  "waypoints_after_first_sol": 124,
+  "waypoints_in_site": 124,
+  "sols_in_site": [
+    4541,
+    5045
+  ],
+  "elev_geoid_m": [
+    -3655.0,
+    -3479.9
+  ],
+  "latest_waypoint": {
+    "RMC": "125_1326",
+    "sol": 5045,
+    "lat": -4.82466475,
+    "lon": 137.3876138
+  },
+  "source": "https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json"
+}

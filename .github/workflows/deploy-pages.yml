@@ -37,7 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test the planner, sun model and EVA playback
-        run: node --test artifacts/moon-rover/tests/*.test.mjs
+        run: node --test web/tests/*.test.mjs
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -49,13 +49,13 @@ jobs:
           pip install -r pipeline/requirements.txt
           python -m unittest discover pipeline/tests
 
-      - name: Build Moon Rover for Pages
+      - name: Build Martian Map for Pages
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-        run: pnpm --filter moon-rover build
+        run: pnpm --filter martian-map build
 
       - name: Add SPA fallback
-        run: cp artifacts/moon-rover/dist/public/index.html artifacts/moon-rover/dist/public/404.html
+        run: cp web/dist/index.html web/dist/404.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
@@ -63,7 +63,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: artifacts/moon-rover/dist/public
+          path: web/dist
 
   deploy:
     environment:

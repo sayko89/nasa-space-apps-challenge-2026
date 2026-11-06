@@ -24,7 +24,7 @@ Rasterleştirme: her poligonun TÜM halkaları (dış + delikler) birlikte çift
 (even-odd) kuralıyla taranır; örnek noktası = düğüm (hücre merkezi). Kesişen
 poligon yoksa kod 0 (haritalanmamış).
 
-Çıktı: artifacts/moon-rover/public/sites/<site>/geology.json
+Çıktı: web/public/sites/<site>/geology.json
   surface.rle / bedrock.rle: satır-öncelikli [kod, adet] çiftleri (n×n hücre)
   surface.units / bedrock.units: kod → birim adı (0 = "" haritalanmamış/boş)
 
@@ -76,7 +76,7 @@ def parse_args(argv=None):
     p.add_argument("--zip", default=None, help="yerel 11214_2020_739_MOESM3_ESM.zip")
     here = os.path.dirname(os.path.abspath(__file__))
     p.add_argument("--cache", default=os.path.join(here, ".cache"))
-    p.add_argument("--out", default=os.path.join(here, "..", "artifacts", "moon-rover", "public", "sites"))
+    p.add_argument("--out", default=os.path.join(here, "..", "web", "public", "sites"))
     return p.parse_args(argv)
 
 

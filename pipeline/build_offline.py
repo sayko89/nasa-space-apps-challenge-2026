@@ -19,7 +19,7 @@ import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-APP_SRC = os.path.join(ROOT, "artifacts", "moon-rover")
+APP_SRC = os.path.join(ROOT, "web")
 OUT = os.path.join(ROOT, "MartianMap", "app")
 
 
@@ -27,7 +27,7 @@ def main():
     env = {**os.environ, "BASE_PATH": "./", "NODE_ENV": "production"}
     if os.path.isdir(OUT):
         shutil.rmtree(OUT)
-    cmd = ["pnpm", "exec", "vite", "build", "--config", "vite.config.ts", "--outDir", OUT, "--emptyOutDir"]
+    cmd = ["pnpm", "exec", "vite", "build", "--outDir", OUT, "--emptyOutDir"]
     print("[1/2]", " ".join(cmd))
     r = subprocess.run(cmd, cwd=APP_SRC, env=env, shell=(os.name == "nt"))
     if r.returncode != 0:

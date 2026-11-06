@@ -15,6 +15,8 @@
 
 The first people to walk on Mars will want the best map possible. **Martian Map** is that map for one real place: the floor of **Jezero crater** around the Perseverance landing site. It layers data from **four NASA Mars missions** into a single 3D view, plans a two-person **Marswalk** that visits the most interesting rocks and minerals, proves at every step that the crew can still walk home (or back to their rover), and then plays the whole EVA out on a mission clock.
 
+> **Why another Mars map?** Tools like JPL's Mars Trek and the USGS–NASA geologic maps layer data over the whole planet, at regional scale. An astronaut on a single Marswalk needs the opposite: one 2 km × 2 km area, every layer on the same **4 m grid**, rocks picked out at **1 m**, and a plan that says *where to walk, what to sample, and when to turn back*. Martian Map is built for that hyperlocal scale.
+
 ![EV1 samples a geology stop while EV2 documents it; the HUD shows the mission clock, the walk-back margin and the radiation dose](docs/img/hero.jpg)
 
 ## Try it
@@ -23,9 +25,18 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 |---|---|
 | **Online** | **[sayko89.github.io/nasa-space-apps-challenge-2026](https://sayko89.github.io/nasa-space-apps-challenge-2026/)** — nothing to install |
 | **Offline** | **Code → Download ZIP** → unzip → `MartianMap/Start-Windows.bat` (Windows) or `MartianMap/start-mac-linux.sh` (macOS / Linux). Needs only Python 3. |
-| **From source** | `pnpm install`, then `pnpm --filter moon-rover dev` |
+| **From source** | `pnpm install`, then `pnpm dev` (tests: `pnpm test`) |
 
-**Quick tour:** set the suit, equipment and rover in **Mission setup** → **PLAN SCIENCE EVA** → open **ground view** on a stop to see it through Perseverance's cameras → pick a route (SAFE / ECO / FAST / AUTO) and read its GO / NO-GO card → **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**) → **Map Layers → DRAPE ON 3D TERRAIN** for minerals, thermal inertia, rocks, geology or slope.
+**Two sites** — switch at the top left:
+
+| Site | Rover | Science objective |
+|---|---|---|
+| **Jezero crater** (default) | Perseverance | Bedrock and surface units, contacts and CRISM minerals on the crater floor Perseverance landed on |
+| **Mount Sharp boxwork, Gale crater** (`?site=gale`) | Curiosity | Boxwork ridges and hollows, and the contacts of the boxwork-bearing layer — the layer Curiosity explored from May 2025 to March 2026 |
+
+The second site came out of the same pipeline: the site centre is picked from Curiosity's own boxwork-campaign track, and the grid, rock relief, units and ground views are built from it. That is the challenge's "tool or system that generates maps of different locations".
+
+**Quick tour:** set the suit, equipment and rover in **Mission setup** → **PLAN SCIENCE EVA** → open **ground view** on a stop to see it through the rover's own cameras → pick a route (SAFE / ECO / FAST / AUTO) and read its GO / NO-GO card → **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**) → **Map Layers → DRAPE ON 3D TERRAIN** for minerals, thermal inertia, rocks, geology or slope.
 
 ## How it answers the challenge
 
@@ -82,7 +93,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 
 ## Verified, not just drawn
 
-`node --test artifacts/moon-rover/tests/*.test.mjs` and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
+`node --test web/tests/*.test.mjs` and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
 
 - **Sun:** USGS reference values, 60 random epochs against `marstime`, an independent vector check and the MEDA team's sunset table (largest difference 0.25 min over 700 sols).
 - **Terrain & routes:** shadow length = height / tan(sun elevation); A* reaches the Dijkstra optimum in every mode; the walk-back maps equal A* times both ways.
@@ -97,6 +108,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 - How slope changes suited walking speed is an assumption (Tobler shape). Time per stop, science-score weights, the 0.5 m rock-relief limit, the ±2-day SEP window and the 10 km/h rover speed are design choices, labelled as such in the app.
 - A 1 m DTM shows rocks of a few metres, not smaller ones. Jezero's landing area was chosen for being smooth, so on this site only a handful of cells exceed the 0.5 m rock-relief limit; the layer matters more on rougher terrain. CRISM mineral names are the closest match of each spectral class. Thermal-inertia classes are guidance.
 - Temperatures are a one-Mars-year climatology, not a forecast. DONKI covers past dates and is queried live from api.nasa.gov with the public demo key (rate-limited); for a future EVA, or when the lookup fails, the advisory says there is no data.
+- **Gale site.** There is no published GIS geologic map of this part of Mount Sharp. The units are derived and say so: *stratigraphic level* is the elevation band Curiosity crossed during the boxwork campaign (−3655 to −3595 m; the rover was always below it before sol 4541 and always above it after leaving the boxwork), on the assumption that the layers here are close to horizontal — the lateral edges of the boxwork terrain are not modelled. *Terrain class* (ridge, hollow, smooth, steep) is relief against a 15 m background in the 2016 merged DEM, which does not resolve the individual boxwork ridges (a few metres wide). The terrain is steep (about a quarter of cells over 20°) and DEM noise raises the rock-relief layer, so routes are more constrained than at Jezero. No THEMIS, CRISM or air-temperature layer yet; RAD was measured in this crater, so the dose needs no transfer.
 - Ground-view frame directions are mast azimuth + rover heading, accurate to a few degrees. Only the metadata is stored; the images load from mars.nasa.gov.
 
 ## Data & credits
@@ -109,6 +121,8 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 - Hassler, D. M., et al. (2014). *Mars' surface radiation environment measured with the Mars Science Laboratory's Curiosity rover.* Science 343, 1244797. [doi:10.1126/science.1244797](https://doi.org/10.1126/science.1244797)
 - NASA Community Coordinated Modeling Center. *DONKI — Space Weather Database Of Notifications, Knowledge, Information.* [kauai.ccmc.gsfc.nasa.gov/DONKI](https://kauai.ccmc.gsfc.nasa.gov/DONKI/)
 - NASA/JPL-Caltech. Mars 2020 Perseverance raw images (Navcam, Mastcam-Z) and rover waypoints (MMGIS).
+- Parker, T. & Calef III, F. J. (2016). *MSL Gale Merged DEM 1m*, v3. PDS Annex, USGS. [astrogeology.usgs.gov](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m)
+- NASA/JPL-Caltech/MSSS. Mars Science Laboratory Curiosity raw images (Navcam, Mastcam) and rover waypoints (MMGIS); boxwork campaign dates from the NASA Curiosity mission blog.
 - Ogilvie, R., et al. (2026). *Mars Spacesuit Mass Requirements.* ICES-2026. [NASA NTRS 20260005410](https://ntrs.nasa.gov/citations/20260005410)
 - NASA-STD-3001 Volume 1, Rev B (2022): career effective dose limit 600 mSv.
 - Allison, M. & McEwen, M. (2000). Mars24 algorithm, NASA GISS. NASA EVA-EXP-0042 Rev B (2020), *Exploration EVA System ConOps*. NASA (2020), *EVA Lunar Surface ConOps*. Norcross, J., et al. (2009), NASA/TP-2009-214796. Tobler, W. (1993), NCGIA TR 93-1.
@@ -120,15 +134,16 @@ Developed with AI assistance (Anthropic Claude) for code, data pipelines, tests 
 ## Repository map
 
 ```
-artifacts/moon-rover/     the web app (React + Three.js / react-three-fiber, Vite)
+web/     the web app (React + Three.js / react-three-fiber, Vite)
   src/utils/              walkModel · pathfinder (A*) · walkback (Dijkstra) · science (stop optimiser)
                           radiation · marsTime (Mars24) · shadows · climate · evaTimeline + evaPlayback
   src/config/             marswalkProfile (EVA limits) · mission (suit, equipment, rover)
   src/components/         MoonScene (3D) · MarsCrew · EvaHud · RightPanel · PovViewer (ground view)
-  public/sites/jezero/    grid.bin · geology · climate · layers (THEMIS, CRISM, rocks) · space_weather · pov
+  public/sites/jezero/    grid.bin · geology · climate · layers (THEMIS, CRISM, rocks) · pov
+  public/sites/gale/      grid.bin · geology (derived) · layers (rocks) · pov (Curiosity)
   tests/                  node --test suites
-pipeline/                 fetch_sources · build_site · build_layers · build_space_weather · build_pov
-                          build_climate · build_geology · build_offline
+pipeline/                 fetch_sources · fetch_gale · build_site · build_layers · build_space_weather
+                          build_pov · build_climate · build_geology · build_gale_geology · build_offline
 MartianMap/               ready-to-run offline package
 ```
 
@@ -136,11 +151,12 @@ MartianMap/               ready-to-run offline package
 
 ## Rebuilding the data
 
-The processed data are committed, so the app runs as is. Sources are fetched by GitHub Actions (`.github/workflows/fetch-sources.yml`, `fetch-dtm.yml`) into `pipeline/sources/`; then:
+The processed data are committed, so the app runs as is. Sources are fetched by GitHub Actions (`.github/workflows/fetch-sources.yml`, `fetch-dtm.yml`, `fetch-gale.yml`, `fetch-gale-pov.yml`) into `pipeline/sources/`; then:
 
 ```bash
 pip install -r pipeline/requirements.txt
 python pipeline/build_layers.py         # THEMIS, CRISM, rock relief → layers.json
+python pipeline/build_layers.py --site gale && python pipeline/build_gale_geology.py
 python pipeline/build_space_weather.py  # DONKI → space_weather.json
 python pipeline/build_offline.py        # refresh MartianMap/app
 ```

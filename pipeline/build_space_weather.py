@@ -3,7 +3,7 @@
 build_space_weather.py — DONKI space-weather events relevant to a Mars surface EVA.
 
 Input:  pipeline/sources/donki/events.json   (pipeline/fetch_sources.py, NASA CCMC DONKI)
-Output: artifacts/moon-rover/public/sites/<site>/space_weather.json
+Output: web/public/sites/<site>/space_weather.json
 
 Kept:
   SEP  solar energetic particle events — the main radiation hazard for a crew outside
@@ -77,7 +77,7 @@ def main(argv=None):
                    'publisher': 'NASA Community Coordinated Modeling Center', 'url': 'https://kauai.ccmc.gsfc.nasa.gov/DONKI/'},
         'generator': 'pipeline/build_space_weather.py',
     }
-    path = ROOT / 'artifacts/moon-rover/public/sites' / args.site / 'space_weather.json'
+    path = ROOT / 'web/public/sites' / args.site / 'space_weather.json'
     path.write_text(json.dumps(out, separators=(',', ':')))
     print(f"{out['counts']} → {path.relative_to(ROOT)} ({path.stat().st_size / 1e3:.0f} kB)")
 

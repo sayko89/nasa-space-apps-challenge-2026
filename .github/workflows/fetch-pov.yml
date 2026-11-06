@@ -28,5 +28,5 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add artifacts/moon-rover/public/sites pipeline/sources/_probe/pov.log
+          git add web/public/sites pipeline/sources/_probe/pov.log
           if git commit -m "data: Perseverance ground-view metadata"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi

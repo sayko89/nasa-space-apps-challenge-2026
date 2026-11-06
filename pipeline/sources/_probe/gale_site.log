@@ -1,0 +1,7 @@
+[1/5] Kaynak açılıyor (yerel): pipeline/sources/hirise/gale_dtm_1m_window.tif
+  boyut 2655×2645, piksel 1.000×1.000, nodata=-32767.0
+[2/5] Yerel projeksiyona örnekleniyor: 512×512, 4.0 m (~2044 m × 2044 m) — average resampling
+[3/5] Boş piksel oranı: 0.00%
+[4/5] Yazılıyor: /home/runner/work/nasa-space-apps-challenge-2026/nasa-space-apps-challenge-2026/web/public/sites/gale/grid.bin
+[5/5] preview.png yazıldı
+Tamam. Yükseklik -3819.8…-3349.9 m, eğim ort. 14.8°, p95 34.6°
