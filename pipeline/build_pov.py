@@ -5,7 +5,7 @@ build_pov.py — Perseverance ground-level views inside the site.
 For every rover position (site/drive) in pipeline/sources/m20/M20_waypoints.json that lies
 inside the site grid, looks up the images Perseverance took there in NASA's public Mars 2020
 raw-image feed and keeps the near-horizontal Navcam and Mastcam-Z frames with their
-pointing. Writes artifacts/moon-rover/public/sites/<site>/pov.json:
+pointing. Writes web/public/sites/<site>/pov.json:
 
   { format: 'martian-map-pov/2', stations: [ { rmc, sol, x, z, lat, lon, yaw,
       frames: [ { az, mastAz, el, camera, small, medium, link, sol, utc } ] } ] }
@@ -59,7 +59,7 @@ def main(argv=None):
     ap.add_argument('--site', default='jezero')
     ap.add_argument('--max-frames', type=int, default=24, help='per rover position, spread over azimuth')
     args = ap.parse_args(argv)
-    site_dir = ROOT / 'artifacts/moon-rover/public/sites' / args.site
+    site_dir = ROOT / 'web/public/sites' / args.site
     meta = json.loads((site_dir / 'meta.json').read_text())
     R = meta['projection']['mars_radius_m']
     lat0, lon0 = meta['center']['lat_deg'], meta['center']['lon_deg_east']

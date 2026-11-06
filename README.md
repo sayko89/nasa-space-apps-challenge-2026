@@ -82,7 +82,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 
 ## Verified, not just drawn
 
-`node --test artifacts/moon-rover/tests/*.test.mjs` and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
+`node --test web/tests/*.test.mjs` and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
 
 - **Sun:** USGS reference values, 60 random epochs against `marstime`, an independent vector check and the MEDA team's sunset table (largest difference 0.25 min over 700 sols).
 - **Terrain & routes:** shadow length = height / tan(sun elevation); A* reaches the Dijkstra optimum in every mode; the walk-back maps equal A* times both ways.
@@ -120,7 +120,7 @@ Developed with AI assistance (Anthropic Claude) for code, data pipelines, tests 
 ## Repository map
 
 ```
-artifacts/moon-rover/     the web app (React + Three.js / react-three-fiber, Vite)
+web/     the web app (React + Three.js / react-three-fiber, Vite)
   src/utils/              walkModel · pathfinder (A*) · walkback (Dijkstra) · science (stop optimiser)
                           radiation · marsTime (Mars24) · shadows · climate · evaTimeline + evaPlayback
   src/config/             marswalkProfile (EVA limits) · mission (suit, equipment, rover)

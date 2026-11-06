@@ -3,7 +3,7 @@
 build_layers.py — extra Martian Map layers on the site grid.
 
 Reads the raw sources fetched by pipeline/fetch_sources.py (pipeline/sources/) and writes
-artifacts/moon-rover/public/sites/<site>/layers.json, sampled onto exactly the same grid as
+web/public/sites/<site>/layers.json, sampled onto exactly the same grid as
 grid.bin (meta.json: n, cell_m, local equirectangular projection):
 
   thermal_inertia   THEMIS-derived thermal inertia [J m^-2 K^-1 s^-1/2], 100 m source
@@ -56,7 +56,7 @@ CRISM_KEY = [
 
 
 def site_grid(site: str):
-    meta = json.loads((ROOT / 'artifacts/moon-rover/public/sites' / site / 'meta.json').read_text())
+    meta = json.loads((ROOT / 'web/public/sites' / site / 'meta.json').read_text())
     n, cell = meta['grid']['n'], meta['grid']['cell_m']
     R = meta['projection']['mars_radius_m']
     lat0, lon0 = meta['center']['lat_deg'], meta['center']['lon_deg_east']
@@ -196,7 +196,7 @@ def main(argv=None):
         print(f'  {name}: {json.dumps(layer.get("stats") or layer.get("cells"))}')
     out['generated_utc'] = dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')
     out['generator'] = 'pipeline/build_layers.py'
-    path = ROOT / 'artifacts/moon-rover/public/sites' / args.site / 'layers.json'
+    path = ROOT / 'web/public/sites' / args.site / 'layers.json'
     path.write_text(json.dumps(out, separators=(',', ':')))
     print(f'→ {path.relative_to(ROOT)} ({path.stat().st_size / 1e3:.0f} kB)')
 

@@ -218,7 +218,7 @@ def parse_args(argv=None):
     p.add_argument("--cell", type=float, default=4.0, help="düğüm aralığı [m]")
     p.add_argument("--out", default=os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..",
-        "artifacts", "moon-rover", "public", "sites"),
+        "web", "public", "sites"),
         help="çıktı kök klasörü")
     p.add_argument("--allow-nodata", type=float, default=MAX_NODATA_FRACTION,
                    help="izin verilen en büyük boş piksel oranı (0-1)")

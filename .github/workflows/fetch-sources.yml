@@ -46,5 +46,5 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add pipeline/sources artifacts/moon-rover/public/sites
+          git add pipeline/sources web/public/sites
           if git commit -m "data: fetch layer sources"; then git pull --rebase && git push; fi
