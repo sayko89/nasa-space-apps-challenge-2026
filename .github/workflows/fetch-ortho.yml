@@ -1,0 +1,56 @@
+name: Fetch orbital images (HiRISE orthomosaics)
+
+# Warps the USGS HiRISE orthomosaic of each site onto its grid → sites/<site>/ortho.jpg.
+# Runs when this file or the builder changes, or by hand.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/fetch-ortho.yml
+      - pipeline/build_ortho.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-ortho
+  cancel-in-progress: true
+
+jobs:
+  ortho:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin >/dev/null
+          pip install -q -r pipeline/requirements.txt pillow
+          mkdir -p pipeline/sources/_probe
+      - name: Build
+        env:
+          GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+          CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif
+          GDAL_HTTP_MAX_RETRY: "6"
+          GDAL_HTTP_RETRY_DELAY: "4"
+          GDAL_CACHEMAX: "1024"
+          VSI_CACHE: "TRUE"
+          VSI_CACHE_SIZE: "500000000"
+        run: |
+          for s in jezero gale; do
+            gdalinfo /vsicurl/$(python3 -c "import sys;sys.path.insert(0,'pipeline');import build_ortho as b;print(b.SOURCES['$s']['url'])") \
+              > pipeline/sources/_probe/ortho_${s}.gdalinfo.txt 2>&1 || true
+            python pipeline/build_ortho.py --site $s 2>&1 | tee -a pipeline/sources/_probe/ortho_build.log || true
+          done
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add web/public/sites pipeline/sources/_probe
+          if git commit -m "data: HiRISE orthomosaic textures for the Jezero and Gale sites"; then
+            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+          fi
