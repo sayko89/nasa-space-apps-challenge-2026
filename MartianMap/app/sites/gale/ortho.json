@@ -1,0 +1,32 @@
+{
+ "format": "martian-map-ortho/1",
+ "site": "gale",
+ "file": "ortho.jpg",
+ "size_px": 4096,
+ "extent_m": [
+  -1022.0,
+  -1022.0,
+  1022.0,
+  1022.0
+ ],
+ "pixel_m": 0.499,
+ "order": "row 0 = north edge, col 0 = west edge (same as grid.bin)",
+ "coverage": 1.0,
+ "stretch_dn": [
+  60.0,
+  208.0
+ ],
+ "source": {
+  "title": "MSL Gale Merged Orthophoto Mosaic 25cm (v3)",
+  "creators": "Calef III, F. J. & Parker, T. (USGS / PDS Annex)",
+  "year": 2016,
+  "doi": null,
+  "page": "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm",
+  "url": "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/MSL_Gale_Orthophoto_Mosaic_25cm_v3.tif",
+  "native_resolution_m": 0.25,
+  "instrument": "MRO HiRISE",
+  "license": "public domain"
+ },
+ "generated_utc": "2026-11-06T18:19:59+00:00",
+ "generator": "pipeline/build_ortho.py"
+}

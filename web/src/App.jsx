@@ -126,6 +126,7 @@ function SiteBadge({ collapsed, onToggle }) {
       {SITE.layers?.rock && <div>ROCKS: relief within each 4 m cell of the 1 m HiRISE DTM (proxy for boulders / outcrops)</div>}
       <div>RADIATION: Curiosity RAD surface dose (Hassler et al. 2014){radiationIsLocal() ? ', measured in this crater' : ''}{SITE.spaceWeather ? ' · space weather: NASA CCMC DONKI' : ''}</div>
       {SITE.pov && <div>GROUND VIEW: {SITE.pov.rover || 'Perseverance'} {SITE.pov.rover === 'Curiosity' ? 'Navcam / Mastcam' : 'Navcam / Mastcam-Z'} frames from {SITE.pov.stations.length} rover positions in this site, {SITE.pov.credit?.split(' (')[0] || 'NASA/JPL-Caltech'}</div>}
+      {SITE.ortho && <div>ORBITAL IMAGE: {SITE.ortho.source?.title}, {SITE.ortho.source?.creators} ({SITE.ortho.source?.year}){SITE.ortho.source?.doi && <>,{' '}<a href={SITE.ortho.source.doi} target="_blank" rel="noreferrer" style={LINK}>DOI</a></>} · shown at {SITE.ortho.pixel_m} m/px</div>}
       {SITE.chemistry && <div>CHEMISTRY: {SITE.chemistry.source?.title}, {SITE.chemistry.stats?.targets} targets in this site (sols {SITE.chemistry.stats?.sols?.join('–')}), {SITE.chemistry.source?.publisher}</div>}
       {!SITE.climate && <div style={{color:'#bb9977'}}>AIR TEMPERATURE: no climatology for this site yet — the plan uses sun and shadow only.</div>}
       <div>SUIT &amp; ROVER: Ogilvie et al., ICES 2026 (NASA) — suit masses, carry limit, 30-min rover walkback</div>
@@ -163,6 +164,7 @@ export default function App() {
   const sunAngleDeg = sun ? Math.round(sun.azimuthDeg * 10) / 10 : sunAngleState;
   const sunElevationDeg = sun ? sun.elevationDeg : undefined;
   const [wireframe, setWireframe]   = useState(false);
+  const [orthoOn, setOrthoOn]       = useState(!!SITE.ortho);   // HiRISE image on the terrain
   const [cameraMode, setCameraMode] = useState('follow');
   const [routeLog, setRouteLog]     = useState([`[${ts()}] Ready. ${IS_DEM ? 'Press PLAN SCIENCE EVA, or add waypoints and press PLAN PATH.' : 'Add waypoints and press PLAN PATH.'}`]);
   const [isRoving, setIsRoving]     = useState(false);
@@ -809,6 +811,7 @@ export default function App() {
             waypoints={waypoints}
             cameraMode={cameraMode}
             wireframe={wireframe}
+            orthoOn={orthoOn}
             sunAngleDeg={sunAngleDeg}
             sunElevationDeg={sunElevationDeg}
             learningModel={learningModel}
@@ -871,6 +874,7 @@ export default function App() {
         sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs}
         cameraMode={cameraMode}     setCameraMode={setCameraMode}
         wireframe={wireframe}       setWireframe={setWireframe}
+        orthoOn={orthoOn}           setOrthoOn={setOrthoOn}
         onStartRover={handleStartRover}
         onStopRover={handleStopRover}
         isRoving={roving}

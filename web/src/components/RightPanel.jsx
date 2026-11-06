@@ -14,6 +14,7 @@ import { fmtHM, fmtSignedHM, fmtHourMin } from '../utils/format';
 import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
+import { loadOrthoImage } from '../utils/orthoImage';
 import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive } from '../utils/radiation';
 import { PovViewer, nearestPanorama } from './PovViewer';
 import { ChemistryCard, hasChemistry } from './ChemistryCard';
@@ -57,14 +58,30 @@ function clamp(vx,vy,zoom) {
 }
 
 // ---- Mini-map ----
-function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr }) {
+function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr, orthoOn }) {
   const canvasRef   = useRef(null);
   const terrainRef  = useRef(null);
   const zoomRef     = useRef(1);
   const viewRef     = useRef({ x:0, y:0 });
   const dragRef     = useRef(null);
 
-  useEffect(() => { terrainRef.current = getTerrainCanvas(MAP_S*2); }, []);
+  const demBaseRef  = useRef(null);
+  const orthoImgRef = useRef(null);
+  const [baseTick, setBaseTick] = useState(0);
+  useEffect(() => { demBaseRef.current = getTerrainCanvas(MAP_S*2); terrainRef.current = demBaseRef.current; }, []);
+  // HiRISE image as the map base when it is on the terrain (same row/col layout as the DEM canvas)
+  useEffect(() => {
+    let alive = true;
+    if (orthoOn && SITE.ortho) {
+      loadOrthoImage().then(img => {
+        if (!alive || !img) return;
+        orthoImgRef.current = img; terrainRef.current = img; setBaseTick(t => t + 1);
+      });
+    } else {
+      terrainRef.current = demBaseRef.current; setBaseTick(t => t + 1);
+    }
+    return () => { alive = false; };
+  }, [orthoOn]);
 
   const draw = useCallback(() => {
     const cv = canvasRef.current; if (!cv) return;
@@ -79,6 +96,10 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
       const src=terrainRef.current, ss=src.width;
       const span=MAP_S/zoom;
       ctx.drawImage(src, vx/MAP_S*ss, vy/MAP_S*ss, span/MAP_S*ss, span/MAP_S*ss, 0,0,W,H);
+      if (src === orthoImgRef.current) {   // grayscale HiRISE → same Mars tint as the 3D terrain
+        ctx.globalCompositeOperation='multiply'; ctx.fillStyle='#e9b48a'; ctx.fillRect(0,0,W,H);
+        ctx.globalCompositeOperation='source-over';
+      }
     }
 
     // Craters
@@ -200,7 +221,7 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
     // Zoom badge
     ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(W-36,3,33,15);
     ctx.fillStyle='#88cc88';ctx.font=CANVAS_FONT(7);ctx.fillText(`${zoom.toFixed(1)}x`,W-32,14);
-  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode, ponr]);
+  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode, ponr, baseTick]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -1022,6 +1043,7 @@ export default function RightPanel({
   sun = null, evaStartMs = null, setEvaStartMs = () => {},
   cameraMode, setCameraMode,
   wireframe, setWireframe,
+  orthoOn, setOrthoOn,
   onStartRover, onStopRover, isRoving,
   evaStatus = 'idle', onAbortEva = () => {}, onPauseEva = null,
   drapeLayer = null, setDrapeLayer = null, drapeOpacity = 0.6, setDrapeOpacity = () => {},
@@ -1090,6 +1112,7 @@ export default function RightPanel({
             dustHazard={dustHazard}
             dustPickMode={dustPickMode}
             onDustPlace={onDustPlaced}
+            orthoOn={!wireframe && orthoOn}
           />
           <div style={{fontSize:fs(7),color:'#3a5a3a',marginTop:3,display:'flex',gap:4,justifyContent:'space-between'}}>
             <span style={{color:startPos?'#22ff66':'#2a4a2a'}}>
@@ -1105,7 +1128,11 @@ export default function RightPanel({
         {/* Terrain */}
         <Sect label="Terrain Mode">
           <Row>
-            <Btn active={!wireframe} onClick={()=>setWireframe(false)}>{IS_DEM ? 'DEM' : 'PROCEDURAL'}</Btn>
+            <Btn active={!wireframe && !(SITE.ortho && orthoOn)} onClick={()=>{setWireframe(false); setOrthoOn?.(false);}}>{IS_DEM ? 'DEM' : 'PROCEDURAL'}</Btn>
+            {SITE.ortho && (
+              <Btn active={!wireframe && orthoOn} onClick={()=>{setWireframe(false); setOrthoOn(true);}}
+                title={`Orbital image: ${SITE.ortho.source?.title}`}>HiRISE</Btn>
+            )}
             <Btn active={wireframe}  onClick={()=>setWireframe(true)}>WIRE</Btn>
           </Row>
         </Sect>
