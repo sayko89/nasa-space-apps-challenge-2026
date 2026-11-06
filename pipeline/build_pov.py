@@ -41,7 +41,7 @@ MSL_FEED = ('https://mars.nasa.gov/api/v1/raw_image_items/?order=sol%20desc&per_
 MSL_CAMERAS = ('NAV_LEFT_B', 'NAV_RIGHT_B', 'NAV_LEFT_A', 'NAV_RIGHT_A', 'MAST_LEFT', 'MAST_RIGHT')
 ROVERS = {
     'm20': {'waypoints': 'pipeline/sources/m20/M20_waypoints.json',
-            'credit': rover['credit'], 'rover': rover['name'], 'name': 'Perseverance'},
+            'credit': 'NASA/JPL-Caltech (Mars 2020 Perseverance raw images)', 'name': 'Perseverance'},
     'msl': {'waypoints': 'pipeline/sources/msl/MSL_waypoints.json',
             'credit': 'NASA/JPL-Caltech/MSSS (Mars Science Laboratory Curiosity raw images)', 'name': 'Curiosity'},
 }
