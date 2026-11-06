@@ -1,0 +1,39 @@
+name: Fetch chemistry (Curiosity ChemCam)
+
+# ChemCam LIBS major-oxide tables and label geometry for the Gale site (PDS Geosciences Node).
+# Runs when this file or the fetch script changes, or by hand.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/fetch-chemistry.yml
+      - pipeline/fetch_chemistry.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-chemistry
+  cancel-in-progress: true
+
+jobs:
+  chem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: |
+          mkdir -p pipeline/sources/_probe
+          python pipeline/fetch_chemistry.py 2>&1 | tee pipeline/sources/_probe/chemistry_fetch.log | tail -15
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add pipeline/sources/chem pipeline/sources/_probe/chemistry_fetch.log
+          if git commit -m "data: Curiosity ChemCam compositions and target geometry (Gale site)"; then
+            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+          fi
