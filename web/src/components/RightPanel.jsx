@@ -31,7 +31,7 @@ const PW   = PANEL_W;   // panel width (src/ui/layout.js)
 const HEATMAP_OPTIONS = IS_DEM
   ? ['Elevation','Slope Angle','No-Go','EVA Range', ...(SITE.geology ? GEOLOGY_LAYERS : []), ...dataLayerOptions(), 'Illumination','Roughness']
   : ['Elevation','Slope','Slope Angle','No-Go','EVA Range','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
-const HEATMAP_DEFAULT = IS_DEM ? (SITE.geology ? 'Geology: Surface' : 'Slope Angle') : 'Hazard Score';
+const HEATMAP_DEFAULT = IS_DEM ? (GEOLOGY_LAYERS.includes('Geology: Surface') ? 'Geology: Surface' : GEOLOGY_LAYERS[0] || 'Slope Angle') : 'Hazard Score';
 const CANVAS_FONT = (px, bold = false) => `${bold ? 'bold ' : ''}${fs(px)}px monospace`;
 const HM_COLORS = {
   'Thermal Inertia (THEMIS)':'#ff9966','Minerals (CRISM)':'#66ffcc','Rock Relief (HiRISE)':'#ddbb88',
@@ -353,7 +353,7 @@ function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
         const a = airTemp(SITE.climate, sun.ls, cur);
         const bin = diurnalCurve(SITE.climate, sun.ls);
         if (!a || !bin) return SITE.climate ? null : (
-          <div style={{ color: '#4a6a4a', fontSize:fs(6.5), marginTop: 2 }}>Air temperature: no climate.json (python pipeline/build_climate.py)</div>
+          <div style={{ color: '#4a6a4a', fontSize:fs(6.5), marginTop: 2 }}>Air temperature: no climatology for this site yet (sun and shadow only)</div>
         );
         return (
           <>
@@ -670,7 +670,7 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drap
               <span style={{flex:1}}>{e.name}</span><span>{e.pct.toFixed(1)}%</span>
             </div>
           ))}
-          <div style={{color:'#6a7a6a'}}>Stack et al. 2020 (CC BY 4.0)</div>
+          <div style={{color:'#6a7a6a'}}>{SITE.geology?.source?.short || 'Stack et al. 2020 (CC BY 4.0)'}</div>
         </div>
       ) : (
       <div style={{display:'flex',justifyContent:'space-between',fontSize:fs(7),color:'#558855',marginTop:2}}>

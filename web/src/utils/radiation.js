@@ -9,6 +9,18 @@
  * card lists DONKI events around the EVA date and recommends postponing during one.
  */
 
+import { site as SITE_DATA } from '../terrain/siteData.js';
+
+/** Gale crater outline (approx., planetocentric): RAD measured here, so no transfer to another site. */
+const GALE = { lat: -5.4, lon: 137.8, radiusDeg: 1.3 };
+
+/** True when the loaded site lies in Gale crater, where Curiosity's RAD measured the dose. */
+export function radiationIsLocal(meta = SITE_DATA.meta) {
+  const c = meta?.center;
+  if (!c) return false;
+  return Math.hypot(c.lat_deg - GALE.lat, c.lon_deg_east - GALE.lon) < GALE.radiusDeg;
+}
+
 export const RADIATION = {
   gcrDoseEquivalentMSvPerDay: {
     value: 0.64,
@@ -16,7 +28,7 @@ export const RADIATION = {
     status: 'sourced',
     source: 'Hassler et al. (2014), Mars\' surface radiation environment measured with the MSL Curiosity rover, Science 343, 1244797',
     url: 'https://doi.org/10.1126/science.1244797',
-    note: 'Measured at Gale crater (−4.4 km) between Aug 2012 and Jun 2013. Applied to Jezero (−2.6 km) without an altitude correction.',
+    note: 'Measured at Gale crater (−4.4 km) between Aug 2012 and Jun 2013. Applied to other sites without an altitude correction.',
   },
   gcrAbsorbedMGyPerDay: {
     value: 0.21,

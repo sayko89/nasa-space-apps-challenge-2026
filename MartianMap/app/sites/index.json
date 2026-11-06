@@ -1,0 +1,17 @@
+{
+  "format": "martian-map-sites/1",
+  "sites": [
+    {
+      "id": "jezero",
+      "short": "JEZERO",
+      "rover": "Perseverance",
+      "objective": "Sample as many bedrock and surface units, contacts and CRISM minerals as an 8-hour EVA allows, on the crater floor Perseverance landed on."
+    },
+    {
+      "id": "gale",
+      "short": "MOUNT SHARP BOXWORK",
+      "rover": "Curiosity",
+      "objective": "Sample boxwork ridges and the hollows between them, and the contacts where they meet, to test how the ridges hardened — the question Curiosity's team is studying here."
+    }
+  ]
+}

@@ -44,7 +44,9 @@ function divergingColor(t) {
 const GEO_PALETTE = [[60, 55, 50], [214, 120, 64], [86, 140, 214], [120, 200, 110], [230, 200, 80],
   [190, 110, 200], [90, 200, 200], [240, 140, 160], [160, 160, 90]];
 const GEO_LAYER = { 'Geology: Bedrock': 'bedrock', 'Geology: Surface': 'surface' };
-export const GEOLOGY_LAYERS = Object.keys(GEO_LAYER);
+// Only offer a geology layer that has at least one mapped unit on this site.
+export const GEOLOGY_LAYERS = Object.keys(GEO_LAYER)
+  .filter(k => (SITE.geology?.[GEO_LAYER[k] + 'Units'] || []).some(Boolean));
 
 /** Legend for a categorical geology layer: [{ name, color, pct }] (null if not geology). */
 export function geologyLegend(type) {

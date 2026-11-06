@@ -141,9 +141,22 @@ def minerals(n, crs, transform):
     }
 
 
-def rock_relief(n, cell, crs, transform):
+DTM_1M = {
+    'jezero': (SRC / 'hirise' / 'jezero_dtm_1m_window.tif',
+               {'title': 'Mars 2020 Terrain Relative Navigation HiRISE DTM Mosaic (1 m)', 'creators': 'USGS Astrogeology',
+                'year': 2020, 'doi': 'https://doi.org/10.5066/P9REJ9JN', 'license': 'public domain',
+                'mission': 'Mars Reconnaissance Orbiter / HiRISE', 'resolution_m': 1}),
+    'gale': (SRC / 'hirise' / 'gale_dtm_1m_window.tif',
+             {'title': 'MSL Gale Merged DEM 1m (v3)', 'creators': 'Parker, T. & Calef III, F. J. (USGS / PDS Annex)',
+              'year': 2016, 'page': 'https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m',
+              'license': 'public domain', 'mission': 'Mars Reconnaissance Orbiter / HiRISE (with CTX, HRSC)',
+              'resolution_m': 1}),
+}
+
+
+def rock_relief(n, cell, crs, transform, site='jezero'):
     """Detrended max-min relief of the 1 m DTM inside each site cell."""
-    path = SRC / 'hirise' / 'jezero_dtm_1m_window.tif'
+    path, source = DTM_1M[site]
     k = int(round(cell))                        # 1 m pixels per site cell side (4)
     fine_n = n * k
     half = (n - 1) * cell / 2
@@ -168,9 +181,7 @@ def rock_relief(n, cell, crs, transform):
         'method': f'max−min of the 1 m DTM after removing each {cell:g} m cell\'s best-fit plane',
         'note': 'Proxy for boulders and rock outcrops. A 1 m DTM resolves features of a few metres; smaller rocks are not seen.',
         **pack_continuous(relief, valid, 0.01),
-        'source': {'title': 'Mars 2020 Terrain Relative Navigation HiRISE DTM Mosaic (1 m)', 'creators': 'USGS Astrogeology',
-                   'year': 2020, 'doi': 'https://doi.org/10.5066/P9REJ9JN', 'license': 'public domain',
-                   'mission': 'Mars Reconnaissance Orbiter / HiRISE', 'resolution_m': 1},
+        'source': source,
     }
 
 
@@ -182,11 +193,13 @@ def main(argv=None):
     out = {'format': 'martian-map-layers/1', 'site': args.site,
            'grid': {'n': n, 'cell_m': cell, 'order': 'row-major; row 0 = north edge, col 0 = west edge'},
            'layers': {}}
+    # THEMIS / CRISM sources cover Jezero only; the 1 m DTM exists for every site.
     builders = [
         ('thermal_inertia', SRC / 'themis_ti' / 'Jezero_Thermal_Inertia_v1.tiff', lambda: thermal_inertia(n, crs, transform)),
         ('minerals', SRC / 'crism' / 'jezeroFinal.tif', lambda: minerals(n, crs, transform)),
-        ('rock_relief', SRC / 'hirise' / 'jezero_dtm_1m_window.tif', lambda: rock_relief(n, cell, crs, transform)),
-    ]
+    ] if args.site == 'jezero' else []
+    if args.site in DTM_1M:
+        builders.append(('rock_relief', DTM_1M[args.site][0], lambda: rock_relief(n, cell, crs, transform, args.site)))
     for name, src, fn in builders:
         if not src.exists():
             print(f'  skip {name}: {src.relative_to(ROOT)} missing (run pipeline/fetch_sources.py)')

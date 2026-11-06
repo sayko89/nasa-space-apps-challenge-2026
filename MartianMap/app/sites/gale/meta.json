@@ -1,0 +1,47 @@
+{
+  "format": "martian-map-site/1",
+  "site": "gale",
+  "label": "Gale Crater — Mount Sharp boxwork",
+  "grid": {
+    "n": 512,
+    "cell_m": 4.0,
+    "span_m": 2044.0,
+    "dtype": "float32-le",
+    "order": "row-major; row 0 = north edge, col 0 = west edge",
+    "world_axes": "x = east [m], z = south [m], origin = center"
+  },
+  "center": {
+    "lat_deg": -4.811478,
+    "lon_deg_east": 137.383982,
+    "source": "Curiosity waypoints during the boxwork campaign (NASA/JPL MMGIS); see pipeline/sources/msl/gale_center.json"
+  },
+  "projection": {
+    "proj4": "+proj=eqc +lat_ts=-4.811478 +lat_0=-4.811478 +lon_0=137.383982 +x_0=0 +y_0=0 +R=3396190 +units=m +no_defs=True",
+    "note": "Kaynak eqc(lat_ts=0) verisi merkezde gerçek ölçekli yerel eqc'ye yeniden örneklendi.",
+    "mars_radius_m": 3396190.0
+  },
+  "elevation_m": {
+    "min": -3819.84716796875,
+    "max": -3349.92431640625,
+    "median": -3550.06884765625,
+    "datum": "kaynak DTM ile aynı (değiştirilmedi)"
+  },
+  "slope_deg": {
+    "mean": 14.778273104413092,
+    "p95": 34.64454526392305,
+    "max": 66.82255228986581,
+    "note": "4.0 m grid üzerinde merkezi fark; 1 m altı engebe görünmez."
+  },
+  "nodata_filled_cells": 0,
+  "source": {
+    "url": "pipeline/sources/hirise/gale_dtm_1m_window.tif",
+    "title": "MSL Gale Merged DEM 1m (v3)",
+    "publisher": "USGS Astrogeology Science Center / PDS Annex",
+    "page": "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m",
+    "citation": "Parker, T. and Calef III, F. J. (2016). MSL Gale Merged DEM 1m, v3. PDS Annex, U.S. Geological Survey.",
+    "instrument": "MRO HiRISE stereo DTMs merged with CTX / HRSC, controlled to MOLA",
+    "native_resolution_m": 1.0
+  },
+  "generated_utc": "2026-11-06T08:56:11+00:00",
+  "generator": "pipeline/build_site.py"
+}

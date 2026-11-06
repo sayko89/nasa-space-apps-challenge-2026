@@ -20,6 +20,8 @@ import { sunPosition, msAtLtst } from './utils/marsTime';
 import { airTempAt } from './utils/climate';
 import { EvaPlayback } from './utils/evaPlayback';
 import { fmtClock, fmtHM } from './utils/format';
+import { radiationIsLocal } from './utils/radiation';
+import SiteSwitcher from './components/SiteSwitcher';
 import { PANEL_W } from './ui/layout';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
@@ -112,8 +114,9 @@ function SiteBadge({ collapsed, onToggle }) {
         <a href={SITE.climate.source.doi} target="_blank" rel="noreferrer" style={LINK}>Zenodo</a>, CC BY 4.0
       </div>}
       {SITE.geology && <div>
-        GEOLOGY: Stack et al. 2020, Space Sci. Rev. 216:127,{' '}
-        <a href={SITE.geology.source?.doi} target="_blank" rel="noreferrer" style={LINK}>DOI</a>, CC BY 4.0
+        {SITE.geology.source?.kind === 'derived' ? 'LANDFORMS' : 'GEOLOGY'}: {SITE.geology.source?.short || SITE.geology.source?.title}
+        {SITE.geology.source?.doi && <>,{' '}<a href={SITE.geology.source.doi} target="_blank" rel="noreferrer" style={LINK}>DOI</a></>}
+        {SITE.geology.source?.license ? `, ${SITE.geology.source.license.replace(/-/g, ' ')}` : ''}
       </div>}
       <div>SUN: Mars24 algorithm (NASA GISS; Allison &amp; McEwen 2000)</div>
       {SITE.layers?.thermal && <div>THERMAL: THEMIS thermal inertia (Mars Odyssey) — Edwards &amp; Buz 2021,{' '}
@@ -121,8 +124,9 @@ function SiteBadge({ collapsed, onToggle }) {
       {SITE.layers?.minerals && <div>MINERALS: CRISM dominant mineralogy (MRO) — Parente et al. 2021,{' '}
         <a href={SITE.layers.minerals.source.doi} target="_blank" rel="noreferrer" style={LINK}>Zenodo</a>, CC BY 4.0</div>}
       {SITE.layers?.rock && <div>ROCKS: relief within each 4 m cell of the 1 m HiRISE DTM (proxy for boulders / outcrops)</div>}
-      <div>RADIATION: Curiosity RAD surface dose (Hassler et al. 2014){SITE.spaceWeather ? ' · space weather: NASA CCMC DONKI' : ''}</div>
-      {SITE.pov && <div>GROUND VIEW: Perseverance Navcam / Mastcam-Z frames from {SITE.pov.stations.length} rover positions in this site, NASA/JPL-Caltech</div>}
+      <div>RADIATION: Curiosity RAD surface dose (Hassler et al. 2014){radiationIsLocal() ? ', measured in this crater' : ''}{SITE.spaceWeather ? ' · space weather: NASA CCMC DONKI' : ''}</div>
+      {SITE.pov && <div>GROUND VIEW: {SITE.pov.rover || 'Perseverance'} {SITE.pov.rover === 'Curiosity' ? 'Navcam / Mastcam' : 'Navcam / Mastcam-Z'} frames from {SITE.pov.stations.length} rover positions in this site, {SITE.pov.credit?.split(' (')[0] || 'NASA/JPL-Caltech'}</div>}
+      {!SITE.climate && <div style={{color:'#bb9977'}}>AIR TEMPERATURE: no climatology for this site yet — the plan uses sun and shadow only.</div>}
       <div>SUIT &amp; ROVER: Ogilvie et al., ICES 2026 (NASA) — suit masses, carry limit, 30-min rover walkback</div>
       <div style={{color:'#ffaa55', marginTop:3}}>
         ⚠ These EVA limits were written for the Moon — optimistic for Mars.{' '}
@@ -828,6 +832,7 @@ export default function App() {
         textShadow: IS_DEM ? '0 0 8px rgba(0,0,0,0.7)' : '0 0 8px rgba(40,180,40,0.4)',
       }}>
         {IS_DEM ? `MARTIAN MAP · ${(SITE.meta?.label || SITE.name).toUpperCase()}` : 'MOON ROVER SIMULATOR'}
+        {IS_DEM && <SiteSwitcher current={SITE.name} />}
         <div style={{fontSize: IS_DEM ? 9.5 : 8, color: IS_DEM ? 'rgba(255,214,170,0.65)' : 'rgba(70,130,70,0.6)', marginTop:2}}>
           LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM{IS_DEM ? ' · SPACE=PLAY/PAUSE EVA' : ''}
         </div>

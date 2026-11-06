@@ -41,7 +41,7 @@ export function PovViewer({ stop, label, onClose }) {
         </div>
         {!hit ? (
           <div style={{ fontSize: 12, padding: '24px 0', textAlign: 'center' }}>
-            Perseverance never stopped within {MAX_DIST_M} m of this stop. This part of the site has only been seen from orbit.
+            {SITE.pov?.rover || 'The rover'} never stopped within {MAX_DIST_M} m of this stop. This part of the site has only been seen from orbit.
           </div>
         ) : (
           <>
