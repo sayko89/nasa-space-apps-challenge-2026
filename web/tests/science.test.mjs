@@ -220,3 +220,30 @@ test('CRISM minerals: one candidate per detected mineral, M: tag scored, chosen 
   const r0 = S.planScienceEva(geo, home, hm, P.getWallMap(), { ...o, minerals: null });
   assert.ok(!r0.candidates.some(c => c.tags.some(t => t[0] === 'M')));
 });
+
+test('ChemCam standouts: one re-sample candidate per distinct anomaly, capped, scored as X:', () => {
+  const geo = synthGeo();
+  const homeIdx = 60 * N + 60;
+  const home = WB.homeTimeMaps(homeIdx, hm, P.getWallMap(), N, CELL);
+  const near = 60 * N + 70, far = 60 * N + 90, other = 70 * N + 60;
+  const chemCells = new Map([
+    [near, [{ tag: 'MgO high', name: 'Gaviota', sol: 4600, diff: 6.3 }]],
+    [far, [{ tag: 'MgO high', name: 'Far', sol: 4700, diff: 7 }]],          // same anomaly, farther → not used
+    [other, [{ tag: 'CaO low', name: 'Canyon Oak', sol: 4650, diff: -3 }]],
+  ]);
+  const o = { cellM: CELL, budgetS: 3600, dwellS: 120, maxRadialM: 2000, weights: { ...W, chemistry: 2 }, interiorR: 2, chemCells };
+  const r = S.planScienceEva(geo, home, hm, P.getWallMap(), o);
+  const xc = r.candidates.filter(c => c.kind === 'chemistry');
+  assert.equal(xc.length, 2);
+  assert.deepEqual(xc.map(c => c.idx).sort((a, b) => a - b), [near, other].sort((a, b) => a - b));
+  const g = xc.find(c => c.idx === near);
+  assert.ok(g.tags.includes('X:MgO high'));
+  assert.match(g.label, /^Re-sample Gaviota — ChemCam MgO high \(\+6\.3 wt%, sol 4600\)/);
+  assert.equal(S.tagScore(['X:MgO high', 'X:MgO high', 'X:CaO low'], o.weights), 4);
+  // cap
+  const r1 = S.planScienceEva(geo, home, hm, P.getWallMap(), { ...o, maxChemCandidates: 1 });
+  assert.equal(r1.candidates.filter(c => c.kind === 'chemistry').length, 1);
+  // without chemistry nothing changes
+  const r0 = S.planScienceEva(geo, home, hm, P.getWallMap(), { ...o, chemCells: null });
+  assert.ok(!r0.candidates.some(c => c.kind === 'chemistry'));
+});

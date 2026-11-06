@@ -32,6 +32,8 @@ export const site = {
   layers: null,         // layers.json: THEMIS thermal inertia, CRISM minerals, HiRISE rock relief — optional
   spaceWeather: null,   // space_weather.json: DONKI events (SEP, CME, flares) — optional
   pov: null,            // pov.json: Perseverance Navcam panoramas inside the site — optional
+  chemistry: null,      // chemistry.json: ChemCam rock compositions inside the site — optional
+  ortho: null,          // ortho.json: HiRISE orthomosaic draped on the terrain (ortho.jpg) — optional
   loadError: null,
 };
 
@@ -124,6 +126,8 @@ export async function loadSite(name = DEFAULT_SITE) {
   site.geology = await loadGeology(base, n);
   site.layers = await loadJson(base, 'layers.json', (j) => decodeLayers(j, n));
   site.pov = await loadJson(base, 'pov.json', (j) => (j?.format === 'martian-map-pov/2' && Array.isArray(j.stations) && j.stations.length ? j : null));
+  site.ortho = await loadJson(base, 'ortho.json', (j) => (j?.format === 'martian-map-ortho/1' && j.coverage > 0.5 ? j : null));
+  site.chemistry = await loadJson(base, 'chemistry.json', (j) => (j?.format === 'martian-map-chemistry/1' && Array.isArray(j.targets) && j.targets.length ? j : null));
   site.spaceWeather = await loadJson(base, 'space_weather.json', (j) => (j?.format === 'martian-map-space-weather/1' ? j : null));
   return site;
 }

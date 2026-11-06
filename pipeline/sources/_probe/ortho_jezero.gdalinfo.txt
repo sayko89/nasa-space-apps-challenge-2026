@@ -1,0 +1,52 @@
+Driver: GTiff/GeoTIFF
+Files: /vsicurl/https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first.tif
+Size is 85600, 85952
+Coordinate System is:
+PROJCRS["Equirectangular Mars 2000 Sphere IAU",
+    BASEGEOGCRS["D_Mars_2000_Sphere",
+        DATUM["Mars_2000_(Sphere)",
+            ELLIPSOID["Mars_2000_Sphere_IAU",3396190,0,
+                LENGTHUNIT["metre",1,
+                    ID["EPSG",9001]]]],
+        PRIMEM["Reference_Meridian",0,
+            ANGLEUNIT["degree",0.0174532925199433,
+                ID["EPSG",9122]]]],
+    CONVERSION["Equidistant Cylindrical",
+        METHOD["Equidistant Cylindrical",
+            ID["EPSG",1028]],
+        PARAMETER["Latitude of 1st standard parallel",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8823]],
+        PARAMETER["Longitude of natural origin",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["easting",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]],
+        AXIS["northing",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]]]
+Data axis to CRS axis mapping: 1,2
+Origin = (4577366.000000000000000,1106618.000000000000000)
+Pixel Size = (0.250000000000000,-0.250000000000000)
+Metadata:
+  AREA_OR_POINT=Area
+Image Structure Metadata:
+  INTERLEAVE=BAND
+Corner Coordinates:
+Upper Left  ( 4577366.000, 1106618.000) ( 77d13'22.56"E, 18d40' 9.53"N)
+Lower Left  ( 4577366.000, 1085130.000) ( 77d13'22.56"E, 18d18'24.48"N)
+Upper Right ( 4598766.000, 1106618.000) ( 77d35' 2.27"E, 18d40' 9.53"N)
+Lower Right ( 4598766.000, 1085130.000) ( 77d35' 2.27"E, 18d18'24.48"N)
+Center      ( 4588066.000, 1095874.000) ( 77d24'12.41"E, 18d29'17.01"N)
+Band 1 Block=85600x1 Type=Byte, ColorInterp=Gray
+  NoData Value=0

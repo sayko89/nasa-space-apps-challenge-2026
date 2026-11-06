@@ -6,7 +6,7 @@
  * Full touchpad / mouse / scroll controls.
  */
 
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { MarsCrew, DemRouteLine, StopBadges, DustDevil } from './MarsCrew';
@@ -34,6 +34,7 @@ function marsSky(elDeg) {
   return '#' + night.getHexString();
 }
 import { useRoverController } from '../three/roverController';
+import { loadOrthoImage } from '../utils/orthoImage';
 import { ROUTE_COLORS } from '../utils/constants';
 
 // ---- Terrain ----
@@ -42,15 +43,52 @@ let _geo = null;
 let _regolithTex = null;
 let _normalMap   = null;
 
-function Terrain({ wireframe }) {
+let _orthoTex = null;
+const ORTHO_TINT = new THREE.Color(2.1, 1.25, 0.72);
+/** HiRISE orthomosaic as a texture (null until loaded / when the site has none). */
+function useOrthoTexture(on) {
+  const [tex, setTex] = useState(_orthoTex);
+  useEffect(() => {
+    if (!on || _orthoTex) return undefined;
+    let alive = true;
+    loadOrthoImage().then((img) => {
+      if (!alive || !img) return;
+      const t = new THREE.Texture(img);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      t.generateMipmaps = true;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.needsUpdate = true;
+      _orthoTex = t;
+      setTex(t);
+    });
+    return () => { alive = false; };
+  }, [on]);
+  return on ? tex : null;
+}
+
+function Terrain({ wireframe, orthoOn = false }) {
   if (!_geo)          _geo          = generateTerrain();
   if (!_regolithTex)  _regolithTex  = createLunarRegolithTexture(512);
   if (!_normalMap)    _normalMap    = createLunarNormalMap(256);
+  const ortho = useOrthoTexture(orthoOn && !wireframe);
 
   return (
     <mesh geometry={_geo} receiveShadow>
       {wireframe ? (
         <meshStandardMaterial key="wire" wireframe color="#44aa44" />
+      ) : ortho ? (
+        // Grayscale HiRISE image tinted to a Mars surface colour (linear RGB, > 1 to make up for
+        // the mid-grey image); the image already holds the orbital lighting, so the scene light
+        // adds only the relief of the 4 m terrain.
+        <meshStandardMaterial
+          key="ortho"
+          map={ortho}
+          color={ORTHO_TINT}
+          roughness={0.95}
+          metalness={0}
+          envMapIntensity={0.0}
+        />
       ) : (
         <meshStandardMaterial
           key="proc"
@@ -826,6 +864,7 @@ export default function MoonScene({
   returnPath = null,        // DEM: abort return path (dashed)
   sceneApiRef = null,       // optional: { camera, controls } for scripted captures
   overlay = null,           // DEM: { layer, opacity, refreshKey } map layer draped on the terrain
+  orthoOn = false,          // DEM: HiRISE orthomosaic on the terrain (sites/<site>/ortho.jpg)
 }) {
   const roverRef = useRef();
   const orbitRef = useRef();
@@ -860,7 +899,7 @@ export default function MoonScene({
       {/* Sun */}
       <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} playback={playback} />
 
-      <Terrain wireframe={wireframe} />
+      <Terrain wireframe={wireframe} orthoOn={orthoOn} />
       {IS_DEM && overlay?.layer && (
         <TerrainOverlay layer={overlay.layer} opacity={overlay.opacity ?? 0.6} refreshKey={overlay.refreshKey}
           sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />

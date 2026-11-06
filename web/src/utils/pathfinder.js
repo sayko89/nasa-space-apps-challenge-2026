@@ -15,6 +15,7 @@ import { param, MODE_WEIGHTS, SCIENCE_PARAMS } from '../config/marswalkProfile.j
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
+import { chemAnomalies } from './chemistry.js';
 import { evaDoseMSv, careerFraction } from './radiation.js';
 import { carryCheck, ROVER } from '../config/mission.js';
 import { thermalClass } from '../terrain/layers.js';
@@ -688,6 +689,18 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
   return result;
 }
 
+/** Grid cell → chemical standouts of the ChemCam targets in it (null without chemistry.json). */
+function chemCellMap() {
+  if (!SITE.chemistry) return null;
+  const m = new Map();
+  for (const a of chemAnomalies(SITE.chemistry)) {
+    const i = cellIndexAt(a.target.x, a.target.z);
+    if (!m.has(i)) m.set(i, []);
+    m.get(i).push({ tag: a.tag, name: a.target.name, sol: a.target.sol, diff: a.diff });
+  }
+  return m;
+}
+
 /**
  * Science EVA (Stage 6): best set + order of geology stops from `home` within the
  * EVA budget (see utils/science.js). Serializable result (worker → main thread).
@@ -704,6 +717,8 @@ export function planScience(home, hMap, opts = {}) {
     weights: SCIENCE_PARAMS.weights, interiorR: SCIENCE_PARAMS.interiorR,
     minHomeDistM: SCIENCE_PARAMS.minHomeDistM, maxCandidates: SCIENCE_PARAMS.maxCandidates,
     minerals: SITE.layers?.minerals || null,
+    chemCells: chemCellMap(),
+    maxChemCandidates: SCIENCE_PARAMS.maxChemCandidates,
     maxReturnS: opts.maxReturnS ?? null,
   });
   const toWorld = (c) => { const { wx, wz } = gridToWorld(c.col, c.row); return { ...c, x: wx, z: wz }; };
