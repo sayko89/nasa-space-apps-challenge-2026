@@ -1,0 +1,64 @@
+Driver: GTiff/GeoTIFF
+Files: /vsicurl/https://planetarymaps.usgs.gov/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif
+Size is 32980, 57440
+Coordinate System is:
+PROJCRS["Mars_Equirectangular_clon0",
+    BASEGEOGCRS["GCS_Mars_2000_Sphere",
+        DATUM["D_Mars_2000_Sphere",
+            ELLIPSOID["Mars_2000_Sphere_IAU_IAG",3396190,0,
+                LENGTHUNIT["metre",1,
+                    ID["EPSG",9001]]]],
+        PRIMEM["Reference_Meridian",0,
+            ANGLEUNIT["degree",0.0174532925199433,
+                ID["EPSG",9122]]]],
+    CONVERSION["Equidistant Cylindrical",
+        METHOD["Equidistant Cylindrical",
+            ID["EPSG",1028]],
+        PARAMETER["Latitude of 1st standard parallel",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8823]],
+        PARAMETER["Longitude of natural origin",0,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["easting",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]],
+        AXIS["northing",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1,
+                ID["EPSG",9001]]]]
+Data axis to CRS axis mapping: 1,2
+Origin = (8127993.492786023765802,-244781.075189438008238)
+Pixel Size = (1.000000000000000,-1.000000000000000)
+Metadata:
+  AREA_OR_POINT=Point
+Image Structure Metadata:
+  COMPRESSION=LZW
+  INTERLEAVE=BAND
+Corner Coordinates:
+Upper Left  ( 8127993.493, -244781.075) (137d 7'27.00"E,  4d 7'46.58"S)
+Lower Left  ( 8127993.493, -302221.075) (137d 7'27.00"E,  5d 5'55.15"S)
+Upper Right ( 8160973.493, -244781.075) (137d40'50.01"E,  4d 7'46.58"S)
+Lower Right ( 8160973.493, -302221.075) (137d40'50.01"E,  5d 5'55.15"S)
+Center      ( 8144483.493, -273501.075) (137d24' 8.51"E,  4d36'50.86"S)
+Band 1 Block=32980x1 Type=Float32, ColorInterp=Gray
+  Min=-4625.875 Max=-322.560 
+  Minimum=-4625.875, Maximum=-322.560, Mean=-3641.758, StdDev=984.727
+  NoData Value=-32767
+  Metadata:
+    STATISTICS_COVARIANCES=969687.1089467346
+    STATISTICS_EXCLUDEDVALUES=-32767
+    STATISTICS_MAXIMUM=-322.5602722168
+    STATISTICS_MEAN=-3641.7582650729
+    STATISTICS_MINIMUM=-4625.875
+    STATISTICS_SKIPFACTORX=1
+    STATISTICS_SKIPFACTORY=1
+    STATISTICS_STDDEV=984.72692100233

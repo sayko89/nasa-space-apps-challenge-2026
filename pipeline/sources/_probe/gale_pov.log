@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/runner/work/nasa-space-apps-challenge-2026/nasa-space-apps-challenge-2026/pipeline/build_pov.py", line 44, in <module>
+    'credit': rover['credit'], 'rover': rover['name'], 'name': 'Perseverance'},
+              ^^^^^
+NameError: name 'rover' is not defined
