@@ -15,6 +15,8 @@
 
 The first people to walk on Mars will want the best map possible. **Martian Map** is that map for one real place: the floor of **Jezero crater** around the Perseverance landing site. It layers data from **four NASA Mars missions** into a single 3D view, plans a two-person **Marswalk** that visits the most interesting rocks and minerals, proves at every step that the crew can still walk home (or back to their rover), and then plays the whole EVA out on a mission clock.
 
+> **Why another Mars map?** Tools like JPL's Mars Trek and the USGS–NASA geologic maps layer data over the whole planet, at regional scale. An astronaut on a single Marswalk needs the opposite: one 2 km × 2 km area, every layer on the same **4 m grid**, rocks picked out at **1 m**, and a plan that says *where to walk, what to sample, and when to turn back*. Martian Map is built for that hyperlocal scale.
+
 ![EV1 samples a geology stop while EV2 documents it; the HUD shows the mission clock, the walk-back margin and the radiation dose](docs/img/hero.jpg)
 
 ## Try it
@@ -23,7 +25,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 |---|---|
 | **Online** | **[sayko89.github.io/nasa-space-apps-challenge-2026](https://sayko89.github.io/nasa-space-apps-challenge-2026/)** — nothing to install |
 | **Offline** | **Code → Download ZIP** → unzip → `MartianMap/Start-Windows.bat` (Windows) or `MartianMap/start-mac-linux.sh` (macOS / Linux). Needs only Python 3. |
-| **From source** | `pnpm install`, then `pnpm --filter moon-rover dev` |
+| **From source** | `pnpm install`, then `pnpm dev` (tests: `pnpm test`) |
 
 **Quick tour:** set the suit, equipment and rover in **Mission setup** → **PLAN SCIENCE EVA** → open **ground view** on a stop to see it through Perseverance's cameras → pick a route (SAFE / ECO / FAST / AUTO) and read its GO / NO-GO card → **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**) → **Map Layers → DRAPE ON 3D TERRAIN** for minerals, thermal inertia, rocks, geology or slope.
 
