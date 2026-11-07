@@ -38,7 +38,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 
 The second site came out of the same pipeline: the site centre is picked from Curiosity's own boxwork-campaign track, and the grid, rock relief, units and ground views are built from it. That is the challenge's "tool or system that generates maps of different locations".
 
-**Quick tour:** set the suit, equipment and rover in **Mission setup** → **PLAN SCIENCE EVA** → open **ground view** on a stop to see it through the rover's own cameras → pick a route (SAFE / ECO / FAST / AUTO) and read its GO / NO-GO card → **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**) → **Map Layers → DRAPE ON 3D TERRAIN** for minerals, thermal inertia, rocks, geology or slope.
+**Quick tour:** set the suit, equipment and rover in **Mission setup** → **PLAN SCIENCE EVA** → open **ground view** on a stop to see it through the rover's own cameras → pick a route (SAFE / ECO / FAST / AUTO) and read its GO / NO-GO card → **PRINT CUFF CARD** for the one-page wrist card → **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**) → **Map Layers → DRAPE ON 3D TERRAIN** for minerals, thermal inertia, rocks, geology or slope.
 
 ## How it answers the challenge
 
@@ -52,7 +52,8 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 | A **route map** that **avoids obstacles such as large rocks** | A* on walking time; slopes above 20° and **rock outcrops / boulders** found in the 1 m HiRISE DTM are walls |
 | **Rovers** to transport the crew; astronauts **in pairs** | **Pressurized rover as safe haven**: the crew may never be more than a 30-minute walk from it; a two-person crew (EV1 + EV2) walks the plan |
 | **Point-of-view images** so the astronaut knows what to expect | **Ground view** on every science stop: the Perseverance Navcam / Mastcam-Z frames taken from the rover position closest to it, facing the stop |
-| A format crews could use: habitat display, tablet, **HUD** | Planning view for the habitat, and an EVA **HUD** with mission clock, live walk-back margin, distance home, sun, temperature and dose |
+| A format crews could use: habitat display, tablet, **HUD** | Planning view for the habitat, an EVA **HUD** with mission clock, live walk-back margin, distance home, sun, temperature and dose, and a printable **cuff card** for the wrist |
+| A map that can be a **static snapshot**; **inspiration from maps made for other destinations** | The **cuff card**: one printed page per EVA — photo map of the route plus a station table with arrival, stay, walk-back and *leave-by* times — modelled on the Apollo 15–17 cuff checklists and traverse planning data (see [Inspiration](#inspiration-apollo-cuff-checklists)) |
 | A time frame | Pick any date and local solar time: sun, shadows, temperature climatology and DONKI events follow it |
 
 ## The layers — all real data
@@ -86,6 +87,20 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 3. **Walk-back margin.** At every point: *margin = budget − (time so far + fastest walk home)*. The first point with a negative margin is the **point of no return**.
 4. **GO / NO-GO.** GO only if the margin never goes negative, the crew never goes beyond 2 km (or a 30-minute walk from the rover), no slope is above 20° and the suit plus equipment is light enough to carry.
 5. **Conditions.** For the moment the crew actually walks each point: sun elevation, terrain shadow, darkness, home before sunset or not, expected air temperature, radiation dose and space-weather events.
+
+## Inspiration: Apollo cuff checklists
+
+On the Moon, Apollo crews did not carry a screen. They wore a small spiral-bound checklist on the wrist, about 18 × 9 cm, its pages turnable in pressurised gloves, and travelled — on foot or by lunar rover — to stations planned on photo maps. The Apollo 17 traverse planning data gave, for every station, the time to spend there (Station 2: 0+50, Station 3: 0+45 …) and the walk back to the lunar module if the rover failed, with a 30-minute life-support reserve on top.
+
+Martian Map prints the same thing for the planned Marswalk. **PRINT CUFF CARD** on the active route opens one A4 page (Print → Save as PDF):
+
+- a **grayscale HiRISE photo map** of the route with numbered stations, direction chevrons, a north arrow, a scale bar and a grid measured from the habitat;
+- a **station table** in Apollo's *h+mm* mission-elapsed-time notation: arrival, stay, leg and bearing, local solar time, expected air temperature, **BACK** (the fastest walk home from the station) and **LEAVE BY** — the latest time to leave the station and still be home inside the 8-hour budget. That last column is the one a crew checks on the wrist: if it is later than LEAVE BY, skip the next station and walk home;
+- the **turn-back rules** and the EVA summary (distance, climb, minimum margin, dose, temperature range).
+
+Every number on the card is the planner's own: the same timeline the GO / NO-GO decision and the EVA playback use (`web/src/utils/cuffCard.js`, unit tested).
+
+![The cuff card for the Mount Sharp boxwork EVA: HiRISE photo map with six stations and the station table with leave-by times](docs/img/cuff-card.jpg)
 
 ## How it is carried out — EVA playback
 
@@ -132,6 +147,7 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 - USGS Astrogeology (2020). *Mars 2020 Terrain Relative Navigation HiRISE Orthorectified Image Mosaic.* [doi:10.5066/P9QJDP48](https://doi.org/10.5066/P9QJDP48)
 - Calef III, F. J. & Parker, T. (2016). *MSL Gale Merged Orthophoto Mosaic 25cm*, v3. PDS Annex, USGS. [astrogeology.usgs.gov](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm)
 - Parker, T. & Calef III, F. J. (2016). *MSL Gale Merged DEM 1m*, v3. PDS Annex, USGS. [astrogeology.usgs.gov](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m)
+- NASA Manned Spacecraft Center (1972). *Apollo 17 Traverse Planning Data*, 3rd ed.; Apollo Lunar Surface Journal. [nasa.gov](https://www.nasa.gov/wp-content/uploads/static/history/alsj/a17/A17TraversePlanningData.pdf) · Cuff checklist, EVA 2 & 3, Apollo 16, Smithsonian National Air and Space Museum. [Google Arts & Culture](https://artsandculture.google.com/asset/cuff-checklist-eva-2-3-apollo-16-young/0wHa5HswXSXP3Q)
 - Gómez-Elvira, J., et al. (2012). REMS: The Environmental Sensor Suite for the Mars Science Laboratory Rover. *Space Sci. Rev.* 170, 583–640. Data: REMS MODRDR, NASA PDS Atmospheres Node (mslrem_1001).
 - Wiens, R. C., Maurice, S., et al. *MSL ChemCam LIBS derived data (RDR), major-oxide compositions*, PDS Geosciences Node (Release 42, 2026); calibration: Clegg, S. M., et al. (2017), Spectrochim. Acta B 129, 64–85.
 - NASA/JPL-Caltech/MSSS. Mars Science Laboratory Curiosity raw images (Navcam, Mastcam) and rover waypoints (MMGIS); boxwork campaign dates from the NASA Curiosity mission blog.

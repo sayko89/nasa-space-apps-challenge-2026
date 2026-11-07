@@ -18,6 +18,7 @@ import { loadOrthoImage } from '../utils/orthoImage';
 import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive } from '../utils/radiation';
 import { PovViewer, nearestPanorama } from './PovViewer';
 import { ChemistryCard, hasChemistry } from './ChemistryCard';
+import CuffCard from './CuffCard';
 import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
@@ -604,7 +605,7 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
   );
 }
 
-function RouteAnalysis({ routes, activeRoute, onSelect }) {
+function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard }) {
   if (!routes) return (
     <div style={{fontSize:fs(8),color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
       Plan a path to see route analysis.
@@ -634,6 +635,13 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:fs(8)}}>{s.distance.toFixed(1)}m</span>}
             </div>
             {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} />}
+            {s && s.walkTimeS !== undefined && active && s.stopCount > 0 && onCuffCard && (
+              <button onClick={(e) => { e.stopPropagation(); onCuffCard(mode); }} title="One printable page: route map + station times, Apollo cuff-checklist style"
+                style={{ marginTop:5, width:'100%', background:'rgba(244,162,97,0.12)', color:'#f4c49a', border:'1px solid rgba(244,162,97,0.55)',
+                  borderRadius:3, padding:'3px 0', fontFamily:'monospace', fontSize:fs(7.5), letterSpacing:'0.1em', cursor:'pointer' }}>
+                ▤ PRINT CUFF CARD
+              </button>
+            )}
             {s && s.walkTimeS === undefined && (
               <>
                 <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7.5),marginBottom:2}}>
@@ -1052,6 +1060,7 @@ export default function RightPanel({
   dustMode, dustHazard, cameraSignalLost, cameraSignalQuality, onTriggerDustHazard, onDustPlaced, onClearDustHazard,
 }) {
   const [pickMode, setPickMode] = useState(false);
+  const [cuffMode, setCuffMode] = useState(null);   // route mode whose cuff card is open
   const [shareLabel, setShareLabel] = useState('SHARE LINK');
 
   const handlePick = useCallback(pos => {
@@ -1350,7 +1359,10 @@ export default function RightPanel({
 
         {/* Route Analysis */}
         <Sect label="Route Analysis">
-          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute}/>
+          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null}/>
+          {cuffMode && routes?.[cuffMode]?.stats?.marginS && (
+            <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)} />
+          )}
         </Sect>
 
         {/* Camera */}
