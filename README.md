@@ -45,7 +45,7 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 | The challenge asks for… | In Martian Map |
 |---|---|
 | A layered, integrated view of a location or route, from **multiple NASA science missions** | One 2 km × 2 km site at 4 m resolution; every layer is resampled onto the same grid: **MRO** (HiRISE terrain, CRISM minerals), **Mars Odyssey** (THEMIS thermal inertia), **Mars 2020** (geology map, MEDA air temperature, Navcam / Mastcam-Z images, rover traverse), **Curiosity** (RAD radiation) |
-| **At least three kinds of data** | **Topographic** (HiRISE DTM, rock relief), **thermal** (THEMIS), **spectral** (CRISM), **geologic** (Mars 2020 map), **atmospheric** (MEDA), **radiation** (RAD + DONKI space weather), **optical** (HiRISE orbital image, Navcam, Mastcam-Z), **chemical** (ChemCam, Gale site) |
+| **At least three kinds of data** | **Topographic** (HiRISE DTM, rock relief), **thermal** (THEMIS), **spectral** (CRISM), **geologic** (Mars 2020 map), **atmospheric** (MEDA at Jezero, REMS at Gale), **radiation** (RAD + DONKI space weather), **optical** (HiRISE orbital image, Navcam, Mastcam-Z), **chemical** (ChemCam, Gale site) |
 | Identify a **science objective** and a location | Sample as many distinct bedrock and surface units, contacts and **CRISM minerals** (olivine, olivine–smectite, pyroxene on this site) as an 8-hour EVA allows, on the crater floor Perseverance landed on |
 | **Astronaut safety first**; space weather, radiation | Per-route **GCR dose** vs the 600 mSv NASA career limit, a **DONKI space-weather advisory** (solar particle event within ±2 days → postpone), walk-back margin and point of no return, sunset and terrain shadow, expected air temperature |
 | Spacesuits and **carried equipment** affect mobility | **Mission setup**: Mars suit (104 kg) or lunar xEMU (170 kg) plus equipment; the carried weight on Mars must stay under NASA's 45 kg Earth-equivalent limit, or the plan is NO-GO |
@@ -64,7 +64,8 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 | Thermal inertia | thermal | Mars Odyssey THEMIS — Edwards & Buz (2021) | ground type along the route (dust, sand, rock) |
 | Dominant minerals | spectral | MRO CRISM — Parente et al. (2021) | science stops (one per mineral), map layer |
 | Surface + bedrock units | geologic | Mars 2020 science-team photogeologic map — Stack et al. (2020) | science stops, map layer |
-| Air temperature at 1.45 m | atmospheric | Perseverance MEDA, one Mars year — Hueso et al. (2024) | temperature at the time the crew walks |
+| Air temperature at 1.45 m *(Jezero)* | atmospheric | Perseverance MEDA, one Mars year — Hueso et al. (2024) | temperature at the time the crew walks |
+| Air temperature at 1.6 m *(Gale)* | atmospheric | Curiosity REMS (MODRDR ambient air temperature, PDS), the latest full Mars year: sols 4175–4843, which include the whole boxwork campaign — 20.5 million 1 Hz readings reduced to 5-min means | same, per season (10° of Ls) and time of day |
 | Surface radiation | radiation | Curiosity RAD — Hassler et al. (2014): 0.64 mSv/day | EVA dose, HUD |
 | Space weather | radiation | NASA DONKI (looked up live for the EVA date): solar particle events, CMEs modelled to reach Mars, X-class flares | go / postpone advisory for the date |
 | Rock chemistry *(Gale site)* | chemical | Curiosity ChemCam LIBS major oxides (PDS, sols 4511–4843): 233 targets in the site, each placed from the rover position + laser pointing and range | "re-sample" stops at rocks that stand out from their layer; chemistry card at stops |
@@ -90,7 +91,7 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 
 - Two astronauts walk the plan on a mission clock (×1 … ×600). Positions come from the planner's own timeline, so what you see is exactly what the GO decision was based on.
 - At each stop EV1 kneels and samples while EV2 documents; a flag marks every sampled stop.
-- The HUD shows mission elapsed time, the current activity, the **live walk-back margin**, distance from the habitat, the sun, the MEDA temperature and the **radiation dose so far**.
+- The HUD shows mission elapsed time, the current activity, the **live walk-back margin**, distance from the habitat, the sun, the site's air temperature (MEDA or REMS) and the **radiation dose so far**.
 - **ABORT EVA** sends the crew home on the fastest path; a **dust devil** on the route within the next 10 minutes of walking triggers an automatic abort.
 
 ![A dust devil on the route ahead triggers an abort; the crew walks home on the fastest path (dashed)](docs/img/abort.jpg)
@@ -112,7 +113,8 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 - How slope changes suited walking speed is an assumption (Tobler shape). Time per stop, science-score weights, the 0.5 m rock-relief limit, the ±2-day SEP window and the 10 km/h rover speed are design choices, labelled as such in the app.
 - A 1 m DTM shows rocks of a few metres, not smaller ones. Jezero's landing area was chosen for being smooth, so on this site only a handful of cells exceed the 0.5 m rock-relief limit; the layer matters more on rougher terrain. CRISM mineral names are the closest match of each spectral class. Thermal-inertia classes are guidance.
 - Temperatures are a one-Mars-year climatology, not a forecast. DONKI covers past dates and is queried live from api.nasa.gov with the public demo key (rate-limited); for a future EVA, or when the lookup fails, the advisory says there is no data.
-- **Gale site.** There is no published GIS geologic map of this part of Mount Sharp. The units are derived and say so: *stratigraphic level* is the elevation band Curiosity crossed during the boxwork campaign (−3655 to −3595 m; the rover was always below it before sol 4541 and always above it after leaving the boxwork), on the assumption that the layers here are close to horizontal — the lateral edges of the boxwork terrain are not modelled. *Terrain class* (ridge, hollow, smooth, steep) is relief against a 15 m background in the 2016 merged DEM, which does not resolve the individual boxwork ridges (a few metres wide). The terrain is steep (about a quarter of cells over 20°) and DEM noise raises the rock-relief layer, so routes are more constrained than at Jezero. No THEMIS, CRISM or air-temperature layer yet; RAD was measured in this crater, so the dose needs no transfer.
+- **Gale site.** There is no published GIS geologic map of this part of Mount Sharp. The units are derived and say so: *stratigraphic level* is the elevation band Curiosity crossed during the boxwork campaign (−3655 to −3595 m; the rover was always below it before sol 4541 and always above it after leaving the boxwork), on the assumption that the layers here are close to horizontal — the lateral edges of the boxwork terrain are not modelled. *Terrain class* (ridge, hollow, smooth, steep) is relief against a 15 m background in the 2016 merged DEM, which does not resolve the individual boxwork ridges (a few metres wide). The terrain is steep (about a quarter of cells over 20°) and DEM noise raises the rock-relief layer, so routes are more constrained than at Jezero. No THEMIS or CRISM layer yet; RAD and REMS were measured in this crater, so dose and air temperature need no transfer.
+- **Gale air temperature.** The climatology is one Mars year (sols 4175–4843) of REMS's own estimate of ambient air temperature, kept only where REMS flags the reading reliable. On a few sols the sensor drops to −115…−120 °C around sunset, which no flag catches; a robust screen against the other sols of the same season and time removes them (76 of 75,703 five-minute means). Curiosity drove up to a few kilometres during that year, so this is the local climate of lower Mount Sharp rather than of one spot. Gale nights are on average 8 °C warmer than Jezero's (from 3 °C colder to 18 °C warmer depending on the season): Gale is 1.8 km lower, under a thicker atmosphere, and closer to the equator.
 - **Chemistry.** ChemCam analyses a spot a few millimetres wide on the surface of a rock, at 2–3 m from the mast; its accuracy (RMSEP) is a few wt% for the major oxides, shown on every bar. Target positions come from the rover position and the laser pointing (mast offset ignored, about a metre). As a check, 229 of the 233 targets fall in the stratigraphic level their sol predicts. Jezero has no chemistry layer: SuperCam and PIXL compositions are not yet published as a table in the PDS.
 - The orbital image is shown at 0.5 m/px (the mosaics are 25 cm) to keep the download near 4 MB per site; it is a single moment in time, with the lighting of that HiRISE pass baked in.
 - Ground-view frame directions are mast azimuth + rover heading, accurate to a few degrees. Only the metadata is stored; the images load from mars.nasa.gov.
@@ -130,6 +132,7 @@ The second site came out of the same pipeline: the site centre is picked from Cu
 - USGS Astrogeology (2020). *Mars 2020 Terrain Relative Navigation HiRISE Orthorectified Image Mosaic.* [doi:10.5066/P9QJDP48](https://doi.org/10.5066/P9QJDP48)
 - Calef III, F. J. & Parker, T. (2016). *MSL Gale Merged Orthophoto Mosaic 25cm*, v3. PDS Annex, USGS. [astrogeology.usgs.gov](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm)
 - Parker, T. & Calef III, F. J. (2016). *MSL Gale Merged DEM 1m*, v3. PDS Annex, USGS. [astrogeology.usgs.gov](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m)
+- Gómez-Elvira, J., et al. (2012). REMS: The Environmental Sensor Suite for the Mars Science Laboratory Rover. *Space Sci. Rev.* 170, 583–640. Data: REMS MODRDR, NASA PDS Atmospheres Node (mslrem_1001).
 - Wiens, R. C., Maurice, S., et al. *MSL ChemCam LIBS derived data (RDR), major-oxide compositions*, PDS Geosciences Node (Release 42, 2026); calibration: Clegg, S. M., et al. (2017), Spectrochim. Acta B 129, 64–85.
 - NASA/JPL-Caltech/MSSS. Mars Science Laboratory Curiosity raw images (Navcam, Mastcam) and rover waypoints (MMGIS); boxwork campaign dates from the NASA Curiosity mission blog.
 - Ogilvie, R., et al. (2026). *Mars Spacesuit Mass Requirements.* ICES-2026. [NASA NTRS 20260005410](https://ntrs.nasa.gov/citations/20260005410)
@@ -149,10 +152,10 @@ web/     the web app (React + Three.js / react-three-fiber, Vite)
   src/config/             marswalkProfile (EVA limits) · mission (suit, equipment, rover)
   src/components/         MoonScene (3D) · MarsCrew · EvaHud · RightPanel · PovViewer (ground view)
   public/sites/jezero/    grid.bin · ortho (HiRISE) · geology · climate · layers (THEMIS, CRISM, rocks) · pov
-  public/sites/gale/      grid.bin · ortho (HiRISE) · geology (derived) · layers (rocks) · chemistry (ChemCam) · pov (Curiosity)
+  public/sites/gale/      grid.bin · ortho (HiRISE) · climate (REMS) · geology (derived) · layers (rocks) · chemistry (ChemCam) · pov (Curiosity)
   tests/                  node --test suites
-pipeline/                 fetch_sources · fetch_gale · fetch_chemistry · build_site · build_ortho · build_layers · build_space_weather
-                          build_pov · build_climate · build_geology · build_gale_geology · build_chemistry
+pipeline/                 fetch_sources · fetch_gale · fetch_chemistry · fetch_rems · build_site · build_ortho · build_layers · build_space_weather
+                          build_pov · build_climate · build_geology · build_gale_geology · build_chemistry · build_climate_rems
                           build_offline
 MartianMap/               ready-to-run offline package
 ```
@@ -161,13 +164,14 @@ MartianMap/               ready-to-run offline package
 
 ## Rebuilding the data
 
-The processed data are committed, so the app runs as is. Sources are fetched by GitHub Actions (`.github/workflows/fetch-sources.yml`, `fetch-dtm.yml`, `fetch-gale.yml`, `fetch-gale-pov.yml`, `fetch-chemistry.yml`, `fetch-ortho.yml` — the last one also builds the HiRISE textures) into `pipeline/sources/`; then:
+The processed data are committed, so the app runs as is. Sources are fetched by GitHub Actions (`.github/workflows/fetch-sources.yml`, `fetch-dtm.yml`, `fetch-gale.yml`, `fetch-gale-pov.yml`, `fetch-chemistry.yml`, `fetch-ortho.yml` — which also builds the HiRISE textures — and `fetch-rems.yml`) into `pipeline/sources/`; then:
 
 ```bash
 pip install -r pipeline/requirements.txt
 python pipeline/build_layers.py         # THEMIS, CRISM, rock relief → layers.json
 python pipeline/build_layers.py --site gale && python pipeline/build_gale_geology.py
 python pipeline/build_chemistry.py      # ChemCam targets → sites/gale/chemistry.json
+python pipeline/build_climate_rems.py   # REMS 5-min means → sites/gale/climate.json
 python pipeline/build_space_weather.py  # DONKI → space_weather.json
 python pipeline/build_offline.py        # refresh MartianMap/app
 ```

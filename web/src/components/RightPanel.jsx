@@ -23,7 +23,7 @@ import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions,
 import { DUST_STATES } from '../utils/dustHazardModel';
 import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
-import { airTemp, diurnalCurve, K_TO_C } from '../utils/climate';
+import { airTemp, diurnalCurve, K_TO_C, climateInstrument, climateHeightM } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
 
 const HALF = TERRAIN_SIZE / 2;
@@ -327,7 +327,7 @@ const fmtLtst = fmtHourMin;
 const SEASONS_N = ['Northern spring', 'Northern summer', 'Northern autumn', 'Northern winter'];
 const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 
-// Diurnal air-temperature curve (MEDA ATS median, p10–p90 band) + EVA start marker
+// Diurnal air-temperature curve (site climatology median, p10–p90 band) + EVA start marker
 function DiurnalTempChart({ bin, ltstH }) {
   const W = 200, H = 54, padL = 22, padB = 10, padT = 4;
   const n = bin.median.length;
@@ -391,10 +391,10 @@ function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
         );
         return (
           <>
-            <div style={row}><span>Air (1.45 m)</span><span style={{ color: '#ffcc88' }}>
+            <div style={row}><span>Air ({climateHeightM(SITE.climate)} m)</span><span style={{ color: '#ffcc88' }}>
               {K_TO_C(a.median).toFixed(0)} °C <span style={{ color: '#7a8a7a' }}>({K_TO_C(a.p10).toFixed(0)}…{K_TO_C(a.p90).toFixed(0)})</span></span></div>
             <DiurnalTempChart bin={bin} ltstH={cur} />
-            <div style={{ color: '#4a6a4a', fontSize:fs(6.5) }}>MEDA ATS, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sols · median, 10–90 %</div>
+            <div style={{ color: '#4a6a4a', fontSize:fs(6.5) }}>{climateInstrument(SITE.climate)}, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sols · median, 10–90 %</div>
           </>
         );
       })()}
@@ -522,7 +522,7 @@ function MarswalkStats({ mode, s }) {
           {' · '}{s.light.homeBySunset === null ? 'no sunrise/sunset'
             : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>home before sunset</span>
             : <span style={{color:'#ffaa55'}}>⚠ not completed in daylight</span>}
-          {s.light.air && <><br/>Air (1.45 m, during the EVA): <span style={{color:'#ffcc88'}}>
+          {s.light.air && <><br/>Air ({climateHeightM(SITE.climate)} m, during the EVA): <span style={{color:'#ffcc88'}}>
             {K_TO_C(s.light.air.minMedian).toFixed(0)}…{K_TO_C(s.light.air.maxMedian).toFixed(0)} °C</span>
             {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (extremes {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
         </div>

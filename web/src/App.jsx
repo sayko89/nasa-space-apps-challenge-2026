@@ -109,10 +109,13 @@ function SiteBadge({ collapsed, onToggle }) {
       {' '}· crew EV1+EV2 —{' '}
       <a href={EVA_CREW.url} target="_blank" rel="noreferrer" style={LINK}>NASA lunar EVA ConOps</a>
       {as.length > 0 && <div>ASSUMED: {as.join(', ')}</div>}
-      {SITE.climate && <div>
+      {SITE.climate && (SITE.climate.instrument === 'REMS ATS' ? <div>
+        AIR: Curiosity REMS ambient air temperature (MODRDR, PDS Atmospheres Node), sols {SITE.climate.solRange.join('–')} — one Mars year,{' '}
+        <a href={SITE.climate.source.url} target="_blank" rel="noreferrer" style={LINK}>PDS</a>
+      </div> : <div>
         AIR: MEDA ATS derived temperatures — Hueso et al. 2024,{' '}
         <a href={SITE.climate.source.doi} target="_blank" rel="noreferrer" style={LINK}>Zenodo</a>, CC BY 4.0
-      </div>}
+      </div>)}
       {SITE.geology && <div>
         {SITE.geology.source?.kind === 'derived' ? 'LANDFORMS' : 'GEOLOGY'}: {SITE.geology.source?.short || SITE.geology.source?.title}
         {SITE.geology.source?.doi && <>,{' '}<a href={SITE.geology.source.doi} target="_blank" rel="noreferrer" style={LINK}>DOI</a></>}

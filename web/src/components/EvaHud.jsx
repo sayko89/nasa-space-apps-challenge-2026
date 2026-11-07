@@ -10,7 +10,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { evaSnapshot, SPEEDS } from '../utils/evaPlayback';
 import { fmtClock, fmtHM, fmtSignedHM, fmtHourMin, fmtDist } from '../utils/format';
-import { K_TO_C } from '../utils/climate';
+import { K_TO_C, climateInstrument } from '../utils/climate';
+import { SITE } from '../three/terrainGenerator';
 import { param } from '../config/marswalkProfile';
 import { evaDoseMSv } from '../utils/radiation';
 
@@ -184,7 +185,7 @@ export default function EvaHud({ playback, right = 12, onAbort, onStop }) {
         </Tile>
         <Tile label="SUN ELEV. · AIR" color={sun && sun.elevationDeg <= 0 ? '#8899cc' : '#ffd166'}
           sub={air && air.p10 != null && air.p90 != null
-            ? `MEDA p10–p90: ${K_TO_C(air.p10).toFixed(0)}…${K_TO_C(air.p90).toFixed(0)} °C` : air ? 'MEDA climatology' : 'no climate data'}>
+            ? `${climateInstrument(SITE.climate)} p10–p90: ${K_TO_C(air.p10).toFixed(0)}…${K_TO_C(air.p90).toFixed(0)} °C` : air ? `${climateInstrument(SITE.climate)} climatology` : 'no climate data'}>
           {sun ? (sun.elevationDeg > 0 ? `${sun.elevationDeg.toFixed(0)}°` : 'night') : '—'}
           {air ? <span style={{ color: '#ffcc88' }}> · {K_TO_C(air.median).toFixed(0)} °C</span> : null}
         </Tile>
