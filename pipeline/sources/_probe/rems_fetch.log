@@ -1,31 +1,31 @@
 42 sol ranges, last SOL_04710_04843
-  25/669 sols · 38 s · last sol 4200: ok
-  50/669 sols · 68 s · last sol 4226: ok
-  75/669 sols · 104 s · last sol 4243: ok
-  100/669 sols · 141 s · last sol 4275: ok
-  125/669 sols · 175 s · last sol 4297: ok
-  150/669 sols · 207 s · last sol 4326: ok
-  175/669 sols · 237 s · last sol 4347: ok
-  200/669 sols · 270 s · last sol 4373: ok
-  225/669 sols · 300 s · last sol 4399: ok
-  250/669 sols · 328 s · last sol 4425: ok
-  275/669 sols · 362 s · last sol 4449: ok
-  300/669 sols · 397 s · last sol 4475: ok
-  325/669 sols · 434 s · last sol 4499: ok
-  350/669 sols · 469 s · last sol 4525: ok
-  375/669 sols · 505 s · last sol 4550: ok
-  400/669 sols · 536 s · last sol 4573: ok
-  425/669 sols · 571 s · last sol 4599: ok
-  450/669 sols · 611 s · last sol 4624: ok
-  475/669 sols · 649 s · last sol 4648: ok
-  500/669 sols · 690 s · last sol 4673: ok
-  525/669 sols · 733 s · last sol 4700: ok
-  550/669 sols · 774 s · last sol 4725: ok
-  575/669 sols · 811 s · last sol 4748: ok
-  600/669 sols · 850 s · last sol 4774: ok
-  625/669 sols · 884 s · last sol 4798: ok
-  650/669 sols · 922 s · last sol 4824: ok
-  669/669 sols · 960 s · last sol 4841: ok
+  25/669 sols · 33 s · last sol 4200: ok
+  50/669 sols · 61 s · last sol 4224: ok
+  75/669 sols · 91 s · last sol 4248: ok
+  100/669 sols · 124 s · last sol 4268: ok
+  125/669 sols · 155 s · last sol 4296: ok
+  150/669 sols · 184 s · last sol 4326: ok
+  175/669 sols · 214 s · last sol 4350: ok
+  200/669 sols · 244 s · last sol 4375: ok
+  225/669 sols · 274 s · last sol 4400: ok
+  250/669 sols · 305 s · last sol 4414: ok
+  275/669 sols · 334 s · last sol 4449: ok
+  300/669 sols · 364 s · last sol 4473: ok
+  325/669 sols · 394 s · last sol 4499: ok
+  350/669 sols · 426 s · last sol 4524: ok
+  375/669 sols · 456 s · last sol 4548: ok
+  400/669 sols · 484 s · last sol 4573: ok
+  425/669 sols · 518 s · last sol 4598: ok
+  450/669 sols · 556 s · last sol 4624: ok
+  475/669 sols · 585 s · last sol 4649: ok
+  500/669 sols · 615 s · last sol 4675: ok
+  525/669 sols · 644 s · last sol 4699: ok
+  550/669 sols · 675 s · last sol 4721: ok
+  575/669 sols · 700 s · last sol 4748: ok
+  600/669 sols · 732 s · last sol 4775: ok
+  625/669 sols · 759 s · last sol 4798: ok
+  650/669 sols · 788 s · last sol 4824: ok
+  669/669 sols · 815 s · last sol 4841: ok
 {
  "source": "https://atmos.nmsu.edu/PDS/data/mslrem_1001/DATA/",
  "product": "REMS MODRDR (mslrem_1001), column AMBIENT_TEMP",
@@ -38,6 +38,6 @@
  "reliable": 20473857,
  "strict": 16586564,
  "filter": "AMBIENT_TEMP_CONFIDENCE_LEVEL byte 8 (reliability) = 1; strict also byte 7 (error < 5 K) != 0",
- "generated_utc": "2026-11-07T08:57:04+00:00"
+ "generated_utc": "2026-11-07T10:19:35+00:00"
 }
 missing sols: 0
