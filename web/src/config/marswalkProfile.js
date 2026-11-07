@@ -132,9 +132,66 @@ export const MARS_CAVEAT = {
       + 'subjects worked near maximum effort to keep the pace. The lunar ConOps limits are optimistic for Mars.',
 };
 
-/** Numeric value of a parameter (UI and models use this). */
+/**
+ * MARS-CONSERVATIVE limits — an alternative to the lunar ConOps values above, for the
+ * safety-first reading of the challenge. Only the four values below change; everything else
+ * (slope limit, rock relief, slope-speed shape) stays as above because no Mars-specific
+ * source was found for them.
+ *
+ *   level speed  2.0 km/h ÷ 1.65. Norcross et al. (TP-2009-214796, Table 5): suited VO₂ at the
+ *                slowest test stage was 27.6 ml/min/kg at Mars gravity vs 16.7 at lunar gravity
+ *                (stages are set relative to each subject's own transition speed, so the speeds
+ *                are comparable; stages 2–3 give 1.77–1.79). Keeping the crew at the lunar
+ *                planning metabolic load means walking 1.65× slower — assumption: cost ∝ speed.
+ *   EVA budget   8 h − 30 min. The Apollo 17 traverse planning kept a 30-minute life-support
+ *                reserve on every station's walk-back; here it is taken off the planning budget.
+ *   radial limit 1.2 km: keeps the lunar ConOps walk-back TIME (2 km at 2 km/h = 1 h) at the
+ *                slower Mars pace (1.21 km/h × 1 h).
+ */
+const APOLLO17 = 'NASA MSC (1972), Apollo 17 Traverse Planning Data, 3rd ed. — 30-minute PLSS consumables reserve';
+const APOLLO17_URL = 'https://www.nasa.gov/wp-content/uploads/static/history/alsj/a17/A17TraversePlanningData.pdf';
+export const MARS_SUIT_COST_RATIO = { value: 27.6 / 16.7, status: 'sourced',
+  source: `${'Norcross et al., NASA/TP-2009-214796'}, Table 5 (suited VO₂, stage 1: 27.6 vs 16.7 ml/min/kg)`,
+  url: 'https://www.lpi.usra.edu/lunar/artemis/NorcrossEtAl_NASA-TP-2009-214796_EVA%20Walkback%20Test.pdf' };
+
+export const MARS_CONSERVATIVE = {
+  levelWalkSpeedKmh: {
+    value: Math.round((2.0 / MARS_SUIT_COST_RATIO.value) * 100) / 100,
+    unit: 'km/h', status: 'assumption', label: 'level walking speed (Mars, same metabolic load)',
+    source: MARS_SUIT_COST_RATIO.source, url: MARS_SUIT_COST_RATIO.url,
+    note: 'Lunar ConOps 2 km/h divided by the suited metabolic-cost ratio Mars/Moon (1.65, Norcross Table 5, stage 1). '
+        + 'Assumes metabolic cost grows in proportion to speed. Test suit: 120 kg MKIII.',
+  },
+  evaDurationH: {
+    value: 7.5, unit: 'h', status: 'sourced', label: 'EVA planning budget (8 h − 30 min reserve)',
+    source: APOLLO17, url: APOLLO17_URL,
+    note: '8 h xEVA suit budget minus the Apollo 17 walk-back reserve of 30 minutes.',
+  },
+  maxRadialDistanceKm: {
+    value: 1.2, unit: 'km', status: 'assumption', label: 'max walking distance from the habitat (Mars)',
+    source: `${XEVA} §4.2.1.3.1 (2 km at 2 km/h = 1 h walk-back), rescaled`, url: XEVA_URL,
+    note: 'Keeps the lunar 1-hour walk-back time at the slower Mars pace: 1.21 km/h × 1 h ≈ 1.2 km.',
+  },
+};
+
+export const EVA_PROFILES = {
+  lunar: { label: 'Lunar ConOps', short: 'NASA xEVA (Moon)', desc: 'NASA lunar EVA values — optimistic for Mars' },
+  mars: { label: 'Mars conservative', short: 'Mars-adjusted', desc: 'Slower walk (Mars suited cost ×1.65), 30-min reserve, 1.2 km' },
+};
+
+let _profile = 'lunar';
+/** Select the active EVA limit set ('lunar' | 'mars'). Planner worker and main thread each call this. */
+export function setEvaProfile(name) { _profile = EVA_PROFILES[name] ? name : 'lunar'; }
+export function getEvaProfile() { return _profile; }
+
+/** The full entry (value, source, note) of a parameter in the active profile. */
+export function paramEntry(key) {
+  return (_profile === 'mars' && MARS_CONSERVATIVE[key]) || MARSWALK_PROFILE[key];
+}
+
+/** Numeric value of a parameter in the active profile (UI and models use this). */
 export function param(key) {
-  return MARSWALK_PROFILE[key].value;
+  return paramEntry(key).value;
 }
 
 /** Parameters with no source yet (placeholder) — for the HUD warning. */
@@ -144,9 +201,7 @@ export function placeholderParams() {
     .map(([k]) => k);
 }
 
-/** Parameters marked as assumptions — shown separately in the HUD. */
+/** Parameters marked as assumptions (in the active profile) — shown separately in the HUD. */
 export function assumptionParams() {
-  return Object.entries(MARSWALK_PROFILE)
-    .filter(([, p]) => p.status === 'assumption')
-    .map(([k]) => k);
+  return Object.keys(MARSWALK_PROFILE).filter(k => paramEntry(k).status === 'assumption');
 }

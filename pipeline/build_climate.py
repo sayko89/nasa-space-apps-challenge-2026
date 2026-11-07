@@ -171,6 +171,8 @@ def build(args) -> dict:
         "format": "martian-map-climate/1",
         "site": args.site,
         "variable": "air temperature at 1.45 m (MEDA ATS, derived), 5-min means",
+        "instrument": "MEDA ATS",
+        "heightM": 1.45,
         "units": "K",
         "lsBinDeg": args.ls_bin,
         "ltstStepH": SLOT_H,

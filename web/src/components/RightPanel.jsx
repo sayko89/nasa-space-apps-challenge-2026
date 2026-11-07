@@ -15,15 +15,16 @@ import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { loadOrthoImage } from '../utils/orthoImage';
-import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive } from '../utils/radiation';
+import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive, DOSE_COMPARISON, daysEquivalent } from '../utils/radiation';
 import { PovViewer, nearestPanorama } from './PovViewer';
 import { ChemistryCard, hasChemistry } from './ChemistryCard';
+import CuffCard from './CuffCard';
 import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
-import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS } from '../config/marswalkProfile';
+import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS, param, EVA_PROFILES, MARS_SUIT_COST_RATIO } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
-import { airTemp, diurnalCurve, K_TO_C } from '../utils/climate';
+import { airTemp, diurnalCurve, K_TO_C, climateInstrument, climateHeightM } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
 
 const HALF = TERRAIN_SIZE / 2;
@@ -327,7 +328,7 @@ const fmtLtst = fmtHourMin;
 const SEASONS_N = ['Northern spring', 'Northern summer', 'Northern autumn', 'Northern winter'];
 const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 
-// Diurnal air-temperature curve (MEDA ATS median, p10–p90 band) + EVA start marker
+// Diurnal air-temperature curve (site climatology median, p10–p90 band) + EVA start marker
 function DiurnalTempChart({ bin, ltstH }) {
   const W = 200, H = 54, padL = 22, padB = 10, padT = 4;
   const n = bin.median.length;
@@ -391,10 +392,10 @@ function MarsTimePanel({ sun, evaStartMs, setEvaStartMs }) {
         );
         return (
           <>
-            <div style={row}><span>Air (1.45 m)</span><span style={{ color: '#ffcc88' }}>
+            <div style={row}><span>Air ({climateHeightM(SITE.climate)} m)</span><span style={{ color: '#ffcc88' }}>
               {K_TO_C(a.median).toFixed(0)} °C <span style={{ color: '#7a8a7a' }}>({K_TO_C(a.p10).toFixed(0)}…{K_TO_C(a.p90).toFixed(0)})</span></span></div>
             <DiurnalTempChart bin={bin} ltstH={cur} />
-            <div style={{ color: '#4a6a4a', fontSize:fs(6.5) }}>MEDA ATS, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sols · median, 10–90 %</div>
+            <div style={{ color: '#4a6a4a', fontSize:fs(6.5) }}>{climateInstrument(SITE.climate)}, Ls {bin.ls0}–{bin.ls1}°, {bin.nSols} sols · median, 10–90 %</div>
           </>
         );
       })()}
@@ -429,6 +430,18 @@ function MissionPanel({ mission, setMission, start, disabled }) {
         Carried weight on Mars: {c.earthEqKg.toFixed(1)} kg Earth-equivalent / {c.limitKg} kg limit
         {c.ok ? ` · up to ${c.maxEquipmentKg.toFixed(0)} kg of equipment` : ' · NO-GO: too heavy to walk with'}
       </div>
+      <div style={row}>
+        <span style={{ width: 54 }}>EVA limits</span>
+        {Object.entries(EVA_PROFILES).map(([k, pr]) => (
+          <Btn key={k} active={(mission.limits || 'lunar') === k} color={k === 'mars' ? '#99dd99' : '#88ccff'} onClick={() => set('limits', k)}
+            title={pr.desc} style={{ flex: 1, padding: '2px 4px' }}>{pr.label}</Btn>
+        ))}
+      </div>
+      <div style={{ fontSize: fs(6.5), color: '#6a8a6a', marginTop: -2, marginBottom: 4, lineHeight: 1.45 }}>
+        {(mission.limits || 'lunar') === 'mars'
+          ? <>Walk {param('levelWalkSpeedKmh')} km/h (suited cost on Mars ×{MARS_SUIT_COST_RATIO.value.toFixed(2)}, Norcross 2009) · budget {param('evaDurationH')} h (Apollo 17 30-min reserve) · ≤{param('maxRadialDistanceKm')} km. Re-plan the science EVA to fit.</>
+          : <>NASA lunar EVA values (2 km/h, 8 h, 2 km) — optimistic for Mars gravity.</>}
+      </div>
       <div style={{ ...row, marginTop: 5 }}>
         <Btn active={mission.rover} color="#ffbb66" onClick={() => set('rover', !mission.rover)} style={{ flex: 1 }}>
           {mission.rover ? '✓ PRESSURIZED ROVER PARKED AT START' : 'PRESSURIZED ROVER AS SAFE HAVEN'}
@@ -442,6 +455,35 @@ function MissionPanel({ mission, setMission, start, disabled }) {
         </div>
       )}
       <div style={{ fontSize: fs(6.5), color: '#6a7a6a', marginTop: 2 }}>Suit masses, carry limit, walkback: Ogilvie et al., ICES 2026 (NASA)</div>
+    </div>
+  );
+}
+
+// ---- Dose rate in four places (log scale): why Mars radiation differs ----
+function DoseComparison() {
+  const lo = Math.log10(0.003), hi = Math.log10(2);
+  const w = (v) => `${Math.max(2, ((Math.log10(v) - lo) / (hi - lo)) * 100)}%`;
+  const fmt = (v) => (v < 0.1 ? v.toFixed(4) : v.toFixed(2));
+  return (
+    <div style={{ margin: '2px 0 3px' }} title="Daily dose equivalent, log scale. Hover a row for why it differs and the source.">
+      {DOSE_COMPARISON.map(d => {
+        const mars = d.key === 'mars';
+        return (
+          <div key={d.key} title={`${d.why}\n${d.source}`} style={{ display: 'grid', gridTemplateColumns: '34px 1fr 44px', gap: 4, alignItems: 'center',
+            fontSize: fs(6.8), color: mars ? '#ffcc88' : 'rgba(160,200,160,0.75)', lineHeight: 1.5 }}>
+            <span>{d.label}</span>
+            <div style={{ height: 5, background: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
+              <div style={{ width: w(d.mSvPerDay), height: '100%', borderRadius: 2,
+                background: mars ? '#ff9f5a' : d.key === 'moon' ? '#b9b9c9' : d.key === 'iss' ? '#7fb2e5' : '#6fbf73' }} />
+            </div>
+            <span style={{ textAlign: 'right' }}>{fmt(d.mSvPerDay)}</span>
+          </div>
+        );
+      })}
+      <div style={{ color: '#4a6a4a', fontSize: fs(6.3), lineHeight: 1.35 }}>
+        mSv/day, log scale · Mars: no global magnetic field and a thin atmosphere ≈ {Math.round(daysEquivalent(DOSE_COMPARISON[3].mSvPerDay).earth)} days of Earth background per sol.
+        Moon measured at solar minimum (2019), Mars near maximum (2012–13). UNSCEAR · Zhang et al. 2020 · Hassler et al. 2014
+      </div>
     </div>
   );
 }
@@ -467,6 +509,7 @@ function SpaceWeatherRow({ startMs }) {
   return (
     <div style={{ marginTop: 4, borderTop: '1px solid rgba(60,90,60,0.3)', paddingTop: 3 }}>
       <div style={row}><span>Radiation (GCR)</span><span style={{ color: '#e8e0c8' }}>{RADIATION.gcrDoseEquivalentMSvPerDay.value} mSv/day</span></div>
+      <DoseComparison />
       <div style={row}><span>Space weather</span><span style={{ color: tag.c, fontWeight: 'bold' }}>{tag.t}</span></div>
       {wx.near.slice(0, 3).map((e, i) => (
         <div key={i} style={{ fontSize: fs(6.5), color: e.type === 'SEP' ? '#ff8877' : '#9aa8b8' }}>
@@ -488,7 +531,6 @@ const ROUTE_DESC = {
 
 // ---- Marswalk (DEM) stats card body ----
 function MarswalkStats({ mode, s }) {
-  const P = MARSWALK_PROFILE;
   const fail = (ok) => ok ? '#88dd99' : '#ff6655';
   return (
     <>
@@ -503,17 +545,17 @@ function MarswalkStats({ mode, s }) {
         }}>{s.go ? 'GO' : 'NO-GO'}</span>
       </div>
       <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55}}>
-        Total <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = {(s.budgetFrac*100).toFixed(0)}% of the {P.evaDurationH.value} h budget
+        Total <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = {(s.budgetFrac*100).toFixed(0)}% of the {param('evaDurationH')} h budget
         {s.stopCount > 0 && <> · incl. {fmtHM(s.dwellTotalS)} sampling at {s.stopCount} stops</>}
         <br/>
         Walk-back margin (min): <span style={{color:fail(s.checks.budget)}}>{Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'no path home'}</span>
         {s.ponrIdx >= 0 && <span style={{color:'#ff6655'}}> · ⛔ point of no return at {Math.round(s.ponrIdx / Math.max(1, s.marginS.length - 1) * 100)}% of the route</span>}
         <br/>
-        Max slope: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {P.maxWalkableSlopeDeg.value}°
+        Max slope: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {param('maxWalkableSlopeDeg')}°
         <br/>
         Steep ground (&gt;{s.steepDeg.toFixed(0)}°): <span style={{color:'#e8c890'}}>{(s.steepFrac*100).toFixed(0)}%</span>
         {' · '}Climb {s.climbM.toFixed(0)} m · Descent {s.descentM.toFixed(0)} m
-        {' · '}Max distance from start <span style={{color:fail(s.checks.radial)}}>{(s.maxRadialM/1000).toFixed(2)}</span> / {P.maxRadialDistanceKm.value} km
+        {' · '}Max distance from start <span style={{color:fail(s.checks.radial)}}>{(s.maxRadialM/1000).toFixed(2)}</span> / {param('maxRadialDistanceKm')} km
       </div>
       {s.light && (
         <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55,marginTop:1}}>
@@ -522,7 +564,7 @@ function MarswalkStats({ mode, s }) {
           {' · '}{s.light.homeBySunset === null ? 'no sunrise/sunset'
             : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>home before sunset</span>
             : <span style={{color:'#ffaa55'}}>⚠ not completed in daylight</span>}
-          {s.light.air && <><br/>Air (1.45 m, during the EVA): <span style={{color:'#ffcc88'}}>
+          {s.light.air && <><br/>Air ({climateHeightM(SITE.climate)} m, during the EVA): <span style={{color:'#ffcc88'}}>
             {K_TO_C(s.light.air.minMedian).toFixed(0)}…{K_TO_C(s.light.air.maxMedian).toFixed(0)} °C</span>
             {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (extremes {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
         </div>
@@ -536,7 +578,8 @@ function MarswalkStats({ mode, s }) {
       {(s.radiation || s.layers) && (
         <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55,marginTop:1}}>
           {s.radiation && <>Radiation (GCR, Curiosity RAD): <span style={{color:'#e8c890'}}>{s.radiation.doseMSv.toFixed(2)} mSv</span>
-            <span style={{color:'#7a8a7a'}}> = {(s.radiation.careerFrac * 100).toFixed(3)}% of the 600 mSv career limit</span></>}
+            <span style={{color:'#7a8a7a'}}> = {(s.radiation.careerFrac * 100).toFixed(3)}% of the 600 mSv career limit
+              {' '}≈ {Math.round(daysEquivalent(s.radiation.doseMSv).earth)} days of Earth background</span></>}
           {s.layers?.thermal && <><br/>Ground (THEMIS TI): <span style={{color:'#e8c890'}}>{Math.round(s.layers.thermal.median)}</span>
             <span style={{color:'#7a8a7a'}}> · {s.layers.thermal.cls}</span></>}
           {s.layers?.rock && <><br/>Largest rock relief on route: <span style={{color: s.layers.rock.maxReliefM > s.layers.rock.limitM ? '#ff6655' : '#e8c890'}}>
@@ -604,7 +647,7 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
   );
 }
 
-function RouteAnalysis({ routes, activeRoute, onSelect }) {
+function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard }) {
   if (!routes) return (
     <div style={{fontSize:fs(8),color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
       Plan a path to see route analysis.
@@ -634,6 +677,13 @@ function RouteAnalysis({ routes, activeRoute, onSelect }) {
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:fs(8)}}>{s.distance.toFixed(1)}m</span>}
             </div>
             {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} />}
+            {s && s.walkTimeS !== undefined && active && s.stopCount > 0 && onCuffCard && (
+              <button onClick={(e) => { e.stopPropagation(); onCuffCard(mode); }} title="One printable page: route map + station times, Apollo cuff-checklist style"
+                style={{ marginTop:5, width:'100%', background:'rgba(244,162,97,0.12)', color:'#f4c49a', border:'1px solid rgba(244,162,97,0.55)',
+                  borderRadius:3, padding:'3px 0', fontFamily:'monospace', fontSize:fs(7.5), letterSpacing:'0.1em', cursor:'pointer' }}>
+                ▤ PRINT CUFF CARD
+              </button>
+            )}
             {s && s.walkTimeS === undefined && (
               <>
                 <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7.5),marginBottom:2}}>
@@ -1052,6 +1102,7 @@ export default function RightPanel({
   dustMode, dustHazard, cameraSignalLost, cameraSignalQuality, onTriggerDustHazard, onDustPlaced, onClearDustHazard,
 }) {
   const [pickMode, setPickMode] = useState(false);
+  const [cuffMode, setCuffMode] = useState(null);   // route mode whose cuff card is open
   const [shareLabel, setShareLabel] = useState('SHARE LINK');
 
   const handlePick = useCallback(pos => {
@@ -1350,7 +1401,10 @@ export default function RightPanel({
 
         {/* Route Analysis */}
         <Sect label="Route Analysis">
-          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute}/>
+          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null}/>
+          {cuffMode && routes?.[cuffMode]?.stats?.marginS && (
+            <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)} />
+          )}
         </Sect>
 
         {/* Camera */}
@@ -1497,9 +1551,9 @@ function Row({ children, style={} }) {
 function V({ children, c }) {
   return <span style={{color:c||'#99ff99'}}>{children}</span>;
 }
-function Btn({ children, active, onClick, disabled, color, style={} }) {
+function Btn({ children, active, onClick, disabled, color, title, style={} }) {
   return (
-    <button onClick={disabled?undefined:onClick} style={{
+    <button title={title} onClick={disabled?undefined:onClick} style={{
       flex:1,padding:'4px 4px',fontSize:fs(8),fontWeight:'bold',
       cursor:disabled?'default':'pointer',borderRadius:3,
       border:`1px solid ${active?(color||'rgba(60,180,60,0.7)'):'rgba(35,70,35,0.4)'}`,

@@ -12,6 +12,10 @@ import { j2000tt, solarLongitude, ltst } from './marsTime.js';
 
 export const K_TO_C = (k) => k - 273.15;
 
+/** Short instrument name and sensor height of a climatology (older Jezero files lack them: MEDA, 1.45 m). */
+export const climateInstrument = (c) => c?.instrument || 'MEDA ATS';
+export const climateHeightM = (c) => c?.heightM ?? 1.45;
+
 function slotValue(arr, slotF, n) {
   const s0 = Math.floor(slotF) % n, s1 = (s0 + 1) % n, f = slotF - Math.floor(slotF);
   const a = arr[s0], b = arr[s1];

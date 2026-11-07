@@ -50,6 +50,37 @@ export const RADIATION = {
   },
 };
 
+/**
+ * Daily dose equivalent in four places — the challenge points out that the radiation
+ * environment on Mars differs from those of Earth, Earth orbit and the Moon. All values are
+ * measured, but in different years of the solar cycle: the Moon value (2019) is from solar
+ * minimum, when galactic cosmic rays are strongest; the Mars value (2012–13) is near solar
+ * maximum. Part of the Moon–Mars gap is that timing.
+ */
+const ZHANG = 'Zhang, S. et al. (2020), First measurements of the radiation dose on the lunar surface, Science Advances 6, eaaz1334';
+const ZHANG_URL = 'https://doi.org/10.1126/sciadv.aaz1334';
+export const DOSE_COMPARISON = [
+  { key: 'earth', label: 'Earth', mSvPerDay: 2.4 / 365.25,
+    why: 'magnetic field + a thick atmosphere',
+    source: 'UNSCEAR (2000): worldwide average 2.4 mSv/year from natural radiation (all sources, not only cosmic rays)',
+    url: 'https://press.un.org/en/2000/20000606.ga9718.doc.html' },
+  { key: 'iss', label: 'ISS', mSvPerDay: 0.731,
+    why: 'inside Earth\'s magnetic field, no air; station hull',
+    source: `${ZHANG} — ISS dose equivalent they compare with (731 µSv/day)`, url: ZHANG_URL },
+  { key: 'moon', label: 'Moon', mSvPerDay: 1.369,
+    why: 'no field, no air; the Moon blocks half the sky',
+    source: `${ZHANG} — Chang\'e 4 LND, 1369 µSv/day (2019, solar minimum)`, url: ZHANG_URL },
+  { key: 'mars', label: 'Mars', mSvPerDay: RADIATION.gcrDoseEquivalentMSvPerDay.value,
+    why: 'no global field; thin CO₂ air; the planet blocks half the sky',
+    source: `${RADIATION.gcrDoseEquivalentMSvPerDay.source} — Curiosity RAD at Gale (2012–13)`,
+    url: RADIATION.gcrDoseEquivalentMSvPerDay.url },
+];
+
+/** How many days in each place give the same dose as `mSv`. */
+export function daysEquivalent(mSv) {
+  return Object.fromEntries(DOSE_COMPARISON.map(d => [d.key, mSv / d.mSvPerDay]));
+}
+
 /** Dose equivalent [mSv] from galactic cosmic rays for `seconds` spent outside. */
 export function evaDoseMSv(seconds) {
   return RADIATION.gcrDoseEquivalentMSvPerDay.value * Math.max(0, seconds) / 86400;

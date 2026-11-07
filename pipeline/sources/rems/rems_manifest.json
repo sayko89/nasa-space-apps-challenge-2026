@@ -1,0 +1,15 @@
+{
+ "source": "https://atmos.nmsu.edu/PDS/data/mslrem_1001/DATA/",
+ "product": "REMS MODRDR (mslrem_1001), column AMBIENT_TEMP",
+ "requested": [
+  4175,
+  4843
+ ],
+ "sols_ok": 669,
+ "missing": {},
+ "rows": 20482434,
+ "reliable": 20473857,
+ "strict": 16586564,
+ "filter": "AMBIENT_TEMP_CONFIDENCE_LEVEL byte 8 (reliability) = 1; strict also byte 7 (error < 5 K) != 0",
+ "generated_utc": "2026-11-07T08:57:04+00:00"
+}
