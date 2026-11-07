@@ -16,7 +16,7 @@ import { buildCuffCard, fmtMET, compass } from '../utils/cuffCard';
 import { sunPosition, j2000tt, ltst } from '../utils/marsTime';
 import { airTempAt, K_TO_C, climateInstrument } from '../utils/climate';
 import { fmtHourMin } from '../utils/format';
-import { MARSWALK_PROFILE } from '../config/marswalkProfile';
+import { param, getEvaProfile, EVA_PROFILES } from '../config/marswalkProfile';
 import { SUITS, ROVER } from '../config/mission';
 
 const HALF = TERRAIN_SIZE / 2;
@@ -198,7 +198,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
     return () => { alive = false; };
   }, [route, card, mapH]);
 
-  const t = card.totals, P = MARSWALK_PROFILE;
+  const t = card.totals;
   const suit = SUITS[mission?.suit] || SUITS.mars;
   const startLtst = c ? ltst(j2000tt(startMs), c.lon_deg_east) : null;
   const sunsetLtst = c && t.sunsetMs ? ltst(j2000tt(t.sunsetMs), c.lon_deg_east) : null;
@@ -224,6 +224,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
             <div style={{ fontSize: '5mm', fontWeight: 'bold', letterSpacing: '0.4mm' }}>EVA CUFF CARD</div>
             <div>{(SITE.meta?.label || SITE.name).toUpperCase()} · {SITE.pov?.rover || 'Perseverance'} site</div>
             <div>CREW EV1 + EV2 · {suit.label} · {mode} route{mission?.rover ? ' · pressurized rover as safe haven' : ''}</div>
+            <div>EVA LIMITS: {EVA_PROFILES[getEvaProfile()].label} — walk {param('levelWalkSpeedKmh')} km/h · budget {param('evaDurationH')} h · ≤{param('maxRadialDistanceKm')} km</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ display: 'inline-block', border: '0.6mm solid #111', padding: '0.8mm 2.5mm', fontSize: '4.5mm', fontWeight: 'bold',
@@ -274,7 +275,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
               </tr>
             ))}
             <tr>
-              <td style={{ ...cell, fontWeight: 'bold' }}>H</td><td style={cell}>Arrive habitat — {fmtMET(card.home.reserveS)} left of the {P.evaDurationH.value} h budget</td>
+              <td style={{ ...cell, fontWeight: 'bold' }}>H</td><td style={cell}>Arrive habitat — {fmtMET(card.home.reserveS)} left of the {param('evaDurationH')} h budget</td>
               <td style={{ ...num, fontWeight: 'bold' }}>{fmtMET(card.home.arriveS)}</td><td style={num}></td>
               <td style={num}>{Math.round(card.home.legM)} m {compass(card.home.bearingDeg)}</td>
               <td style={num}>{card.home.ltstH != null ? fmtHourMin(card.home.ltstH) : ''}</td>
@@ -290,7 +291,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
             <div>1. LEAVE each station by its LEAVE BY time. Late → skip the next station, walk home.</div>
             <div>2. ABORT: walk the fastest way home. From any station that takes its BACK time, always less than the time left.</div>
             <div>3. Tightest margin at station {t.tightestStop ?? '—'}{tight ? ` (${fmtMET(tight.marginS)})` : ''} — do not extend the stay there.</div>
-            <div>4. Never on ground over {P.maxWalkableSlopeDeg.value}°, never more than {P.maxRadialDistanceKm.value} km from H{mission?.rover ? `, never more than ${ROVER.walkbackMin.value} min walk from the rover` : ''}.</div>
+            <div>4. Never on ground over {param('maxWalkableSlopeDeg')}°, never more than {param('maxRadialDistanceKm')} km from H{mission?.rover ? `, never more than ${ROVER.walkbackMin.value} min walk from the rover` : ''}.</div>
             <div>5. {t.homeBySunset === null ? 'No sunset on this sol.' : t.homeBySunset ? 'Home before sunset as planned — a late start eats the margin, not the daylight.' : 'NOT home before sunset — lights and thermal check before departure.'}</div>
           </div>
           <div>
@@ -305,7 +306,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
 
         <div style={{ marginTop: 'auto', borderTop: '0.3mm solid #999', paddingTop: '1mm', fontSize: '2.15mm', color: '#444', lineHeight: 1.35 }}>
           ARR / STAY / BACK / LEAVE BY / MARGIN: mission elapsed time h+mm, as on the Apollo 15–17 cuff checklists. BACK = fastest walk home from the station
-          (walking model on the 4 m terrain); LEAVE BY = {P.evaDurationH.value} h budget − BACK; MARGIN = LEAVE BY − planned departure. LTST = local true solar time;
+          (walking model on the 4 m terrain); LEAVE BY = {param('evaDurationH')} h budget − BACK; MARGIN = LEAVE BY − planned departure. LTST = local true solar time;
           AIR = {SITE.climate ? `${climateInstrument(SITE.climate)} median for the season and hour` : 'no climatology'}. Planning aid, not flight-certified.
           Martian Map · NASA Space Apps Challenge 2026 · Team PERIAPSIS
         </div>

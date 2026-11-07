@@ -11,7 +11,7 @@ import {
 import { sunPosition, sunriseSunset } from './marsTime.js';
 import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
 import { evaWindowTemps } from './climate.js';
-import { param, MODE_WEIGHTS, SCIENCE_PARAMS } from '../config/marswalkProfile.js';
+import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getEvaProfile } from '../config/marswalkProfile.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
@@ -452,8 +452,9 @@ let _homeMaps = null;
 export function getHomeMaps(homeX, homeZ, hMap) {
   const { col, row } = worldToGrid(homeX, homeZ);
   const homeIdx = row * GRID_RES + col;
-  if (_homeMaps?.homeIdx === homeIdx) return _homeMaps;
-  _homeMaps = homeTimeMaps(homeIdx, hMap, getWallMap(), GRID_RES, CELL_SIZE);
+  // walk-back times depend on the walking speed, i.e. on the active EVA limit profile
+  if (_homeMaps?.homeIdx === homeIdx && _homeMaps.profile === getEvaProfile()) return _homeMaps;
+  _homeMaps = { ...homeTimeMaps(homeIdx, hMap, getWallMap(), GRID_RES, CELL_SIZE), profile: getEvaProfile() };
   return _homeMaps;
 }
 /** Last computed home maps (for the EVA Range heatmap), or null. */

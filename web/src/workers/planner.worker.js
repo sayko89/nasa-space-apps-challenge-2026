@@ -12,6 +12,7 @@
  */
 
 let P = null;      // pathfinder modülü
+let CFG = null;    // config/marswalkProfile (EVA limit profile)
 let maps = null;   // { hm, sm, cm }
 
 async function init(siteMsg) {
@@ -20,6 +21,7 @@ async function init(siteMsg) {
   Object.assign(site, siteMsg);
   const T = await import('../three/terrainGenerator.js');
   P = await import('../utils/pathfinder.js');
+  CFG = await import('../config/marswalkProfile.js');
   const hm = T.buildHeightMap();
   maps = { hm, sm: T.buildSlopeMap(hm), cm: T.buildCraterMask() };
   P.getWallMap(); // duvar haritasını önceden kur
@@ -34,6 +36,7 @@ self.onmessage = async (e) => {
       self.postMessage({ id, ok: true, initMs });
       return;
     }
+    if (CFG && e.data.profile) CFG.setEvaProfile(e.data.profile);
     if (type === 'plan') {
       if (!P) throw new Error('planner worker not initialised');
       const t0 = performance.now();
@@ -42,7 +45,7 @@ self.onmessage = async (e) => {
       const hmaps = P.peekHomeMaps();
       // Ev haritalarının kopyası (worker kendi önbelleğini korur); ana iş parçacığına aktarılır
       const homeMaps = hmaps && {
-        homeIdx: hmaps.homeIdx,
+        homeIdx: hmaps.homeIdx, profile: hmaps.profile,
         fromHome: hmaps.fromHome.slice(),
         toHome: hmaps.toHome.slice(),
       };

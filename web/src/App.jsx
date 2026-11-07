@@ -10,7 +10,7 @@ import RightPanel from './components/RightPanel';
 import EvaHud from './components/EvaHud';
 import { clearPathCache, getHazardAtPoint, isWallAt, fastestReturnPath, toHomeTimeAt } from './utils/pathfinder';
 import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
-import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT, SCIENCE_PARAMS, EVA_CREW } from './config/marswalkProfile';
+import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT, SCIENCE_PARAMS, EVA_CREW, paramEntry, getEvaProfile, setEvaProfile, EVA_PROFILES, MARS_SUIT_COST_RATIO } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
@@ -95,7 +95,8 @@ function SiteBadge({ collapsed, onToggle }) {
   }
   const m = SITE.meta;
   const ph = placeholderParams();
-  const as = assumptionParams().map(k => MARSWALK_PROFILE[k].label || k);
+  const as = assumptionParams().map(k => paramEntry(k).label || k);
+  const mars = getEvaProfile() === 'mars';
   return (
     <div style={{ ...base, background:'rgba(20,10,6,0.85)', border:'1px solid rgba(232,168,120,0.35)', color:'#e8c4a8' }}>
       <span onClick={onToggle} title="Hide" style={{ float:'right', cursor:'pointer', marginLeft:8, color:'#ffb080' }}>▾ hide</span>
@@ -103,9 +104,12 @@ function SiteBadge({ collapsed, onToggle }) {
       {m.source?.doi && <a href={m.source.doi} target="_blank" rel="noreferrer" style={LINK}>DOI</a>}<br/>
       CENTER: {m.center.lat_deg.toFixed(4)}°N {m.center.lon_deg_east.toFixed(4)}°E ·
       {' '}elevation {m.elevation_m.min.toFixed(0)}…{m.elevation_m.max.toFixed(0)} m<br/>
-      EVA LIMITS: slope ≤{MARSWALK_PROFILE.maxWalkableSlopeDeg.value}° · level walk {MARSWALK_PROFILE.levelWalkSpeedKmh.value} km/h ·
-      {' '}≤{MARSWALK_PROFILE.evaDurationH.value} h · ≤{MARSWALK_PROFILE.maxRadialDistanceKm.value} km —{' '}
+      EVA LIMITS ({EVA_PROFILES[getEvaProfile()].label}): slope ≤{param('maxWalkableSlopeDeg')}° · level walk {param('levelWalkSpeedKmh')} km/h ·
+      {' '}≤{param('evaDurationH')} h · ≤{param('maxRadialDistanceKm')} km —{' '}
       <a href={MARSWALK_PROFILE.maxWalkableSlopeDeg.url} target="_blank" rel="noreferrer" style={LINK}>NASA xEVA ConOps</a>
+      {mars && <>{' '}· Mars suited cost ×{MARS_SUIT_COST_RATIO.value.toFixed(2)}{' '}
+        <a href={MARS_SUIT_COST_RATIO.url} target="_blank" rel="noreferrer" style={LINK}>Norcross 2009</a>
+        {' '}· 30-min reserve{' '}<a href={paramEntry('evaDurationH').url} target="_blank" rel="noreferrer" style={LINK}>Apollo 17</a></>}
       {' '}· crew EV1+EV2 —{' '}
       <a href={EVA_CREW.url} target="_blank" rel="noreferrer" style={LINK}>NASA lunar EVA ConOps</a>
       {as.length > 0 && <div>ASSUMED: {as.join(', ')}</div>}
@@ -133,8 +137,9 @@ function SiteBadge({ collapsed, onToggle }) {
       {SITE.chemistry && <div>CHEMISTRY: {SITE.chemistry.source?.title}, {SITE.chemistry.stats?.targets} targets in this site (sols {SITE.chemistry.stats?.sols?.join('–')}), {SITE.chemistry.source?.publisher}</div>}
       {!SITE.climate && <div style={{color:'#bb9977'}}>AIR TEMPERATURE: no climatology for this site yet — the plan uses sun and shadow only.</div>}
       <div>SUIT &amp; ROVER: Ogilvie et al., ICES 2026 (NASA) — suit masses, carry limit, 30-min rover walkback</div>
-      <div style={{color:'#ffaa55', marginTop:3}}>
-        ⚠ These EVA limits were written for the Moon — optimistic for Mars.{' '}
+      <div style={{color: mars ? '#99cc99' : '#ffaa55', marginTop:3}}>
+        {mars ? '✓ Mars-conservative EVA limits: slower walk, 30-min reserve, shorter radius (Mission setup).'
+              : '⚠ These EVA limits were written for the Moon — optimistic for Mars. Try Mars conservative in Mission setup.'}{' '}
         <a href={MARS_CAVEAT.url} target="_blank" rel="noreferrer" style={{color:'#ffcc88'}} title={MARS_CAVEAT.note}>Why?</a>
       </div>
       {ph.length > 0 && (
@@ -180,6 +185,8 @@ export default function App() {
   const [scienceDwellMin, setScienceDwellMin] = useState(SCIENCE_PARAMS.dwellMin);
   // Suit, equipment and rover safe haven (config/mission.js)
   const [mission, setMission] = useState(DEFAULT_MISSION);
+  // The active EVA limit set follows Mission setup; set before any planning in this render
+  setEvaProfile(mission.limits || 'lunar');
   const [isPlanningScience, setIsPlanningScience] = useState(false);
   const autoPlanRef = useRef(false);   // plan as soon as the science waypoints are committed
   const [badgeCollapsed, setBadgeCollapsed] = useState(false);
