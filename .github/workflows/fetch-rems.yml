@@ -1,0 +1,45 @@
+name: Fetch REMS air temperature (Curiosity, Gale)
+
+# Downloads one full Mars year of REMS MODRDR tables (~8 GB, never stored) and keeps only
+# 5-minute LTST means of the air temperature → pipeline/sources/rems/. Runs when this file or
+# the fetch script changes, or by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      first: { description: "first sol", default: "4175" }
+      last:  { description: "last sol",  default: "4843" }
+  push:
+    paths:
+      - .github/workflows/fetch-rems.yml
+      - pipeline/fetch_rems.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-rems
+  cancel-in-progress: true
+
+jobs:
+  rems:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Fetch and reduce
+        run: |
+          mkdir -p pipeline/sources/_probe
+          python pipeline/fetch_rems.py --first ${{ inputs.first || '4175' }} --last ${{ inputs.last || '4843' }} \
+            2>&1 | tee pipeline/sources/_probe/rems_fetch.log | tail -25
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add pipeline/sources/rems pipeline/sources/_probe/rems_fetch.log
+          if git commit -m "data: Curiosity REMS air temperature, 5-min LTST means (Gale site)"; then
+            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+          fi
