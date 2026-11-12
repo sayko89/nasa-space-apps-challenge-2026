@@ -300,7 +300,7 @@ export function LabelSprite({ position, text, style, heightPx = 16 }) {
   const sy = (2 * heightPx) / (p11 * size.height);
   return (
     <sprite position={position} scale={[sy * aspect, sy, 1]} renderOrder={20}>
-      <spriteMaterial map={tex} sizeAttenuation={false} depthTest={false} depthWrite={false} transparent />
+      <spriteMaterial map={tex} sizeAttenuation={false} depthTest={false} depthWrite={false} transparent toneMapped={false} fog={false} />
     </sprite>
   );
 }
