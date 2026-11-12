@@ -4,6 +4,7 @@
  * Data: public/sites/<site>/chemistry.json (pipeline/build_chemistry.py).
  */
 import { createPortal } from 'react-dom';
+import { useEscape, CloseButton } from './PovViewer';
 import { SITE } from '../three/terrainGenerator';
 import { nearestTargets, levelMean, standouts, OXIDE_ORDER, CHEM_RADIUS_M, STANDOUT_SIGMA } from '../utils/chemistry';
 
@@ -30,6 +31,7 @@ function Bar({ value, mean, rmsep }) {
 }
 
 export function ChemistryCard({ stop, label, onClose }) {
+  useEscape(onClose);
   const chem = SITE.chemistry;
   const near = nearestTargets(chem, stop.x, stop.z);
   const units = SITE.geology?.bedrockUnits || [];
@@ -40,7 +42,7 @@ export function ChemistryCard({ stop, label, onClose }) {
         border: '1px solid rgba(255,179,71,0.45)', borderRadius: 6, padding: 12, fontFamily: 'monospace', color: '#d8d0b8' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, gap: 8 }}>
           <b style={{ color: '#ffb347', fontSize: 13 }}>ROCK CHEMISTRY — {label}</b>
-          <span onClick={onClose} style={{ cursor: 'pointer', color: '#889' }}>✕ close</span>
+          <CloseButton onClose={onClose} />
         </div>
         {!near.length ? (
           <div style={{ fontSize: 12, padding: '24px 0', textAlign: 'center' }}>
