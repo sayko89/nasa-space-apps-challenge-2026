@@ -23,6 +23,8 @@ import { fmtClock, fmtHM } from './utils/format';
 import { radiationIsLocal } from './utils/radiation';
 import SiteSwitcher from './components/SiteSwitcher';
 import { PANEL_W } from './ui/layout';
+import { decodePlan } from './utils/shareLink';
+import { SUITS } from './config/mission';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
@@ -151,6 +153,9 @@ function SiteBadge({ collapsed, onToggle }) {
   );
 }
 
+// A shared link (?plan=…, utils/shareLink.js) restores site settings and re-plans on load
+const SHARED = typeof window !== 'undefined' ? decodePlan(window.location.search) : null;
+
 export default function App() {
   const [roverState, setRoverState] = useState(() => ({
     x: DEFAULT_HOME.x, y: getTerrainHeight(DEFAULT_HOME.x, DEFAULT_HOME.z) + 0.45, z: DEFAULT_HOME.z,
@@ -159,12 +164,12 @@ export default function App() {
   // waypoints: ordered array of {x, z} — first = start, last = end, middle = intermediate
   const [waypoints, setWaypoints]   = useState([]);
   const [routes, setRoutes]         = useState(null); // { SAFE:{path,stats}, ECO:{path,stats}, ... }
-  const [activeRoute, setActiveRoute] = useState(IS_DEM ? 'SAFE' : 'AUTO');
+  const [activeRoute, setActiveRoute] = useState(SHARED?.route || (IS_DEM ? 'SAFE' : 'AUTO'));
   const [sunAngleState, setSunAngleDeg] = useState(45);
   // DEM: EVA start time drives the sun (Mars24). Default: today, 09:00 LTST at the site.
   const siteCenter = SITE.meta?.center;
   const [evaStartMs, setEvaStartMs] = useState(() =>
-    IS_DEM && siteCenter ? msAtLtst(Date.now(), 9, siteCenter.lon_deg_east) : null);
+    IS_DEM && siteCenter ? (SHARED?.startMs ?? msAtLtst(Date.now(), 9, siteCenter.lon_deg_east)) : null);
   const sun = useMemo(() => (IS_DEM && siteCenter && evaStartMs != null)
     ? sunPosition(evaStartMs, siteCenter.lat_deg, siteCenter.lon_deg_east) : null,
   [evaStartMs, siteCenter]);
@@ -182,9 +187,13 @@ export default function App() {
   const planSeqRef = useRef(0);   // stale-result guard for async planning
   // Stage 6 — science EVA (geology stops). null = none planned
   const [science, setScience] = useState(null);
-  const [scienceDwellMin, setScienceDwellMin] = useState(SCIENCE_PARAMS.dwellMin);
+  const [scienceDwellMin, setScienceDwellMin] = useState(SHARED?.dwellMin ?? SCIENCE_PARAMS.dwellMin);
   // Suit, equipment and rover safe haven (config/mission.js)
-  const [mission, setMission] = useState(DEFAULT_MISSION);
+  const [mission, setMission] = useState(() => {
+    const m = { ...DEFAULT_MISSION, ...(SHARED?.mission || {}) };
+    if (!SUITS[m.suit]) m.suit = DEFAULT_MISSION.suit;
+    return m;
+  });
   // The active EVA limit set follows Mission setup; set before any planning in this render
   setEvaProfile(mission.limits || 'lunar');
   const [isPlanningScience, setIsPlanningScience] = useState(false);
@@ -492,6 +501,24 @@ export default function App() {
       setIsPlanningScience(false);
     }
   }, [waypoints, getMaps, scienceDwellMin, addLog, showToast, mission]);
+
+  // Shared link: rebuild the plan once on load (same start, same settings → same stops and routes)
+  const sharedDoneRef = useRef(false);
+  useEffect(() => {
+    if (sharedDoneRef.current || !SHARED || SHARED.waypoints.length === 0) return;
+    sharedDoneRef.current = true;
+    const home = SHARED.waypoints[0];
+    homeWaypointRef.current = { x: home.x, z: home.z };
+    setRoverState(s => ({ ...s, x: home.x, y: getTerrainHeight(home.x, home.z) + 0.45, z: home.z }));
+    setResetKey(k => k + 1);
+    if (SHARED.science && IS_DEM && SITE.geology) {
+      handlePlanScience();
+    } else if (SHARED.waypoints.length >= 2) {
+      autoPlanRef.current = true;
+      setWaypoints(SHARED.waypoints);
+    }
+    addLog(`Plan restored from a shared link${SHARED.science ? ' (science EVA re-planned)' : ''}.`);
+  }, [handlePlanScience, addLog]);
 
   // ---- Rover / EVA control ----
   const handleStartRover = useCallback(() => {
