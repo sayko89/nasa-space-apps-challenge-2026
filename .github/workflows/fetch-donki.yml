@@ -1,7 +1,10 @@
 name: Fetch space weather (NASA DONKI)
 
 # DONKI solar particle events, CMEs modelled to reach Mars and X-class flares since
-# Curiosity landed (2012-08-06) → web/public/sites/<site>/space_weather.json, the app's
+# Curiosity landed (2012-08-06). Needs the repository secret NASA_API_KEY (free at
+# api.nasa.gov): GitHub's shared runners hit the DEMO_KEY rate limit at once, and CCMC's own
+# service is not reachable from them. Without a key the run is skipped and writes nothing.
+# Output: web/public/sites/<site>/space_weather.json, the app's
 # fallback when the live DONKI lookup fails (offline package, rate limit). Runs when this
 # file or the scripts change, every Monday, or by hand.
 on:
@@ -41,6 +44,11 @@ jobs:
       - env:
           NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
         run: |
+          set -o pipefail
+          if [ -z "$NASA_API_KEY" ]; then
+            echo "::warning::Repository secret NASA_API_KEY is not set (free key: https://api.nasa.gov) — DONKI archive not fetched"
+            exit 0
+          fi
           mkdir -p pipeline/sources/_probe
           python -u pipeline/fetch_donki.py 2>&1 | tee pipeline/sources/_probe/donki_fetch.log
           python pipeline/build_space_weather.py --site jezero
@@ -50,7 +58,7 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add -A web/public/sites pipeline/sources/_probe/donki_fetch.log
+          git add web/public/sites/*/space_weather.json pipeline/sources/_probe/donki_fetch.log 2>/dev/null || git add pipeline/sources/_probe/donki_fetch.log
           if git commit -m "data: DONKI space-weather archive since 2012 (both sites)"; then
             for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
           fi
