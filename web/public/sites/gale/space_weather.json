@@ -1,0 +1,1 @@
+{"format":"martian-map-space-weather/1","coverage":["2021-02-18","2026-10-31"],"counts":{"SEP":0,"CME":0,"FLR":0},"events":[],"source":{"title":"Space Weather Database Of Notifications, Knowledge, Information (DONKI)","publisher":"NASA Community Coordinated Modeling Center","url":"https://kauai.ccmc.gsfc.nasa.gov/DONKI/"},"generator":"pipeline/build_space_weather.py"}

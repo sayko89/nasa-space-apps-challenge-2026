@@ -1,0 +1,35 @@
+SEP 2012-08-06..2026-11-12: FAILED via api.nasa.gov: HTTP Error 400: Bad Request
+SEP 2012-08-06..2026-11-12: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2012-08-06..2013-07-31: FAILED via api.nasa.gov: HTTP Error 400: Bad Request
+CME 2012-08-06..2013-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2013-08-01..2014-07-31: FAILED via api.nasa.gov: HTTP Error 400: Bad Request
+CME 2013-08-01..2014-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2014-08-01..2015-07-31: FAILED via api.nasa.gov: HTTP Error 400: Bad Request
+CME 2014-08-01..2015-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2015-08-01..2016-07-31: FAILED via api.nasa.gov: HTTP Error 400: Bad Request
+CME 2015-08-01..2016-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2016-08-01..2017-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2016-08-01..2017-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2017-08-01..2018-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2017-08-01..2018-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2018-08-01..2019-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2018-08-01..2019-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2019-08-01..2020-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2019-08-01..2020-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2020-08-01..2021-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2020-08-01..2021-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2021-08-01..2022-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2021-08-01..2022-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2022-08-01..2023-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2022-08-01..2023-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2023-08-01..2024-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2023-08-01..2024-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2024-08-01..2025-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2024-08-01..2025-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2025-08-01..2026-07-31: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2025-08-01..2026-07-31: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+CME 2026-08-01..2026-11-12: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+CME 2026-08-01..2026-11-12: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+FLR 2012-08-06..2026-11-12: FAILED via api.nasa.gov: HTTP Error 429: Too Many Requests
+FLR 2012-08-06..2026-11-12: FAILED via kauai.ccmc.gsfc.nasa.gov: <urlopen error [Errno 101] Network is unreachable>
+17 windows failed: ['SEP 2012-08-06..2026-11-12', 'CME 2012-08-06..2013-07-31', 'CME 2013-08-01..2014-07-31', 'CME 2014-08-01..2015-07-31', 'CME 2015-08-01..2016-07-31']…
