@@ -7,6 +7,7 @@
  * • Heatmap viewer, helmet / rover camera, telemetry, exports
  */
 
+import { buildShareURL } from '../utils/shareLink';
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
 import { PANEL_W, MAP_S, fs, UI_SCALE } from '../ui/layout';
@@ -563,7 +564,7 @@ function MarswalkStats({ mode, s }) {
           {s.light.darkFrac > 0 && <> · <span style={{color:'#8899cc'}}>in darkness {(s.light.darkFrac*100).toFixed(0)}%</span></>}
           {' · '}{s.light.homeBySunset === null ? 'no sunrise/sunset'
             : s.light.homeBySunset ? <span style={{color:'#88dd99'}}>home before sunset</span>
-            : <span style={{color:'#ffaa55'}}>⚠ not completed in daylight</span>}
+            : <span style={{color:fail(false)}}>✕ not completed in daylight — NO-GO (rule: start after sunrise, home before sunset)</span>}
           {s.light.air && <><br/>Air ({climateHeightM(SITE.climate)} m, during the EVA): <span style={{color:'#ffcc88'}}>
             {K_TO_C(s.light.air.minMedian).toFixed(0)}…{K_TO_C(s.light.air.maxMedian).toFixed(0)} °C</span>
             {s.light.air.minP10 != null && <span style={{color:'#7a8a7a'}}> (extremes {K_TO_C(s.light.air.minP10).toFixed(0)}…{K_TO_C(s.light.air.maxP90).toFixed(0)})</span>}</>}
@@ -1069,16 +1070,6 @@ function exportJSON(waypoints, routes, activeRoute, sunAngleDeg) {
   downloadBlob(blob, `${IS_DEM ? 'martian_map_route' : 'moon_rover_route'}_${Date.now()}.json`);
 }
 
-function buildShareURL(waypoints, activeRoute, sunAngleDeg) {
-  const state = {
-    wp: waypoints.map(w => [Math.round(w.x * 10) / 10, Math.round(w.z * 10) / 10]),
-    r:  activeRoute,
-    s:  sunAngleDeg,
-  };
-  const encoded = btoa(JSON.stringify(state));
-  const base = window.location.href.split('?')[0];
-  return `${base}?s=${encoded}`;
-}
 
 export default function RightPanel({
   roverState, pathRef,
@@ -1493,7 +1484,10 @@ export default function RightPanel({
               if (waypoints.length < 1) {
                 showToast?.('Add at least one waypoint to share.', 'warning'); return;
               }
-              const url = buildShareURL(waypoints, activeRoute, sunAngleDeg);
+              const url = buildShareURL(window.location.href, SITE.name, {
+                waypoints, science: !!science, route: activeRoute, startMs: evaStartMs,
+                mission, dwellMin: scienceDwellMin,
+              });
               try {
                 await navigator.clipboard.writeText(url);
                 setShareLabel('✓ COPIED!');

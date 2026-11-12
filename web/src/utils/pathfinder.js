@@ -475,7 +475,9 @@ const cellIndexAt = (x, z) => { const { col, row } = worldToGrid(x, z); return r
 /**
  * Lighting along the route for an EVA starting at startMs (Mars24 sun at the
  * time each point is actually walked) + whether the crew is home by sunset.
- * Informational — not part of GO (no Mars EVA lighting rule was found).
+ * GO requires the EVA to start after sunrise and end before sunset (checks.daylight).
+ * Design choice, not a sourced Mars rule: every Apollo surface EVA was flown in
+ * sunlight, and the walk-back budget assumes the crew can see the ground.
  */
 function computeLightStats(path, elapsedS, returnS, startMs, hMap) {
   const c = SITE.meta?.center;
@@ -594,6 +596,9 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     radial: maxRadialM <= param('maxRadialDistanceKm') * 1000,
     slope: maxSlopeDeg <= param('maxWalkableSlopeDeg'),
   };
+  // Daylight: start after sunrise, home before sunset (needs an EVA start time; null = polar day/night → no rule)
+  const light = computeLightStats(path, wb.elapsed, backS, startMs, hMap);
+  if (light && light.homeBySunset !== null) checks.daylight = light.homeBySunset;
   return {
     ...base,
     distance: out.horizM,
@@ -617,7 +622,7 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
     ponrIdx: wb.ponrIdx,
     ponrPoint: wb.ponrIdx >= 0 ? path[wb.ponrIdx] : null,
     marginS: wb.margin,
-    light: computeLightStats(path, wb.elapsed, backS, startMs, hMap),
+    light,
     layers: computeLayerStats(path),
     carry,
     rover: mission?.rover ? { maxReturnS, limitS: roverLimitS } : null,

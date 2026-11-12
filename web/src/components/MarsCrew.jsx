@@ -14,8 +14,8 @@
  */
 
 import { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Line, Html } from '@react-three/drei';
+import { useFrame, useThree } from '@react-three/fiber';
+import { Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { getTerrainHeight } from '../three/terrainGenerator';
 import { EV2_LAG_S } from '../utils/evaPlayback';
@@ -265,6 +265,49 @@ function BootPrints({ crewRefs, resetKey }) {
 }
 
 // ---------------------------------------------------------------- flags & ring
+// ---------------------------------------------------------------- screen-space text labels
+// Drawn as sprites (canvas texture), not drei <Html>: an <Html> label creates its own React
+// root, and unmounting one while the scene re-renders (a stop badge turning into a flag,
+// abort, re-plan) throws "removeChild … not a child of this node" under React 19.
+function makeLabelTexture(text, { font, fg, bg, border, radius }) {
+  const dpr = 3, padX = 5, h = 16;
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + 2 * padX;
+  c.width = w * dpr; c.height = h * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.font = font;
+  ctx.beginPath(); ctx.roundRect(0.5, 0.5, w - 1, h - 1, radius);
+  ctx.fillStyle = bg; ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = border; ctx.stroke();
+  ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 0.5);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  return { tex, aspect: w / h };
+}
+
+/** Label of constant on-screen size (heightPx) at a world position, always drawn on top. */
+export function LabelSprite({ position, text, style, heightPx = 16 }) {
+  const { camera, size } = useThree();
+  const { tex, aspect } = useMemo(() => makeLabelTexture(text, style),
+    [text, style.font, style.fg, style.bg, style.border, style.radius]);
+  useEffect(() => () => tex.dispose(), [tex]);
+  // With sizeAttenuation off, sprite scale is in view units at distance 1: pixels = scale · P11 / 2 · height.
+  const p11 = camera.projectionMatrix.elements[5] || 1;
+  const sy = (2 * heightPx) / (p11 * size.height);
+  return (
+    <sprite position={position} scale={[sy * aspect, sy, 1]} renderOrder={20}>
+      <spriteMaterial map={tex} sizeAttenuation={false} depthTest={false} depthWrite={false} transparent toneMapped={false} fog={false} />
+    </sprite>
+  );
+}
+
+const FLAG_LABEL = { font: 'bold 10px monospace', fg: '#ffd9b0', bg: 'rgba(60,25,0,0.8)', border: '#ff8a3a', radius: 3 };
+const BADGE_LABEL = { font: 'bold 11px monospace', fg: '#1a0d00', bg: '#ffb347', border: '#fff2dd', radius: 8 };
+
 function StopFlag({ x, z, n }) {
   const y = getTerrainHeight(x, z);
   return (
@@ -277,10 +320,7 @@ function StopFlag({ x, z, n }) {
         <boxGeometry args={[0.4, 0.26, 0.01]} />
         <meshStandardMaterial color="#ff7a1a" emissive="#ff6a00" emissiveIntensity={0.35} side={THREE.DoubleSide} />
       </mesh>
-      <Html position={[0, 2.1, 0]} center zIndexRange={[9, 0]} style={{ pointerEvents: 'none' }}>
-        <div style={{ font: 'bold 10px monospace', color: '#ffd9b0', background: 'rgba(60,25,0,0.75)',
-          border: '1px solid #ff8a3a', borderRadius: 3, padding: '0 4px', whiteSpace: 'nowrap' }}>✓ S{n}</div>
-      </Html>
+      <LabelSprite position={[0, 2.1, 0]} text={`✓ S${n}`} style={FLAG_LABEL} heightPx={15} />
     </group>
   );
 }
@@ -456,12 +496,8 @@ export function StopBadges({ waypoints, markerScale, visited = [] }) {
         if (visited.includes(k + 1)) return null;          // the ✓ flag label replaces it
         const y = getTerrainHeight(w.x, w.z);
         return (
-          <Html key={`${w.i}-${w.x}-${w.z}`} position={[w.x, y + 1.9 * markerScale, w.z]} center
-            zIndexRange={[9, 0]} style={{ pointerEvents: 'none' }}>
-            <div title={w.label || ''} style={{ font: 'bold 11px monospace', color: '#1a0d00',
-              background: '#ffb347', border: '1px solid #fff2dd', borderRadius: 9, padding: '0 6px',
-              boxShadow: '0 0 6px rgba(255,160,60,0.8)', whiteSpace: 'nowrap' }}>S{k + 1}</div>
-          </Html>
+          <LabelSprite key={`${w.i}-${w.x}-${w.z}`} position={[w.x, y + 1.9 * markerScale, w.z]}
+            text={`S${k + 1}`} style={BADGE_LABEL} />
         );
       })}
     </>

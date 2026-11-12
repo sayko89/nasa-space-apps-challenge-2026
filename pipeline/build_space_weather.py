@@ -2,7 +2,7 @@
 """
 build_space_weather.py — DONKI space-weather events relevant to a Mars surface EVA.
 
-Input:  pipeline/sources/donki/events.json   (pipeline/fetch_sources.py, NASA CCMC DONKI)
+Input:  pipeline/sources/donki/events.json   (pipeline/fetch_donki.py, NASA CCMC DONKI)
 Output: web/public/sites/<site>/space_weather.json
 
 Kept:
@@ -66,11 +66,17 @@ def main(argv=None):
     args = ap.parse_args(argv)
     raw = json.loads(SRC.read_text())
     events = build(raw)
-    manifest = json.loads((SRC.parent.parent / 'manifest.json').read_text())
-    fetched = manifest.get('fetched_utc', '')[:10]
+    coverage = raw.get('coverage')
+    # The app reads "no SEP in the archive" as "clear to go" for every covered date, so an
+    # archive without a stated coverage, or with no events at all (a failed fetch: years
+    # without a single flare or SEP do not happen), must never be written.
+    if not coverage:
+        raise SystemExit(f'{SRC.relative_to(ROOT)} has no coverage — run pipeline/fetch_donki.py')
+    if not any(raw.get(k) for k in ('SEP', 'CME', 'FLR')):
+        raise SystemExit(f'{SRC.relative_to(ROOT)} holds no events — refusing to write an empty archive')
     out = {
         'format': 'martian-map-space-weather/1',
-        'coverage': ['2021-02-18', fetched or dt.date.today().isoformat()],
+        'coverage': coverage,
         'counts': {t: sum(e['type'] == t for e in events) for t in ('SEP', 'CME', 'FLR')},
         'events': events,
         'source': {'title': 'Space Weather Database Of Notifications, Knowledge, Information (DONKI)',
