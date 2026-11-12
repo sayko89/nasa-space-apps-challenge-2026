@@ -10,7 +10,7 @@
 import { buildShareURL } from '../utils/shareLink';
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
-import { PANEL_W, MAP_S, fs, UI_SCALE } from '../ui/layout';
+import { PANEL_W, MAP_S, fs, UI_SCALE, SHEET_VH, useNarrow } from '../ui/layout';
 import { fmtHM, fmtSignedHM, fmtHourMin } from '../utils/format';
 import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
@@ -1092,6 +1092,7 @@ export default function RightPanel({
   learningModel, routeLog, showToast,
   dustMode, dustHazard, cameraSignalLost, cameraSignalQuality, onTriggerDustHazard, onDustPlaced, onClearDustHazard,
 }) {
+  const narrow = useNarrow();   // phone: bottom sheet under the 3D view
   const [pickMode, setPickMode] = useState(false);
   const [cuffMode, setCuffMode] = useState(null);   // route mode whose cuff card is open
   const [shareLabel, setShareLabel] = useState('SHARE LINK');
@@ -1120,9 +1121,11 @@ export default function RightPanel({
 
   return (
     <div style={{
-      position:'fixed',right:0,top:0,bottom:0,width:PW,
+      position:'fixed',right:0,bottom:0,
+      ...(narrow
+        ? { left:0, height:`${SHEET_VH}vh`, borderTop:'1px solid rgba(80,140,80,0.6)', WebkitOverflowScrolling:'touch' }
+        : { top:0, width:PW, borderLeft:'1px solid rgba(35,70,35,0.5)' }),
       background:'rgba(4,10,4,0.96)',
-      borderLeft:'1px solid rgba(35,70,35,0.5)',
       display:'flex',flexDirection:'column',overflowY:'auto',
       zIndex:10,backdropFilter:'blur(5px)',
     }}>

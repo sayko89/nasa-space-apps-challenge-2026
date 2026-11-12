@@ -7,6 +7,7 @@
  * Reads the EvaPlayback controller at 10 Hz (no per-frame React renders).
  */
 
+import { SHEET_VH } from '../ui/layout';
 import { useEffect, useState, useCallback } from 'react';
 import { evaSnapshot, SPEEDS } from '../utils/evaPlayback';
 import { fmtClock, fmtHM, fmtSignedHM, fmtHourMin, fmtDist } from '../utils/format';
@@ -31,13 +32,13 @@ const STATUS_STYLE = {
   done:    { label: 'COMPLETE', color: '#9fd4ff' },
 };
 
-function Tile({ label, children, sub, color = '#e8e0c8', wide = false }) {
+function Tile({ label, children, sub, color = '#e8e0c8', wide = false, compact = false }) {
   return (
     <div style={{ flex: wide ? 1.3 : 1, background: 'rgba(0,0,0,0.32)', border: '1px solid rgba(232,168,120,0.18)',
       borderRadius: 4, padding: '4px 7px', minWidth: 0 }}>
       <div style={{ fontSize: 9, letterSpacing: 1, color: 'rgba(232,196,168,0.65)' }}>{label}</div>
       <div style={{ fontSize: 14, fontWeight: 'bold', color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</div>
-      {sub && <div style={{ fontSize: 10, color: 'rgba(232,196,168,0.62)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
+      {sub && !compact && <div style={{ fontSize: 10, color: 'rgba(232,196,168,0.62)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
     </div>
   );
 }
@@ -120,7 +121,7 @@ function Activity({ snap }) {
  * @param {EvaPlayback} playback
  * @param {number} right  px from the right edge of the window (panel width + gap)
  */
-export default function EvaHud({ playback, right = 12, onAbort, onStop }) {
+export default function EvaHud({ playback, right = 12, narrow = false, compact = narrow, onAbort, onStop }) {
   const [snap, setSnap] = useState(() => evaSnapshot(playback));
   useEffect(() => {
     const id = setInterval(() => setSnap(evaSnapshot(playback)), 100);
@@ -140,20 +141,21 @@ export default function EvaHud({ playback, right = 12, onAbort, onStop }) {
 
   return (
     <div id="eva-hud" style={{
-      position: 'absolute', right, bottom: 12, width: 540, zIndex: 16,
+      position: 'absolute', right, zIndex: 16,
+      ...(narrow ? { left: 6, bottom: `calc(${SHEET_VH}vh + 6px)`, fontSize: 11 } : { bottom: 12, width: `min(540px, calc(100vw - ${right + 12}px))` }),
       fontFamily: MONO, color: '#e8c4a8', background: 'rgba(22,10,4,0.86)',
       border: `1px solid ${snap.ponrPassed ? '#ff5a4a' : 'rgba(232,168,120,0.4)'}`,
       borderRadius: 6, padding: '8px 10px', boxShadow: '0 4px 18px rgba(0,0,0,0.45)',
       backdropFilter: 'blur(3px)',
     }}>
       {/* header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 4 : 8, flexWrap: compact ? 'wrap' : 'nowrap' }}>
         <span style={{ fontSize: 10, fontWeight: 'bold', color: '#140800',
           background: snap.aborted && snap.status !== 'done' ? '#ff8800' : st.color,
           borderRadius: 3, padding: '1px 6px', letterSpacing: 1 }}>{snap.aborted && snap.status !== 'done' ? 'ABORT' : st.label}</span>
-        <span style={{ fontSize: 11, letterSpacing: 1.2, color: '#f0d0b0', whiteSpace: 'nowrap' }}>{snap.mode} ROUTE · EV1 + EV2</span>
+        <span style={{ fontSize: 11, letterSpacing: 1.2, color: '#f0d0b0', whiteSpace: 'nowrap' }}>{snap.mode}{compact ? '' : ' ROUTE · EV1 + EV2'}</span>
         <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 9, color: 'rgba(232,196,168,0.6)' }}>SPEED</span>
+        {!compact && <span style={{ fontSize: 9, color: 'rgba(232,196,168,0.6)' }}>SPEED</span>}
         {SPEEDS.map(x => (
           <HudButton key={x} active={snap.speed === x} onClick={() => playback.setSpeed(x)} title={`${x}× mission time`}>
             ×{x}
@@ -164,38 +166,38 @@ export default function EvaHud({ playback, right = 12, onAbort, onStop }) {
       {/* clock */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 4 }}>
         <span style={{ fontSize: 9, letterSpacing: 1, color: 'rgba(232,196,168,0.65)' }}>MET</span>
-        <span style={{ fontSize: 22, fontWeight: 'bold', color: '#fff2e0', letterSpacing: 1 }}>{fmtClock(snap.t)}</span>
+        <span style={{ fontSize: compact ? 17 : 22, fontWeight: 'bold', color: '#fff2e0', letterSpacing: 1 }}>{fmtClock(snap.t)}</span>
         <span style={{ fontSize: 12, color: 'rgba(232,196,168,0.7)' }}>/ {fmtClock(snap.totalS)}</span>
         <span style={{ flex: 1 }} />
-        {sun && <span style={{ fontSize: 11, color: '#ffd166' }}>LTST {fmtHourMin(sun.ltst)} · Sol {Math.floor(sun.msd)}</span>}
+        {sun && <span style={{ fontSize: compact ? 10 : 11, color: '#ffd166' }}>LTST {fmtHourMin(sun.ltst)} · Sol {Math.floor(sun.msd)}</span>}
       </div>
 
       <Timeline snap={snap} onSeek={snap.aborted ? null : seek} />
       <Activity snap={snap} />
 
       {/* safety + conditions */}
-      <div style={{ display: 'flex', gap: 6 }}>
-        <Tile label="WALK-BACK MARGIN" color={marginColor(m)} wide
+      <div style={compact ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 } : { display: 'flex', gap: 6 }}>
+        <Tile compact={compact} label="WALK-BACK MARGIN" color={marginColor(m)} wide
           sub={m === -Infinity ? 'home unreachable' : `fastest walk home: ${fmtHM(snap.backS)}`}>
           {snap.ponrPassed && m < 0 ? '⛔ ' : ''}{m === -Infinity ? 'NO PATH HOME' : fmtSignedHM(m)}
         </Tile>
-        <Tile label="FROM HABITAT" color={snap.distHomeM > radialKm * 1000 ? '#ff5a4a' : '#e8e0c8'}
+        <Tile compact={compact} label="FROM HABITAT" color={snap.distHomeM > radialKm * 1000 ? '#ff5a4a' : '#e8e0c8'}
           sub={`limit ${radialKm} km`}>
           {fmtDist(snap.distHomeM)}
         </Tile>
-        <Tile label="SUN ELEV. · AIR" color={sun && sun.elevationDeg <= 0 ? '#8899cc' : '#ffd166'}
+        <Tile compact={compact} label="SUN ELEV. · AIR" color={sun && sun.elevationDeg <= 0 ? '#8899cc' : '#ffd166'}
           sub={air && air.p10 != null && air.p90 != null
             ? `${climateInstrument(SITE.climate)} p10–p90: ${K_TO_C(air.p10).toFixed(0)}…${K_TO_C(air.p90).toFixed(0)} °C` : air ? `${climateInstrument(SITE.climate)} climatology` : 'no climate data'}>
           {sun ? (sun.elevationDeg > 0 ? `${sun.elevationDeg.toFixed(0)}°` : 'night') : '—'}
           {air ? <span style={{ color: '#ffcc88' }}> · {K_TO_C(air.median).toFixed(0)} °C</span> : null}
         </Tile>
-        <Tile label="DOSE (GCR)" sub="Curiosity RAD rate">
+        <Tile compact={compact} label="DOSE (GCR)" sub="Curiosity RAD rate">
           {evaDoseMSv(snap.t).toFixed(3)} mSv
         </Tile>
       </div>
 
-      {/* controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
+      {/* controls (phones: the bottom sheet has PAUSE / ABORT / CLOSE) */}
+      {!compact && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
         <HudButton onClick={() => playback.toggle()} color="#5be37a" title="Play / pause (Space)">
           {snap.status === 'playing' ? '❚❚ PAUSE' : snap.status === 'done' ? '↻ REPLAY' : '▶ PLAY'}
         </HudButton>
@@ -205,9 +207,9 @@ export default function EvaHud({ playback, right = 12, onAbort, onStop }) {
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 11, color: '#ffcf8a' }}>STOPS {snap.stopsDone}/{snap.stopsTotal}</span>
         {onStop && <HudButton onClick={onStop} title="Close the EVA playback">✕</HudButton>}
-      </div>
+      </div>}
 
-      {lastEvent && (
+      {lastEvent && !compact && (
         <div style={{ fontSize: 10, color: lastEvent.kind === 'ponr' || lastEvent.kind === 'abort' ? '#ff9a6a' : 'rgba(232,196,168,0.7)',
           marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {fmtClock(lastEvent.t)} · {lastEvent.text}
