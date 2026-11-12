@@ -151,3 +151,22 @@ test('eğik düzlemde dönüş süresi yön farkını yansıtır', () => {
   const back = W.reverseWalkTimeS(path, (x) => incline(x));
   assert.ok(out > back, `gidiş ${out.toFixed(0)} s > dönüş ${back.toFixed(0)} s`);
 });
+
+test('daylight rule: GO needs start after sunrise and home before sunset', async () => {
+  const a = cellCenter(40, 100), b = cellCenter(216, 100);
+  // Without a start time there is no daylight check (Moon / tests)
+  const plain = P.planAllRoutes([a, b], sm, cm, hm, 45, null, { modes: ['SAFE'] }).SAFE.stats;
+  assert.equal('daylight' in plain.checks, false);
+  assert.equal(plain.go, plain.checks.budget && plain.checks.radial && plain.checks.slope);
+  const { msAtLtst } = await import('../src/utils/marsTime.js');
+  const at = (h) => P.planAllRoutes([a, b], sm, cm, hm, 45, null,
+    { modes: ['SAFE'], startMs: msAtLtst(Date.UTC(2026, 10, 12), h, 77.45) }).SAFE.stats;
+  const morning = at(9), evening = at(17.8), night = at(2);
+  assert.equal(morning.checks.daylight, true);
+  assert.equal(morning.go, plain.go);
+  for (const s of [evening, night]) {
+    assert.equal(s.light.homeBySunset, false);
+    assert.equal(s.checks.daylight, false);
+    assert.equal(s.go, false);
+  }
+});

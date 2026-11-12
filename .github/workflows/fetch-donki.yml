@@ -1,0 +1,46 @@
+name: Fetch space weather (NASA DONKI)
+
+# DONKI solar particle events, CMEs modelled to reach Mars and X-class flares since
+# Curiosity landed (2012-08-06) → web/public/sites/<site>/space_weather.json, the app's
+# fallback when the live DONKI lookup fails (offline package, rate limit). Runs when this
+# file or the scripts change, every Monday, or by hand.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+  push:
+    paths:
+      - .github/workflows/fetch-donki.yml
+      - pipeline/fetch_donki.py
+      - pipeline/build_space_weather.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-donki
+  cancel-in-progress: false
+
+jobs:
+  donki:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: |
+          mkdir -p pipeline/sources/_probe
+          python pipeline/fetch_donki.py 2>&1 | tee pipeline/sources/_probe/donki_fetch.log | tail -8
+          python pipeline/build_space_weather.py --site jezero
+          python pipeline/build_space_weather.py --site gale
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add web/public/sites/*/space_weather.json pipeline/sources/_probe/donki_fetch.log
+          if git commit -m "data: DONKI space-weather archive since 2012 (both sites)"; then
+            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+          fi

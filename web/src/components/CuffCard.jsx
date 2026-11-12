@@ -292,7 +292,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
             <div>2. ABORT: walk the fastest way home. From any station that takes its BACK time, always less than the time left.</div>
             <div>3. Tightest margin at station {t.tightestStop ?? '—'}{tight ? ` (${fmtMET(tight.marginS)})` : ''} — do not extend the stay there.</div>
             <div>4. Never on ground over {param('maxWalkableSlopeDeg')}°, never more than {param('maxRadialDistanceKm')} km from H{mission?.rover ? `, never more than ${ROVER.walkbackMin.value} min walk from the rover` : ''}.</div>
-            <div>5. {t.homeBySunset === null ? 'No sunset on this sol.' : t.homeBySunset ? 'Home before sunset as planned — a late start eats the margin, not the daylight.' : 'NOT home before sunset — lights and thermal check before departure.'}</div>
+            <div>5. {t.homeBySunset === null ? 'No sunset on this sol.' : t.homeBySunset ? 'Home before sunset as planned — a late start eats the daylight too: be home by SUNSET.' : 'NOT home before sunset — this plan is NO-GO. Start earlier.'}</div>
           </div>
           <div>
             <div style={{ fontWeight: 'bold', borderBottom: '0.4mm solid #111', marginBottom: '1mm' }}>EVA SUMMARY</div>
