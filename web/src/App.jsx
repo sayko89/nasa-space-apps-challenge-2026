@@ -22,7 +22,7 @@ import { EvaPlayback } from './utils/evaPlayback';
 import { fmtClock, fmtHM } from './utils/format';
 import { radiationIsLocal } from './utils/radiation';
 import SiteSwitcher from './components/SiteSwitcher';
-import { PANEL_W } from './ui/layout';
+import { PANEL_W, SHEET_VH, useNarrow, useCompact, COMPACT_QUERY } from './ui/layout';
 import { decodePlan } from './utils/shareLink';
 import { SUITS } from './config/mission';
 
@@ -71,9 +71,10 @@ function ToastContainer({ toasts, onDismiss }) {
 
 // ---- Data provenance / fallback badge (bottom-left, collapsible) ----
 const LINK = { color:'#ffb080' };
-function SiteBadge({ collapsed, onToggle }) {
+function SiteBadge({ collapsed, onToggle, narrow = false }) {
   const base = {
-    position:'absolute', left:12, bottom:10, zIndex:15, maxWidth:560,
+    position:'absolute', left: narrow ? 6 : 12, bottom: narrow ? `calc(${SHEET_VH}vh + 6px)` : 10, zIndex:15,
+    maxWidth: narrow ? 'calc(100vw - 12px)' : 560, maxHeight: narrow ? `calc(${100 - SHEET_VH}vh - 80px)` : undefined, overflowY: narrow ? 'auto' : undefined,
     fontFamily:'monospace', fontSize:IS_DEM ? 10.5 : 9, lineHeight:1.5, padding:'6px 9px',
     borderRadius:4, pointerEvents:'auto',
   };
@@ -198,7 +199,9 @@ export default function App() {
   setEvaProfile(mission.limits || 'lunar');
   const [isPlanningScience, setIsPlanningScience] = useState(false);
   const autoPlanRef = useRef(false);   // plan as soon as the science waypoints are committed
-  const [badgeCollapsed, setBadgeCollapsed] = useState(false);
+  const [badgeCollapsed, setBadgeCollapsed] = useState(() => !!window.matchMedia?.(COMPACT_QUERY).matches);   // phones: start collapsed
+  const narrow = useNarrow();
+  const compact = useCompact();   // narrow, or a phone held sideways
   // DEM: map layer draped on the 3D terrain (null = off)
   const [drapeLayer, setDrapeLayer] = useState(null);
   const [drapeOpacity, setDrapeOpacity] = useState(0.6);
@@ -831,7 +834,9 @@ export default function App() {
       `}</style>
 
       {/* 3D Scene */}
-      <div style={{ position:'absolute', inset:0, right:PANEL_W }}>
+      <div style={narrow
+        ? { position:'absolute', top:0, left:0, right:0, bottom:`${SHEET_VH}vh` }
+        : { position:'absolute', inset:0, right:PANEL_W }}>
         <Suspense fallback={
           <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',
             color:'#44ff88',fontSize:13,fontFamily:'monospace',letterSpacing:'0.18em'}}>
@@ -867,21 +872,23 @@ export default function App() {
 
       {/* HUD */}
       <div style={{
-        position:'absolute', top:10, left:12,
-        color: IS_DEM ? 'rgba(255,214,170,0.92)' : 'rgba(110,190,110,0.8)', fontFamily:'monospace', fontSize: IS_DEM ? 13 : 11,
-        letterSpacing:'0.2em', zIndex:15, pointerEvents:'none',
+        position:'absolute', top: compact ? 6 : 10, left: compact ? 8 : 12, right: narrow ? 8 : (compact ? PANEL_W + 8 : undefined),
+        color: IS_DEM ? 'rgba(255,214,170,0.92)' : 'rgba(110,190,110,0.8)', fontFamily:'monospace',
+        fontSize: compact ? 10.5 : (IS_DEM ? 13 : 11),
+        letterSpacing: compact ? '0.08em' : '0.2em', zIndex:15, pointerEvents:'none',
         textShadow: IS_DEM ? '0 0 8px rgba(0,0,0,0.7)' : '0 0 8px rgba(40,180,40,0.4)',
       }}>
         {IS_DEM ? `MARTIAN MAP · ${(SITE.meta?.label || SITE.name).toUpperCase()}` : 'MOON ROVER SIMULATOR'}
         {IS_DEM && <SiteSwitcher current={SITE.name} />}
         <div style={{fontSize: IS_DEM ? 9.5 : 8, color: IS_DEM ? 'rgba(255,214,170,0.65)' : 'rgba(70,130,70,0.6)', marginTop:2}}>
-          LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM{IS_DEM ? ' · SPACE=PLAY/PAUSE EVA' : ''}
+          {compact ? 'DRAG=ROTATE · TWO FINGERS=PAN / ZOOM'
+            : <>LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM{IS_DEM ? ' · SPACE=PLAY/PAUSE EVA' : ''}</>}
         </div>
       </div>
-      <SiteBadge collapsed={badgeCollapsed} onToggle={() => setBadgeCollapsed(c => !c)} />
+      <SiteBadge collapsed={badgeCollapsed} onToggle={() => setBadgeCollapsed(c => !c)} narrow={narrow} />
 
       {evaActive && (
-        <EvaHud playback={playback} right={PANEL_W + 12} onAbort={handleAbortEva} onStop={handleStopRover} />
+        <EvaHud playback={playback} right={narrow ? 6 : PANEL_W + 12} narrow={narrow} compact={compact} onAbort={handleAbortEva} onStop={handleStopRover} />
       )}
 
       {/* Toasts */}

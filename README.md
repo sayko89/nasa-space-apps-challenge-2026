@@ -30,7 +30,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Ground views** | 3,815 rover camera frames from 234 rover positions |
 | **Safety checks** | walk-back margin and point of no return, slope, radius, carry weight, rover reach, sunset, dose, space weather |
 | **EVA limit sets** | Lunar ConOps (NASA) or **Mars conservative** (derived for Mars gravity) |
-| **Outputs** | 3D planning view, live EVA HUD, printable **cuff card** (A4 / PDF) |
+| **Outputs** | 3D planning view, live EVA HUD, printable **cuff card** (A4 / PDF); works on desktop, tablet and phone |
 | **Tests** | 61 JavaScript + 5 Python, run on every push before deploy |
 
 ## Try it
@@ -101,7 +101,7 @@ The second site came out of the same pipeline as the first: pick a centre, cut t
 | A **route map** that **avoids obstacles such as large rocks** | A* on walking time; slopes above 20° and **rock outcrops / boulders** found in the 1 m HiRISE DTM are walls |
 | **Rovers** to transport the crew; astronauts **in pairs** | **Pressurized rover as safe haven**: the crew may never be more than a 30-minute walk from it; a two-person crew (EV1 + EV2) walks the plan |
 | **Point-of-view images** so the astronaut knows what to expect | **Ground view** on every science stop: the rover's own Navcam / Mastcam(-Z) frames taken from the position closest to the stop, facing it |
-| A format crews could use: habitat display, tablet, **HUD** | Planning view for the habitat, an EVA **HUD** with mission clock, live walk-back margin, distance home, sun, temperature and dose, and a printable **cuff card** for the wrist |
+| A format crews could use: habitat display, tablet, **HUD** | Planning view for the habitat (desktop / tablet; on a phone the panel becomes a bottom sheet under the 3D view), an EVA **HUD** with mission clock, live walk-back margin, distance home, sun, temperature and dose, and a printable **cuff card** for the wrist |
 | A map that can be a **static snapshot**; **inspiration from maps made for other destinations** | The **cuff card**: one printed page per EVA — photo map of the route plus a station table with arrival, stay, walk-back and *leave-by* times — modelled on the Apollo 15–17 cuff checklists and traverse planning data. See [Inspiration](#inspiration-apollo-cuff-checklists) |
 | A time frame | Pick any date and local solar time: sun, shadows, temperature climatology and DONKI events follow it |
 
