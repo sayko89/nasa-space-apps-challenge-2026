@@ -51,6 +51,18 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 6. **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**).
 7. **Terrain mode** DEM / HiRISE / WIRE, and **Map Layers → DRAPE ON 3D TERRAIN** for minerals, thermal inertia, rocks, geology or slope.
 
+## On a tablet or a phone
+
+The same app adapts to the screen, so it can travel from the habitat display to a tablet or the crew's phone. On a phone the panel becomes a sheet under the 3D view and the EVA HUD shrinks to the four safety numbers.
+
+<table>
+<tr>
+<td width="73%"><img src="docs/img/tablet.jpg" alt="Tablet (iPad Pro 11, landscape): EVA playback at Jezero — EV1 samples stop 1 while the HUD shows mission time, walk-back margin, distance from the habitat, sun, air temperature and dose; the side panel shows the dose comparison and the SAFE route card"></td>
+<td width="27%"><img src="docs/img/phone.jpg" alt="Phone (iPhone 13, portrait): the planned 6-stop Gale EVA seen from above, with the SAFE route card — GO, 3 h 24 min, walk-back margin 4 h 36 min — in the sheet below"></td>
+</tr>
+<tr><td align="center"><b>Tablet</b> — EVA playback at Jezero</td><td align="center"><b>Phone</b> — planned Gale EVA and its GO card</td></tr>
+</table>
+
 ## Two sites, one pipeline
 
 <table>
