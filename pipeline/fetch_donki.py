@@ -30,12 +30,12 @@ KINDS = ['SEP', 'CME', 'FLR']
 CURIOSITY_LANDING = '2012-08-06'
 
 
-def get_json(url: str, attempts: int = 3):
+def get_json(url: str, attempts: int = 2):
     last = None
     for i in range(attempts):
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'martian-map-pipeline'})
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=45) as r:
                 body = r.read()
             return json.loads(body or b'[]') or []
         except Exception as e:  # noqa: BLE001

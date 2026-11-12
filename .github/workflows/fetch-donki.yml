@@ -24,15 +24,22 @@ concurrency:
 jobs:
   donki:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Probe DONKI hosts
+        run: |
+          for u in "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/SEP?startDate=2024-05-01&endDate=2024-05-31" \
+                   "https://api.nasa.gov/DONKI/SEP?startDate=2024-05-01&endDate=2024-05-31&api_key=DEMO_KEY"; do
+            curl -sS -m 60 -o /tmp/p.json -w "%{http_code} %{time_total}s %{size_download}B  $u\n" "$u" || echo "FAILED $u"
+            head -c 200 /tmp/p.json; echo
+          done
       - run: |
           mkdir -p pipeline/sources/_probe
-          python pipeline/fetch_donki.py 2>&1 | tee pipeline/sources/_probe/donki_fetch.log | tail -8
+          python -u pipeline/fetch_donki.py 2>&1 | tee pipeline/sources/_probe/donki_fetch.log
           python pipeline/build_space_weather.py --site jezero
           python pipeline/build_space_weather.py --site gale
       - name: Commit
@@ -40,7 +47,7 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add web/public/sites/*/space_weather.json pipeline/sources/_probe/donki_fetch.log
+          git add -A web/public/sites pipeline/sources/_probe/donki_fetch.log
           if git commit -m "data: DONKI space-weather archive since 2012 (both sites)"; then
             for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
           fi
