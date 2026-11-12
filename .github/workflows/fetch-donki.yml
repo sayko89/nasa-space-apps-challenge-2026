@@ -31,13 +31,16 @@ jobs:
         with:
           python-version: "3.12"
       - name: Probe DONKI hosts
+        continue-on-error: true
         run: |
           for u in "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/SEP?startDate=2024-05-01&endDate=2024-05-31" \
                    "https://api.nasa.gov/DONKI/SEP?startDate=2024-05-01&endDate=2024-05-31&api_key=DEMO_KEY"; do
             curl -sS -m 60 -o /tmp/p.json -w "%{http_code} %{time_total}s %{size_download}B  $u\n" "$u" || echo "FAILED $u"
-            head -c 200 /tmp/p.json; echo
+            head -c 200 /tmp/p.json 2>/dev/null; echo; rm -f /tmp/p.json
           done
-      - run: |
+      - env:
+          NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
+        run: |
           mkdir -p pipeline/sources/_probe
           python -u pipeline/fetch_donki.py 2>&1 | tee pipeline/sources/_probe/donki_fetch.log
           python pipeline/build_space_weather.py --site jezero
