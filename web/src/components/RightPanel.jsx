@@ -1118,10 +1118,10 @@ export default function RightPanel({
             <div style={{fontSize:fs(7),color:'#b0a080',lineHeight:1.45}}>
               Press the button, then click the site map to drop a dust devil. When it lies on the route within the next {Math.round(600/60)} min of walking,
               the crew sets a <b>{DUST_REROUTE.safetyMarginM.value} m safety zone</b> around it (dashed yellow ring) and a <b>new SAFE route</b> is planned
-              from the point where they noticed it — the remaining stops and home, outside the zone (stops inside it are skipped). The new route
+              from the point where they noticed it <b>to the destination</b> (through the remaining stops; those inside the zone are skipped), never entering the zone. The new route
               (yellow) is taken if the crew can still walk home within the EVA budget at every point (time already spent included), the oxygen
               covers the rest of the plan plus the reserve and they are home before sunset — you get an information message with the extra time.
-              Only if no such route exists: <b>“No new route found — returning to the start point for safety”</b>, and the walk home also avoids the zone when possible (orange dashed).
+              Only if no such route exists (e.g. slopes or the zone block every way): <b>“No new route to the destination found — returning to the start point the way they came”</b> (orange dashed); if even that path crosses the zone, the walk home goes around it.
               <br/><i>Illustrative: the dust devil does not move; radius and safety distance are design choices, not an operational NASA procedure.</i>
             </div>
             </More>

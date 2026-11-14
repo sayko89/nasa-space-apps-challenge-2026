@@ -1,5 +1,6 @@
 /**
- * Dust devil on the route ahead during an EVA: go around it, or go home.
+ * Dust devil on the route ahead during an EVA: a new SAFE route from that point to the destination,
+ * or — only if there is none — back to the start the way the crew came.
  *
  * When the crew notices it, a safety zone is set around the dust devil (its radius + 25 m) and the planner
  * runs again from where the crew stands: the remaining stops (those inside the disc are skipped)
@@ -32,7 +33,8 @@ const minDist = (path, x, z) => path.reduce((m, p) => Math.min(m, Math.hypot(p[0
  * @param {{x,z}} c.pos          crew position now
  * @param {number} c.t           mission time now [s]
  * @param {Array} c.stops        remaining stops [{ n, x, z, dwellS, label }]
- * @param {{x,z}} c.home
+ * @param {{x,z}} c.home         start point (walk-back margin)
+ * @param {{x,z}} [c.destination]  where the plan ends (its last point); the new route goes there — default home
  * @param {{x,z,radius,interferenceRadius}} c.hazard
  * @param {number} c.budgetS     EVA budget [s]
  * @param {number} c.nominalEndS end of the current plan [s] (for the extra time)
@@ -56,7 +58,9 @@ export function planDustReroute(c) {
   const fail = (reason) => ({ ok: false, reason, skipped, checks, toHomeAt: avoid.toHomeAt, returnPath: avoid.returnPath });
 
   if (Math.hypot(c.pos.x - c.hazard.x, c.pos.z - c.hazard.z) <= blockR) return fail('the crew is already inside the safety zone');
-  const wps = [{ x: c.pos.x, z: c.pos.z }, ...kept.map(s => ({ x: s.x, z: s.z, dwellS: s.dwellS || 0, label: s.label })), { x: c.home.x, z: c.home.z }];
+  const dest = c.destination || c.home;
+  if (Math.hypot(dest.x - c.hazard.x, dest.z - c.hazard.z) <= blockR) return fail('the destination is inside the safety zone');
+  const wps = [{ x: c.pos.x, z: c.pos.z }, ...kept.map(s => ({ x: s.x, z: s.z, dwellS: s.dwellS || 0, label: s.label })), { x: dest.x, z: dest.z }];
   const mode = c.mode || 'SAFE';
   let r;
   try {
@@ -66,7 +70,7 @@ export function planDustReroute(c) {
   } catch (err) {
     return fail(`re-planning failed: ${err.message}`);
   }
-  if (!r) return fail('no walkable path around the safety zone to the remaining stops and home');
+  if (!r) return fail('no walkable path around the safety zone to the remaining stops and the destination');
   const { path, stats } = r;
   const el = stats.elapsedS, endS = c.t + el[el.length - 1];
 
@@ -95,6 +99,24 @@ export function planDustReroute(c) {
   });
   return { ok: true, mode, path, elapsedS: el, stops, skipped, endS, extraS: endS - c.nominalEndS, checks, zoneM: blockR,
     toHomeAt: avoid.toHomeAt, returnPath: avoid.returnPath };
+}
+
+/**
+ * The way back the crew came: the walked part of the timeline up to t, reversed, from the current position
+ * to the start. Returns a path for EvaPlayback.abort(), or null when it would enter the safety zone.
+ */
+export function retracePath(tl, t, pos, hazard = null, zoneM = 0) {
+  const pts = [[pos.x, 0, pos.z]];
+  let last = null;
+  for (let i = tl.n - 1; i >= 0; i--) {
+    if (tl.dep[i] > t && tl.arr[i] > t) continue;            // not walked yet
+    const q = [tl.xs[i], 0, tl.zs[i]];
+    if (last && Math.hypot(q[0] - last[0], q[2] - last[2]) < 1e-6) continue;
+    pts.push(q); last = q;
+  }
+  if (pts.length < 2) return null;
+  if (hazard && pts.some(q => Math.hypot(q[0] - hazard.x, q[2] - hazard.z) <= zoneM)) return null;
+  return { path: pts };
 }
 
 /**

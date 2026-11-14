@@ -688,7 +688,7 @@ export default function App() {
     interferenceTicksRef.current = 0;
     if (IS_DEM) {
       playback.setHazard(hazard);
-      showToast(`Dust devil placed. When the crew sees it on the route ahead they keep ${DUST_REROUTE.safetyMarginM.value} m away from it and a new SAFE route is planned; if none is possible they return to the start point.`, 'info', 6500);
+      showToast(`Dust devil placed. When the crew sees it on the route ahead they keep ${DUST_REROUTE.safetyMarginM.value} m away from it and a new SAFE route to the destination is planned from there; only if none is possible do they return to the start the way they came.`, 'info', 6500);
       addLog(`Dust devil placed at (${pos.x.toFixed(0)}, ${pos.z.toFixed(0)}), r=${hazard.radius} m. Route look-ahead active.`);
       return;
     }
