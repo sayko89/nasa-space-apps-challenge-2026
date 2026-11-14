@@ -128,6 +128,13 @@ test('Gale loads with its objectives; Moon keeps the original simulator', { time
   const gt = await g.page.innerText('body');
   for (const s of ['Boxwork Ridge and Hollow Investigation', 'ChemCam Target Re-investigation']) assert.ok(gt.includes(s), s);
   assert.equal((await layout(g.page)).steps, 13);
+  // 1 m DTM relief shading: map served, control present, emphasis switch renders without errors
+  assert.ok((await g.page.request.get(`${BASE}/sites/gale/relief.jpg`)).ok(), 'relief.jpg served');
+  assert.match(gt, /RELIEF ×1/);
+  assert.match(gt, /Shading: 1 m HiRISE DTM · true slopes/);
+  await click(g.page, '^×4$');
+  await g.page.waitForFunction(() => /slopes ×4 for visibility/.test(document.body.innerText));
+  await g.page.waitForTimeout(2000);
   assert.deepEqual(g.errors, []);
   await g.page.close();
 

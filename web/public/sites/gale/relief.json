@@ -1,0 +1,30 @@
+{
+ "format": "martian-map-relief/1",
+ "site": "gale",
+ "file": "relief.jpg",
+ "size_px": 2048,
+ "pixel_m": 0.998,
+ "encoding": "normal map of the 1 m DTM relative to the horizontal; R east, G north, B up = 127.5\u00b7(n+1); row 0 = north, col 0 = west",
+ "source": {
+  "url": "pipeline/sources/hirise/gale_dtm_1m_window.tif",
+  "title": "MSL Gale Merged DEM 1m (v3)",
+  "publisher": "USGS Astrogeology Science Center / PDS Annex",
+  "page": "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m",
+  "citation": "Parker, T. and Calef III, F. J. (2016). MSL Gale Merged DEM 1m, v3. PDS Annex, U.S. Geological Survey.",
+  "instrument": "MRO HiRISE stereo DTMs merged with CTX / HRSC, controlled to MOLA",
+  "native_resolution_m": 1.0
+ },
+ "source_file": "gale_dtm_1m_window.tif",
+ "nodata_filled_px": 0,
+ "residual_m": {
+  "p1": -0.515,
+  "p99": 0.551,
+  "std": 0.188
+ },
+ "slope_deg": {
+  "median": 13.05,
+  "p99": 50.38
+ },
+ "note": "residual_m = relief the 4 m mesh cannot show (1 m DTM minus the bilinear 4 m surface)",
+ "generator": "pipeline/build_relief.py"
+}

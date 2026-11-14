@@ -17,7 +17,7 @@ function loadSite(name) {
   return {
     meta: read(name, 'meta.json'), ortho: read(name, 'ortho.json'), climate: read(name, 'climate.json'),
     pov: read(name, 'pov.json'), chemistry: read(name, 'chemistry.json'), track: read(name, 'track.json'),
-    geology: { source: read(name, 'geology.json')?.source }, spaceWeather: read(name, 'space_weather.json'),
+    geology: { source: read(name, 'geology.json')?.source }, spaceWeather: read(name, 'space_weather.json'), relief: read(name, 'relief.json'),
     layers: { minerals: layers.minerals || null, thermal: layers.thermal_inertia || null, rock: layers.rock_relief || null },
   };
 }
@@ -46,6 +46,8 @@ test('Jezero: RAD is a transferred reference, not a local measurement', () => {
   assert.equal(p.minerals.instrument, 'CRISM');
   assert.equal(p.thermal.instrument, 'THEMIS');
   assert.equal(p.orthoImage.instrument, 'HiRISE');
+  assert.equal(p.reliefShading.category, 'derived');
+  assert.match(p.reliefShading.limitations, /Lighting only/);
   assert.equal(p.air.instrument, 'MEDA ATS');
   assert.equal(p.air.category, 'direct-measurement');
   // SuperCam / PIXL: investigated, not integrated

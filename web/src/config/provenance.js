@@ -60,6 +60,17 @@ export function provenanceFor(siteName, site) {
     status: 'derived', uncertainty: 'a proxy: relief can come from a boulder, an outcrop step or DTM noise',
     limitations: 'A 1 m DTM shows rocks of a few metres; rocks under ~2 m are not seen. At Gale, DEM noise raises the values',
   });
+  if (site?.relief) {
+    add({
+      key: 'reliefShading', name: '3D relief shading', category: 'derived',
+      mission: 'Mars Reconnaissance Orbiter', instrument: 'HiRISE DTM (1 m)',
+      source: { title: meta.source?.title || 'HiRISE DTM', url: doi(meta.source?.doi) || meta.source?.page || null },
+      observed: 'as the DTM', resolution: `${site.relief.pixel_m?.toFixed(2)} m/px normal map`, coverage: span, dataType: 'topographic',
+      processing: 'surface normals of the 1 m DTM on the site grid, used to light the 4 m terrain mesh (pipeline/build_relief.py)',
+      status: 'derived', uncertainty: 'DTM noise shows as fine texture; the ×2 / ×4 view steepens the shading only',
+      limitations: 'Lighting only: heights, slopes, routes and every number still come from the 4 m grid',
+    });
+  }
 
   // ---- Images
   if (site?.ortho) {

@@ -35,6 +35,7 @@ export const site = {
   track: null,          // track.json: the rover's own route through the site + named places — optional
   chemistry: null,      // chemistry.json: ChemCam rock compositions inside the site — optional
   ortho: null,          // ortho.json: HiRISE orthomosaic draped on the terrain (ortho.jpg) — optional
+  relief: null,         // relief.json: 1 m HiRISE DTM normals that light the 3D terrain (relief.jpg) — optional
   loadError: null,
 };
 
@@ -129,6 +130,7 @@ export async function loadSite(name = DEFAULT_SITE, baseUrl = null) {
   site.layers = await loadJson(base, 'layers.json', (j) => decodeLayers(j, n));
   site.pov = await loadJson(base, 'pov.json', (j) => (j?.format === 'martian-map-pov/2' && Array.isArray(j.stations) && j.stations.length ? j : null));
   site.ortho = await loadJson(base, 'ortho.json', (j) => (j?.format === 'martian-map-ortho/1' && j.coverage > 0.5 ? j : null));
+  site.relief = await loadJson(base, 'relief.json', (j) => (j?.format === 'martian-map-relief/1' && j.size_px > 0 ? j : null));
   site.chemistry = await loadJson(base, 'chemistry.json', (j) => (j?.format === 'martian-map-chemistry/1' && Array.isArray(j.targets) && j.targets.length ? j : null));
   site.track = await loadJson(base, 'track.json', (j) => (j?.format === 'martian-map-track/1' && Array.isArray(j.segments) && j.segments.length ? j : null));
   site.spaceWeather = await loadJson(base, 'space_weather.json', (j) => (j?.format === 'martian-map-space-weather/1' ? j : null));

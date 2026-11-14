@@ -398,6 +398,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 | Terrain, 4 m grid over 2 km | topographic | MRO HiRISE — USGS Mars 2020 TRN DTM mosaic (Jezero); MSL Gale merged DEM 1 m (Gale) | slope walls, walking time, shadows |
 | Rock relief | topographic | the same DTMs at 1 m: relief left in each 4 m cell after removing its slope | boulders / outcrops become walls; route card |
 | Orbital image, 0.5 m/px | optical | MRO HiRISE orthomosaics (25 cm) — USGS Mars 2020 TRN mosaic (Jezero), MSL Gale merged mosaic (Gale); warped onto the site grid, aligned with the terrain to ≤ 1 m | **HiRISE** terrain mode (default), map base, cuff card |
+| 3D relief shading, 1 m | topographic (derived) | surface normals of the same 1 m HiRISE DTM on the site grid (`pipeline/build_relief.py`); they light the 4 m terrain mesh so metre-scale ridges, ripples and scarps show in 3D. **RELIEF ×1** = true slopes; **×2 / ×4** steepen the shading only — heights, slopes, routes and every number stay on the 4 m grid | 3D terrain (DEM and HiRISE modes) |
 | Ground-level images | optical | Perseverance and Curiosity raw-image feeds: near-horizontal Navcam / Mastcam(-Z) frames with pointing | ground view at stops |
 | Thermal inertia *(Jezero)* | thermal | Mars Odyssey THEMIS — Edwards & Buz (2021) | ground type along the route (dust, sand, rock) |
 | Dominant minerals *(Jezero)* | spectral | MRO CRISM — Parente et al. (2021) | science stops (one per mineral), map layer |
@@ -528,13 +529,13 @@ web/     the web app (React + Three.js / react-three-fiber, Vite)
   src/components/         MoonScene (3D) · MarsCrew · EvaHud · RightPanel (panel layout) · SiteSwitcher · MiniMap · HeatmapViewer
                           HelmetCamPreview · MissionDecision (workflow strip, summary, decision) · ui (small shared parts)
                           PovViewer (ground view) · ChemistryCard · CuffCard · ElevationProfile · ProvenancePanel · EvaAssessment · OxygenPanel
-  public/sites/jezero/    grid.bin · ortho (HiRISE) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov · track
-  public/sites/gale/      grid.bin · ortho (HiRISE) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov · track
+  public/sites/jezero/    grid.bin · ortho (HiRISE) · relief (1 m DTM normals) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov · track
+  public/sites/gale/      grid.bin · ortho (HiRISE) · relief (1 m DTM normals) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov · track
   tests/                  node --test suites (incl. real Jezero / Gale runs and Moon mode)
   e2e/                    browser tests on the production build (Playwright)
   scripts/                readmeFigures (README route figures from the planner)
 pipeline/                 fetch_sources · fetch_gale · fetch_chemistry · fetch_rems
-                          build_site · build_ortho · build_layers · build_space_weather · build_pov · build_track
+                          build_site · build_ortho · build_relief · build_layers · build_space_weather · build_pov · build_track
                           build_climate · build_climate_rems · build_geology · build_gale_geology · build_chemistry
                           build_offline
 MartianMap/               ready-to-run offline package
@@ -562,6 +563,7 @@ pip install -r pipeline/requirements.txt
 python pipeline/build_layers.py         # THEMIS, CRISM, rock relief → layers.json
 python pipeline/build_layers.py --site gale && python pipeline/build_gale_geology.py
 python pipeline/build_chemistry.py      # ChemCam targets → sites/gale/chemistry.json
+python pipeline/build_relief.py         # 1 m DTM normals → sites/<site>/relief.jpg (3D relief shading)
 python pipeline/build_track.py --site jezero --rover m20   # the rover's own route + places → track.json
 python pipeline/build_track.py --site gale --rover msl
 python pipeline/build_climate_rems.py   # REMS 5-min means → sites/gale/climate.json
