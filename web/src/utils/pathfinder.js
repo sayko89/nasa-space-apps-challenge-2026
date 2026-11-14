@@ -14,7 +14,7 @@ import { evaWindowTemps } from './climate.js';
 import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getObstacleBufferM, planningKey, HAZARD_PARAMS } from '../config/marswalkProfile.js';
 import { dilate } from './hazards.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
-import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
+import { homeTimeMaps, walkbackProfile, descendToHome, dijkstraTimes } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
 import { chemAnomalies } from './chemistry.js';
 import { findObjective } from '../config/objectives.js';
@@ -239,9 +239,12 @@ function buildCostMap(mode, slopeMap, craterMask, illumMap, experienceMap) {
 // (+ climb penalty). Heuristic = straight-line distance / max model speed,
 // a lower bound on every step (multipliers ≥ 1), so A* stays optimal.
 // Without `edge` the original unitless cell-cost behaviour is unchanged.
-function aStar(sr, sc, er, ec, costMap, edge = null) {
+// block: optional extra no-go cells (e.g. a dust devil); strict: return null instead of the BFS fallback
+// when the goal cannot be reached (the caller needs a definite "no path").
+function aStar(sr, sc, er, ec, costMap, edge = null, block = null, strict = false) {
   const N = GRID_RES;
   const ek = er*N+ec;
+  if (strict && block && block[ek]) return null;
 
   // If goal is a wall, find nearest non-wall grid cell
   const wall = getWallMap();
@@ -293,6 +296,7 @@ function aStar(sr, sc, er, ec, costMap, edge = null) {
       const nk=nr*N+nc;
       if (visited[nk]) continue;
       if (wall[nk]) continue; // Skip walls entirely
+      if (block && block[nk]) continue;
       const diag = dr!==0&&dc!==0;
       let step;
       if (edge) {
@@ -309,6 +313,7 @@ function aStar(sr, sc, er, ec, costMap, edge = null) {
       }
     }
   }
+  if (strict) return null;
   return _fallback(sr,sc,actualEr,actualEc);
 }
 
@@ -438,12 +443,13 @@ function computeRouteStats(path, slopeMap, craterMask, illumMap, costMap, experi
 }
 
 // ---- Chain Pathfinding ----
-function chainAStar(waypoints, costMap, edge = null, segEnds = null) {
+function chainAStar(waypoints, costMap, edge = null, segEnds = null, block = null, strict = false) {
   const fullPath = [];
   for (let i=0; i<waypoints.length-1; i++) {
     const { col:sc, row:sr } = worldToGrid(waypoints[i].x, waypoints[i].z);
     const { col:ec, row:er } = worldToGrid(waypoints[i+1].x, waypoints[i+1].z);
-    const seg = aStar(sr,sc,er,ec, costMap, edge);
+    const seg = aStar(sr,sc,er,ec, costMap, edge, block, strict);
+    if (!seg) return null;                 // strict: this leg has no path
     if (i===0) fullPath.push(...seg);
     else fullPath.push(...seg.slice(1));
     if (segEnds) segEnds.push(fullPath.length - 1);
@@ -683,7 +689,8 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
       const w = MODE_WEIGHTS[mode] || MODE_WEIGHTS.AUTO;
       const edge = { hMap, climbPenaltyS: w.climbPenaltyS };
       const segEnds = [];
-      const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge, segEnds);
+      const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge, segEnds, opts.block || null, !!opts.strict);
+      if (!rawPath) { result[mode] = null; continue; }   // strict planning (opts.block): no path
       const pinIndex = new Map();
       const path = smoothPath(rawPath, 3, new Set(segEnds), pinIndex);   // waypoints / stops stay where they are
       const dwell = waypoints.some(w => w.dwellS > 0) ? dwellIndexMap(path, waypoints, segEnds, rawPath.length, pinIndex) : null;
@@ -825,6 +832,46 @@ export function fastestReturnPath(x, z, hMap) {
     pts.push([wx, getTerrainHeight(wx, wz), wz]);
   }
   return { path: pts, gridTimeS: r.timeS };
+}
+
+/**
+ * Walk-home times and the fastest path home when extra cells are closed (a dust devil):
+ * the same Dijkstra / descent as the normal walk-back, over walls ∪ block.
+ */
+export function homeMapsAvoiding(homeX, homeZ, hMap, block) {
+  const wall = getWallMap(), merged = new Uint8Array(wall.length);
+  for (let i = 0; i < merged.length; i++) merged[i] = wall[i] | (block ? block[i] : 0);
+  const { col, row } = worldToGrid(homeX, homeZ);
+  const homeIdx = row * GRID_RES + col;
+  const toHome = dijkstraTimes(homeIdx, hMap, merged, GRID_RES, CELL_SIZE, 'to');
+  return {
+    toHomeAt: (x, z) => toHome[cellIndexAt(x, z)],
+    returnPath(x, z) {
+      const r = descendToHome(cellIndexAt(x, z), toHome, hMap, merged, GRID_RES, CELL_SIZE);
+      if (!r) return null;
+      const pts = [[x, getTerrainHeight(x, z), z]];
+      for (const k of r.cells) {
+        const rr = (k / GRID_RES) | 0, cc = k - rr * GRID_RES;
+        const { wx, wz } = gridToWorld(cc, rr);
+        pts.push([wx, getTerrainHeight(wx, wz), wz]);
+      }
+      return { path: pts, gridTimeS: r.timeS };
+    },
+  };
+}
+
+/** Grid cells within `radiusM` of (x, z) as a no-go mask (GRID_RES² Uint8Array). */
+export function discMask(x, z, radiusM) {
+  const m = new Uint8Array(GRID_RES * GRID_RES);
+  const { col, row } = worldToGrid(x, z);
+  const rc = Math.ceil(radiusM / CELL_SIZE) + 1;
+  for (let r = Math.max(0, row - rc); r <= Math.min(GRID_RES - 1, row + rc); r++) {
+    for (let c = Math.max(0, col - rc); c <= Math.min(GRID_RES - 1, col + rc); c++) {
+      const { wx, wz } = gridToWorld(c, r);
+      if (Math.hypot(wx - x, wz - z) <= radiusM) m[r * GRID_RES + c] = 1;
+    }
+  }
+  return m;
 }
 
 /** Fastest walking time home from (x, z) [s] (Infinity if unreachable / no maps). */

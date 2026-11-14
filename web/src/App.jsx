@@ -17,6 +17,7 @@ import { setHazardRoverMode } from './utils/heatmaps';
 import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT, SCIENCE_PARAMS, EVA_CREW, paramEntry, getEvaProfile, setEvaProfile, EVA_PROFILES, MARS_SUIT_COST_RATIO } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
+import { planDustReroute } from './utils/dustReroute';
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
 import { buildReturnToHomePath } from './utils/returnToHomeController';
 import { planRoutes, planScience, warmPlanner, plannerUsesWorker } from './utils/plannerClient';
@@ -327,7 +328,9 @@ export default function App() {
     if (!e) return;
     setEvaTick(v => v + 1);
     addLog(`EVA ${fmtClock(e.t)} · ${e.text}`);
-    if (e.kind === 'abort') {
+    if (e.kind === 'reroute') showToast(`☁ ${e.text}`, 'warning', 7500);
+    else if (e.kind === 'reroute-failed') showToast(`☁ ${e.text}`, 'error', 7500);
+    else if (e.kind === 'abort') {
       showToast(e.text, 'warning', 6500);
       if (/dust/.test(e.reason || '')) setDustMode(DUST_STATES.RETURN_HOME);
     } else if (e.kind === 'ponr') showToast('⛔ Point of no return passed — this plan is NO-GO', 'error', 6500);
@@ -360,6 +363,12 @@ export default function App() {
       loadedRouteRef.current = null;
     }
   }, [routes, activeRoute, playback]);
+
+  // Dust devil ahead during an EVA → plan around it from the crew's position (utils/dustReroute.js)
+  useEffect(() => {
+    if (!IS_DEM) return;
+    playback.setDustPlanner((ctx) => planDustReroute({ ...ctx, maps: getMaps(), home: waypoints[0] || DEFAULT_HOME, mission }));
+  }, [playback, getMaps, waypoints, mission]);
 
   const buildEvaEnv = useCallback(() => {
     const { hm: hmap } = getMaps();
@@ -869,6 +878,13 @@ export default function App() {
   // Crew pose from the 3D scene (~10 Hz) → minimap arrow, telemetry, dust monitor
   const onCrewPose = useCallback((p) => setRoverState(p), []);
 
+  // Route re-planned around a dust devil (drawn from the crew's position at the re-route)
+  const reroutePath = useMemo(() => {
+    if (!IS_DEM || !playback.rerouted || playback.aborted) return null;
+    const r = playback.rerouted;
+    return [[r.fromX, 0, r.fromZ], ...r.path.slice(1)];
+  }, [playback, evaTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Abort return path (dashed line) while the crew walks home
   const returnPath = useMemo(() => {
     if (!IS_DEM || !playback.aborted || !playback.active) return null;
@@ -983,6 +999,7 @@ export default function App() {
             onCrewPose={IS_DEM ? onCrewPose : null}
             trailKey={trailKey}
             returnPath={returnPath}
+            reroutePath={reroutePath}
             sceneApiRef={sceneApiRef}
             showTrack={showTrack}
             overlay={IS_DEM && drapes.length ? { layer: drapeLayer, opacity: drapeOpacity, refreshKey: routes } : null}

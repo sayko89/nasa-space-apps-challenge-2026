@@ -46,6 +46,7 @@ import { T, WORKSPACES, WORKSPACE_OF_TARGET, STATUS_COLOR } from '../ui/theme';
 import { O2_SCENARIOS } from '../config/oxygen';
 import { provenanceFor, CATEGORIES } from '../config/provenance';
 import { routeModeExplanation } from '../utils/routeModes';
+import { DUST_REROUTE } from '../utils/dustReroute';
 import { WORKSPACE_HELP } from '../workspace/WelcomeGuide';
 
 const WS_META = Object.fromEntries(WORKSPACES.map(w => [w.id, w]));
@@ -1114,8 +1115,13 @@ export default function RightPanel({
           {IS_DEM && (
             <More label="What does the dust-devil drill simulate?">
             <div style={{fontSize:fs(7),color:'#b0a080',lineHeight:1.45}}>
-              Press the button, then click the site map to drop a dust devil. One that lies on the route within the next {Math.round(600/60)} min of walking
-              aborts the EVA; the crew walks home on the fastest path. Radius is illustrative.
+              Press the button, then click the site map to drop a dust devil. When it lies on the route within the next {Math.round(600/60)} min of walking,
+              the planner first looks for a route <b>around</b> it from where the crew stands — the remaining stops and home, never closer than
+              {' '}{DUST_REROUTE.safetyMarginM.value} m beyond its trigger radius (stops inside that distance are skipped). The new route
+              (yellow) is taken only if the crew can still walk home within the EVA budget at every point (time already spent included),
+              the oxygen covers the rest of the plan plus the reserve and they are home before sunset. Otherwise the EVA is aborted and the
+              crew walks home, around the dust devil when possible (orange dashed). A second alarm for the same dust devil always sends them home.
+              <br/><i>Illustrative: the dust devil does not move; radius and safety distance are design choices, not an operational NASA procedure.</i>
             </div>
             </More>
           )}
