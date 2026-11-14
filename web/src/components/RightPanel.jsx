@@ -1117,11 +1117,11 @@ export default function RightPanel({
             <More label="What does the dust-devil drill simulate?">
             <div style={{fontSize:fs(7),color:'#b0a080',lineHeight:1.45}}>
               Press the button, then click the site map to drop a dust devil. When it lies on the route within the next {Math.round(600/60)} min of walking,
-              the planner first looks for a route <b>around</b> it from where the crew stands — the remaining stops and home, never closer than
-              {' '}{DUST_REROUTE.safetyMarginM.value} m beyond its trigger radius (stops inside that distance are skipped). The new route
-              (yellow) is taken only if the crew can still walk home within the EVA budget at every point (time already spent included),
-              the oxygen covers the rest of the plan plus the reserve and they are home before sunset. Otherwise the EVA is aborted and the
-              crew walks home, around the dust devil when possible (orange dashed). A second alarm for the same dust devil always sends them home.
+              the crew sets a <b>{DUST_REROUTE.safetyMarginM.value} m safety zone</b> around it (dashed yellow ring) and a <b>new SAFE route</b> is planned
+              from the point where they noticed it — the remaining stops and home, outside the zone (stops inside it are skipped). The new route
+              (yellow) is taken if the crew can still walk home within the EVA budget at every point (time already spent included), the oxygen
+              covers the rest of the plan plus the reserve and they are home before sunset — you get an information message with the extra time.
+              Only if no such route exists: <b>“No new route found — returning to the start point for safety”</b>, and the walk home also avoids the zone when possible (orange dashed).
               <br/><i>Illustrative: the dust devil does not move; radius and safety distance are design choices, not an operational NASA procedure.</i>
             </div>
             </More>

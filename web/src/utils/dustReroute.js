@@ -1,7 +1,7 @@
 /**
  * Dust devil on the route ahead during an EVA: go around it, or go home.
  *
- * The dust devil is treated as a no-go disc (trigger radius + a safety margin) and the planner
+ * When the crew notices it, a safety zone is set around the dust devil (its radius + 25 m) and the planner
  * runs again from where the crew stands: the remaining stops (those inside the disc are skipped)
  * and home, A* in strict mode, so the answer is either a route that never enters the disc or a
  * definite "no path". The new route is accepted only if
@@ -19,8 +19,11 @@ import { planAllRoutes, homeMapsAvoiding, discMask } from './pathfinder.js';
 import { buildTimeline } from './evaTimeline.js';
 
 export const DUST_REROUTE = {
-  safetyMarginM: { value: 25, note: 'design choice (illustrative): clearance kept beyond the trigger radius' },
+  safetyMarginM: { value: 25, note: 'design choice (illustrative): safety zone kept around the dust devil beyond its radius' },
 };
+
+/** Radius of the no-go safety zone around a dust devil [m]: its radius + the safety margin. */
+export const safetyZoneRadius = (hazard) => (hazard?.radius ?? 0) + DUST_REROUTE.safetyMarginM.value;
 
 const minDist = (path, x, z) => path.reduce((m, p) => Math.min(m, Math.hypot(p[0] - x, p[2] - z)), Infinity);
 
@@ -43,7 +46,8 @@ const minDist = (path, x, z) => path.reduce((m, p) => Math.min(m, Math.hypot(p[0
  */
 export function planDustReroute(c) {
   const trig = c.hazard.interferenceRadius ?? c.hazard.radius;
-  const blockR = trig + DUST_REROUTE.safetyMarginM.value;
+  // safety zone: never smaller than the trigger radius, so the new route cannot set the alarm off again
+  const blockR = Math.max(safetyZoneRadius(c.hazard), trig + 4);
   const block = discMask(c.hazard.x, c.hazard.z, blockR);
   const avoid = homeMapsAvoiding(c.home.x, c.home.z, c.maps.hm, block);
   const skipped = c.stops.filter(s => Math.hypot(s.x - c.hazard.x, s.z - c.hazard.z) <= blockR);
@@ -51,7 +55,7 @@ export function planDustReroute(c) {
   const checks = [];
   const fail = (reason) => ({ ok: false, reason, skipped, checks, toHomeAt: avoid.toHomeAt, returnPath: avoid.returnPath });
 
-  if (Math.hypot(c.pos.x - c.hazard.x, c.pos.z - c.hazard.z) <= blockR) return fail('the crew is already inside the safety distance of the dust devil');
+  if (Math.hypot(c.pos.x - c.hazard.x, c.pos.z - c.hazard.z) <= blockR) return fail('the crew is already inside the safety zone');
   const wps = [{ x: c.pos.x, z: c.pos.z }, ...kept.map(s => ({ x: s.x, z: s.z, dwellS: s.dwellS || 0, label: s.label })), { x: c.home.x, z: c.home.z }];
   const mode = c.mode || 'SAFE';
   let r;
@@ -62,12 +66,12 @@ export function planDustReroute(c) {
   } catch (err) {
     return fail(`re-planning failed: ${err.message}`);
   }
-  if (!r) return fail('no walkable path around the dust devil to the remaining stops and home');
+  if (!r) return fail('no walkable path around the safety zone to the remaining stops and home');
   const { path, stats } = r;
   const el = stats.elapsedS, endS = c.t + el[el.length - 1];
 
   const clear = minDist(path, c.hazard.x, c.hazard.z);
-  checks.push({ key: 'clearance', ok: clear > trig, detail: `closest approach ${clear.toFixed(0)} m (trigger radius ${trig.toFixed(0)} m)` });
+  checks.push({ key: 'clearance', ok: clear > trig, detail: `closest approach ${clear.toFixed(0)} m (safety zone ${blockR.toFixed(0)} m, alarm radius ${trig.toFixed(0)} m)` });
   let minMargin = Infinity;
   for (let i = 0; i < path.length; i++) {
     const back = avoid.toHomeAt(path[i][0], path[i][2]);
@@ -89,7 +93,7 @@ export function planDustReroute(c) {
     const src = kept[s.wp - 1];
     return { idx: s.idx, dwellS: s.dwellS, label: src?.label ?? s.label, n: src?.n };
   });
-  return { ok: true, mode, path, elapsedS: el, stops, skipped, endS, extraS: endS - c.nominalEndS, checks,
+  return { ok: true, mode, path, elapsedS: el, stops, skipped, endS, extraS: endS - c.nominalEndS, checks, zoneM: blockR,
     toHomeAt: avoid.toHomeAt, returnPath: avoid.returnPath };
 }
 

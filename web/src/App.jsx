@@ -17,7 +17,7 @@ import { setHazardRoverMode } from './utils/heatmaps';
 import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT, SCIENCE_PARAMS, EVA_CREW, paramEntry, getEvaProfile, setEvaProfile, EVA_PROFILES, MARS_SUIT_COST_RATIO } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
-import { planDustReroute } from './utils/dustReroute';
+import { planDustReroute, DUST_REROUTE } from './utils/dustReroute';
 import { evaluateDustInterference } from './utils/sensorInterferenceEvaluator';
 import { buildReturnToHomePath } from './utils/returnToHomeController';
 import { planRoutes, planScience, warmPlanner, plannerUsesWorker } from './utils/plannerClient';
@@ -328,8 +328,8 @@ export default function App() {
     if (!e) return;
     setEvaTick(v => v + 1);
     addLog(`EVA ${fmtClock(e.t)} · ${e.text}`);
-    if (e.kind === 'reroute') showToast(`☁ ${e.text}`, 'warning', 7500);
-    else if (e.kind === 'reroute-failed') showToast(`☁ ${e.text}`, 'error', 7500);
+    if (e.kind === 'reroute') showToast(`☁ ${e.text}`, 'info', 8000);
+    else if (e.kind === 'reroute-failed') showToast(`☁ ${e.text}`, 'warning', 8000);
     else if (e.kind === 'abort') {
       showToast(e.text, 'warning', 6500);
       if (/dust/.test(e.reason || '')) setDustMode(DUST_STATES.RETURN_HOME);
@@ -688,7 +688,7 @@ export default function App() {
     interferenceTicksRef.current = 0;
     if (IS_DEM) {
       playback.setHazard(hazard);
-      showToast('Dust devil placed. If it lies on the route ahead, the planner looks for a safe route around it; if there is none, the crew walks home.', 'info', 6000);
+      showToast(`Dust devil placed. When the crew sees it on the route ahead they keep ${DUST_REROUTE.safetyMarginM.value} m away from it and a new SAFE route is planned; if none is possible they return to the start point.`, 'info', 6500);
       addLog(`Dust devil placed at (${pos.x.toFixed(0)}, ${pos.z.toFixed(0)}), r=${hazard.radius} m. Route look-ahead active.`);
       return;
     }
