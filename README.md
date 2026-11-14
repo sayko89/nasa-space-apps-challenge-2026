@@ -31,12 +31,13 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Mission objectives** | 5 per site — the chosen objective decides which stops the planner can pick ([table](#mission-objectives--the-plan-follows-the-objective)) |
 | **Safety checks** | hard: walk-back margin and point of no return, slope, radius, carry weight, rover reach, daylight · environment: space weather, 30-min reserve, depressions / obstacle edges |
 | **Decision** | **GO · CONDITIONAL · NO-GO · INSUFFICIENT DATA**, each with its reasons; missing data is never "safe" |
+| **Oxygen & mass** | live O₂ use per NASA BVAD life-support scenario (0.076 / 0.15 / 1.0 kg/h), O₂ for the walk home + reserve, carried mass falling as O₂ is used ([details](#oxygen-and-carried-mass)) |
 | **EVA assessment** | three separate results, no combined score: **A. Payload & Mass** · **B. Dust Exposure & Equipment Reliability** (qualitative, sourced) · **C. Terrain & Mobility** ([details](#suit-payload-and-dust--three-separate-assessments)) |
 | **Hazard map** | slope and rock walls, obstacle buffer, closed depressions, steep / rough ground, rover reach, ground known only from orbit |
 | **Provenance** | every layer labelled direct measurement / orbital / derived / transferred reference / modelled / simulated |
 | **EVA limit sets** | Lunar ConOps (NASA) or **Mars conservative** (derived for Mars gravity) |
 | **Outputs** | 3D planning view, live EVA HUD, printable **cuff card** (A4 / PDF); works on desktop, tablet and phone |
-| **Tests** | 110 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 7 Python, on every push before deploy |
+| **Tests** | 123 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 7 Python, on every push before deploy |
 
 ## Try it
 
@@ -205,7 +206,7 @@ Every route card, the mission summary, the cuff card and the JSON export carry t
 
 | Group | Checks | Effect |
 |---|---|---|
-| **Hard constraints** | walk-back margin ≥ 0 everywhere (no point of no return) · slope ≤ limit · distance ≤ limit · carried weight ≤ 45 kg Earth-equivalent · within 30 min of the rover (rover mode) · start after sunrise and home before sunset | one fails → **NO-GO**; one cannot be evaluated (e.g. no start time) → **INSUFFICIENT DATA** |
+| **Hard constraints** | walk-back margin ≥ 0 everywhere (no point of no return) · slope ≤ limit · distance ≤ limit · carried weight ≤ 45 kg Earth-equivalent · enough oxygen to walk home from every point · within 30 min of the rover (rover mode) · start after sunrise and home before sunset | one fails → **NO-GO**; one cannot be evaluated (e.g. no start time) → **INSUFFICIENT DATA** |
 | **Environment** | space weather: a solar particle event within ±2 days, *or no event data for the date* · tightest margin below the 30-min reserve of the Apollo 17 traverse plan · route crosses a closed depression or an obstacle edge | any open → **CONDITIONAL** |
 | **Notes** | radiation dose (at Jezero from a transferred Gale reference) · ground known only from orbit · dust & equipment warnings | shown, do not change the status |
 | **Payload** | an itemised payload with a missing or invalid entry | **INSUFFICIENT DATA** (an over-limit payload already fails the carried-weight check) |
@@ -275,6 +276,35 @@ The **xEMU** is NASA's exploration suit developed for Artemis lunar EVAs; it is 
 <img src="docs/img/eva-assessment.jpg" width="640" alt="Left: Mission setup with the itemised payload (instruments, communications, sampling, emergency, other), the parts already in the suit mass, and the four dust protection settings. Right: the EVA assessment at Jezero — A. Payload & Mass within limit, B. Dust Exposure & Equipment Reliability opened with exposure factors, warnings and the first equipment groups with their vulnerability, protection, rationale, precautions and sources">
 
 **Terrain & Mobility** reuses what the planner computed and adds nothing: the same speeds apply outbound and on the way back (a test checks that the Mars-conservative factor scales both by 1.65), and payload or dust settings leave the route and every walking time unchanged (a real-data test at Jezero).
+
+## Oxygen and carried mass
+
+Oxygen is tracked on the EVA's mission clock (`web/src/utils/oxygen.js`), so pausing stops it and the speed multiplier only changes how fast mission time runs. Details: [`docs/OXYGEN_AND_MASS.md`](docs/OXYGEN_AND_MASS.md).
+
+| Scenario (Mission setup or live in the HUD) | Architecture | Rate |
+|---|---|---:|
+| Closed-loop reference | closed-loop PLSS: metabolic O₂ and leakage only | 0.076 kg/h |
+| Swing-bed CO₂ removal (default) | CO₂ and water vented to Mars; O₂ lost as sweep gas | 0.15 kg/h |
+| Cryogenic O₂ for cooling | O₂ used for thermal control as well as breathing | 1.0 kg/h |
+
+The rates come from NASA's *Life Support Baseline Values and Assumptions Document* (NASA/TP-2015-218570 Rev 2, 2022, §4.6.2) for a 4-hour Mars sortie. They are **architecture references, not the specification of a Mars suit**, and they are constant within a scenario. BVAD gives no per-activity O₂ relation this planner could apply segment by segment, so the rate does not follow activity.
+
+- **O₂ remaining** = max(0, initial − consumed). Initial O₂ is entered by the crew or, if left empty, sized for the suit's 8-h design EVA at the scenario rate. That sizing is an assumption, because no Mars-suit tank capacity is published.
+- **Carried mass** = (suit − initial O₂) + O₂ remaining + equipment. The suit mass is taken as the charged suit, so oxygen is never counted twice and the 45 kg carry check is unchanged. The mass falls as O₂ is used but **does not speed up the walk**.
+- **Decision.**
+  - O₂ that cannot cover the walk home from the route's worst point → **NO-GO**.
+  - Return covered but not the reserve → **CONDITIONAL**. The reserve is configurable; its default is the 30-min Apollo 17 reserve.
+  - Invalid settings → **INSUFFICIENT DATA**.
+- **HUD → O₂ & MASS** shows:
+  - a reserve bar
+  - initial, remaining and consumed O₂
+  - how long the O₂ lasts
+  - the O₂ needed to walk home
+  - the carried mass
+  - two charts: O₂ remaining against *walk home + reserve* and *rest of plan + reserve*, and carried mass over time
+  - warnings when the reserve is lost or the return is no longer feasible, including after an abort or a scenario change
+
+<img src="docs/img/oxygen-hud.jpg" width="640" alt="EVA HUD at Jezero, 52 minutes in, just after the scenario was switched from swing-bed to cryogenic oxygen: reserve bar, initial, remaining and consumed oxygen, time the oxygen lasts, oxygen to walk home, carried mass, a warning that the oxygen will not last the rest of the plan, and the oxygen and carried-mass charts over the EVA">
 
 ## Data provenance
 
@@ -382,7 +412,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (110 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
+`node --test web/tests/*.test.mjs` (123 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
 
 | Area | What is checked |
 |---|---|
@@ -399,6 +429,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 | Decision | any failed hard constraint → NO-GO; unevaluable → INSUFFICIENT DATA; unknown space weather → never GO; notes never change the status |
 | Payload | total = suit + items; suit parts never added twice; the existing 45 kg limit; remaining capacity; missing or invalid entries → INSUFFICIENT DATA |
 | Dust | seven components with different classes, each sourced; lunar / analog / Mars sources kept apart; protection never lowers a class; unknown settings, date and layer reported as missing; no probability, percentage or rate fields |
+| Oxygen & mass | BVAD values; depletion per scenario; zero boundary; pause and speed multipliers; walking, stops and abort consume; rate change mid-EVA not retroactive; reserve and depletion warnings; mass without double counting; NO-GO / CONDITIONAL / INSUFFICIENT DATA; real Jezero and Gale routes; Moon mode unaffected |
 | Mobility & integration | no payload or dust penalty (real Jezero route and walking times identical with 0 and 40 kg); the Mars speed factor applies outbound and on the return; dust never changes the decision; an over-limit payload is NO-GO through the existing rule |
 | Provenance | every record complete and categorised against the real files; Jezero RAD transferred; Gale geology derived; CRISM / THEMIS / SuperCam shown as unavailable with reasons |
 | Rover track | waypoints come out in drive order and split where the rover leaves the site; every region label lies inside its own unit |
@@ -413,6 +444,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - **Design choices.** How slope changes suited walking speed is an assumption (Tobler shape). Time per stop, the objectives' weights, the 0.5 m rock-relief limit, the hazard thresholds other than the slope limit, the ±2-day SEP window and the 10 km/h rover speed are design choices or assumptions, labelled as such in the app.
 - **Objectives.** They select among the layers each site has; they do not add data. The Jezero delta is outside the 2 km site, so the lake-and-delta objective can only sample crater-floor rocks. "CaO high" stands in for calcium-sulfate veins because this ChemCam product reports no sulfur. Gale's ridge / hollow classes come from a DEM that does not resolve single boxwork ridges.
 - **Dust and equipment.** Qualitative only: no validated data gives degradation rates or failure probabilities for suits or tools in Martian dust, so none are computed. Most evidence is lunar (Apollo, lunar simulant) and is used as an analogy; the Perseverance spacesuit samples are Mars data but their per-material results are not yet published. Dust-mantled ground is known only at Jezero (100 m thermal-inertia pixels); the dusty season is a seasonal pattern, not a storm forecast.
+- **Oxygen.** The rates are NASA architecture references for a 4-hour Mars sortie, not measured Mars-suit consumption, and they do not follow activity. A Mars-suit oxygen capacity is not published, so the sized initial oxygen is an assumption, as is the suit mass including its oxygen. Secondary oxygen and buddy sharing are not modelled.
 - **Payload.** Carried mass does not change walking speed, because no validated load–speed model at Mars gravity was found; the payload acts only through the weight limit. The suit radio is assumed to be inside the life-support mass.
 - **Hazards.** Closed depressions are found only where the DTM sees them (≥ 1 m deep); "known only from orbit" uses the positions the rover took ground views from, not everywhere it could see.
 - **Resolution.** A 1 m DTM shows rocks of a few metres, not smaller ones. Jezero's landing area was chosen for being smooth, so there only a handful of cells exceed the 0.5 m rock-relief limit. CRISM mineral names are the closest match of each spectral class. Thermal-inertia classes are guidance.
@@ -458,7 +490,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - NASA/JPL-Caltech/ESA/Univ. of Arizona/JHUAPL/MSSS/USGS Astrogeology Science Center. *Curiosity's Proposed Path up Mount Sharp* (PIA23179, 2019) and *Curiosity's Path to Gediz Vallis Ridge and Beyond* ([PIA26042](https://science.nasa.gov/photojournal/curiositys-path-to-gediz-vallis-ridge-and-beyond/), 2023) — the route-map style. NASA/JPL *Mars Trek* ([about](https://trek.nasa.gov/mars/jpl/config/textAbout.html)) — elevation plots. NASA *Worldview* ([comparison mode](https://www.earthdata.nasa.gov/news/blog/introducing-worldviews-comparison-feature)) — layer swipe.
 - Allison, M. & McEwen, M. (2000). Mars24 algorithm, NASA GISS. Tobler, W. (1993), NCGIA TR 93-1.
 
-Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md). Payload, dust and mobility assessments: [docs/EVA_ASSESSMENT.md](docs/EVA_ASSESSMENT.md).
+Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md). Payload, dust and mobility assessments: [docs/EVA_ASSESSMENT.md](docs/EVA_ASSESSMENT.md). Oxygen and carried mass: [docs/OXYGEN_AND_MASS.md](docs/OXYGEN_AND_MASS.md).
 
 ## Use of AI
 
@@ -471,11 +503,11 @@ web/     the web app (React + Three.js / react-three-fiber, Vite)
   src/utils/              walkModel · pathfinder (A*) · walkback (Dijkstra) · science (stop optimiser)
                           radiation · marsTime (Mars24) · shadows · climate · chemistry · cuffCard · elevationProfile
                           evaTimeline + evaPlayback · orthoImage · hazards · missionStatus · stopCards · shareLink
-                          payload · dust · mobility (the three EVA assessments)
+                          payload · dust · mobility (the three EVA assessments) · oxygen
   src/config/             marswalkProfile (EVA limits, hazard thresholds) · mission (suit, equipment, rover)
-                          objectives (5 per site) · provenance (every layer, every kind) · dust (sources, components)
+                          objectives (5 per site) · provenance (every layer, every kind) · dust (sources, components) · oxygen (BVAD scenarios)
   src/components/         MoonScene (3D) · MarsCrew · EvaHud · RightPanel · SiteSwitcher
-                          PovViewer (ground view) · ChemistryCard · CuffCard · ElevationProfile · ProvenancePanel · EvaAssessment
+                          PovViewer (ground view) · ChemistryCard · CuffCard · ElevationProfile · ProvenancePanel · EvaAssessment · OxygenPanel
   public/sites/jezero/    grid.bin · ortho (HiRISE) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov · track
   public/sites/gale/      grid.bin · ortho (HiRISE) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov · track
   tests/                  node --test suites (incl. real Jezero / Gale runs and Moon mode)

@@ -40,3 +40,14 @@ test('moon: all four route modes plan around craters with risk / cost stats', ()
   }
   assert.ok(wall.some(v => v === 1));
 });
+
+test('moon: the oxygen model stays out — no walk-back profile, so no oxygen check is applied', async () => {
+  const { planOxygenCheck, oxygenConfig } = await import('../src/utils/oxygen.js');
+  const hm = T.buildHeightMap(), sm = T.buildSlopeMap(hm), cm = T.buildCraterMask();
+  const half = T.TERRAIN_SIZE / 2;
+  const pts = [[-0.35, -0.35], [0.35, 0.35], [-0.3, 0.3], [0.3, -0.3], [0, -0.4], [0, 0.4]].map(([x, z]) => ({ x: x * T.TERRAIN_SIZE, z: z * T.TERRAIN_SIZE })).filter(p => !P.isWallAt(p.x, p.z));
+  const r = P.planAllRoutes(pts.slice(0, 2), sm, cm, hm);
+  assert.equal(r.SAFE.stats.budgetS, undefined);
+  assert.equal(planOxygenCheck(oxygenConfig({ suit: 'mars', equipmentKg: 10 }), r.SAFE.stats).valid, false);
+  void half;
+});

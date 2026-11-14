@@ -14,6 +14,9 @@
  *   NOTES             (shown, do not change the status)
  *     radiation dose from a transferred reference (Jezero); ground known only from orbit;
  *     dust exposure & equipment warnings (utils/dust.js) — qualitative, never NO-GO or CONDITIONAL
+ *   OXYGEN            (utils/oxygen.js planOxygenCheck, when given) hard: enough O₂ for the walk home
+ *                     from every point of the route; environment: … while keeping the O₂ reserve;
+ *                     an invalid oxygen setting → INSUFFICIENT DATA
  *   PAYLOAD           an over-limit payload fails the existing carry check (NO-GO); a missing or
  *                     invalid payload entry (utils/payload.js) → INSUFFICIENT DATA
  *
@@ -32,7 +35,8 @@ const hm = (s) => {
  * @param {object} s    route stats (pathfinder computeDemStats): checks, minMarginS, maxSlopeDeg, maxRadialM, carry, rover, light, radiation
  * @param {object} ctx  { limits: { maxSlopeDeg, maxRadialM }, wx: spaceWeatherAt() result | null, wxLive?: bool,
  *                        startFuture?: bool, radiationLocal: bool, hazards?: routeHazards() result,
- *                        payload?: payloadAssessment() result, dust?: dustAssessment() result }
+ *                        payload?: payloadAssessment() result, dust?: dustAssessment() result,
+ *                        oxygen?: planOxygenCheck() result }
  * @returns {{ status, hard, environment, notes, missing, summary }}
  */
 export function missionDecision(s, ctx = {}) {
@@ -61,6 +65,13 @@ export function missionDecision(s, ctx = {}) {
     missing.push({ key: 'daylight', label: 'Daylight', detail: s.light ? 'sun never rises or never sets at this date — rule cannot be applied' : 'no EVA start time — daylight cannot be checked' });
   }
 
+  const o2 = ctx.oxygen;
+  if (o2 && o2.valid) {
+    add(hard, 'oxygen', 'Oxygen for a safe return from every point', o2.returnOk,
+      `${o2.initialKg.toFixed(2)} kg at ${o2.rateKgH} kg/h (${o2.scenarioLabel}) lasts ${hm(o2.enduranceS)}; worst point needs ${hm(o2.needS)} (elapsed + walk home)`);
+  } else if (o2) {
+    missing.push({ key: 'oxygen', label: 'Oxygen supply', detail: o2.invalid.map(i => i.detail).join('; ') });
+  }
   if (ctx.payload?.status === 'INSUFFICIENT DATA') {
     missing.push({ key: 'payload', label: 'Payload mass', detail: ctx.payload.invalid.map(i => `${i.label}: ${i.detail}`).join('; ') });
   }
@@ -80,6 +91,10 @@ export function missionDecision(s, ctx = {}) {
   if (Number.isFinite(s.minMarginS) && s.minMarginS >= 0) {
     add(environment, 'reserve', 'Tightest margin ≥ 30-min reserve', s.minMarginS >= RESERVE_S,
       `${hm(s.minMarginS)} (Apollo 17 kept 30 min in reserve)`);
+  }
+  if (o2 && o2.valid && o2.returnOk) {
+    add(environment, 'o2reserve', 'Oxygen reserve kept', o2.reserveOk,
+      `${hm(o2.reserveS)} reserve (${o2.reserveKg.toFixed(2)} kg); ${o2.spareKg >= 0 ? `${o2.spareKg.toFixed(2)} kg spare beyond it` : `short by ${(-o2.spareKg).toFixed(2)} kg`}`);
   }
   const soft = (ctx.hazards || []).filter(h => h.key === 'depression' || h.key === 'buffer');
   if (ctx.hazards) {
@@ -106,7 +121,7 @@ export function missionDecision(s, ctx = {}) {
   const envProblems = environment.filter(e => e.ok !== true);
   // how an open environmental condition reads in the one-line summary
   const ISSUE = { spaceWeather: (e) => (e.ok === null ? 'space weather unknown' : 'solar particle event near the date'),
-    reserve: () => 'walk-back margin below the 30-min reserve', terrain: () => 'route crosses depressions / obstacle edges' };
+    reserve: () => 'walk-back margin below the 30-min reserve', o2reserve: () => 'oxygen reserve not kept', terrain: () => 'route crosses depressions / obstacle edges' };
   let status;
   if (failHard.length) status = 'NO-GO';
   else if (missing.length) status = 'INSUFFICIENT DATA';

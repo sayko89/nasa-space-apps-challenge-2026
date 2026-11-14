@@ -21,6 +21,7 @@ import { planRoutes, planScience, warmPlanner, plannerUsesWorker } from './utils
 import { sunPosition, msAtLtst } from './utils/marsTime';
 import { airTempAt } from './utils/climate';
 import { EvaPlayback } from './utils/evaPlayback';
+import { oxygenConfig } from './utils/oxygen';
 import { fmtClock, fmtHM } from './utils/format';
 import { radiationIsLocal } from './utils/radiation';
 import SiteSwitcher from './components/SiteSwitcher';
@@ -203,6 +204,7 @@ export default function App() {
     const m = { ...DEFAULT_MISSION, ...(SHARED?.mission || {}) };
     if (!SUITS[m.suit]) m.suit = DEFAULT_MISSION.suit;
     m.dust = { ...DEFAULT_MISSION.dust, ...(m.dust || {}) };
+    m.o2 = { ...DEFAULT_MISSION.o2, ...(m.o2 || {}) };
     return m;
   });
   // The active EVA limit set follows Mission setup; set before any planning in this render
@@ -223,6 +225,9 @@ export default function App() {
 
   // Stage 7 — EVA playback (DEM): controller + the bits of its state React needs
   const playback = useMemo(() => new EvaPlayback(), []);
+  // Oxygen settings follow Mission setup; mid-EVA a new rate applies from the current mission time
+  useEffect(() => { playback.setOxygen(oxygenConfig(mission)); },
+    [playback, mission.o2, mission.suit, mission.equipmentKg]); // eslint-disable-line react-hooks/exhaustive-deps
   const [evaStatus, setEvaStatus] = useState('idle');
   const [evaTick, setEvaTick] = useState(0);            // bumps on EVA events (flags, return path)
   const [trailKey, setTrailKey] = useState(0);          // wipes boot prints on a new / restarted EVA
@@ -912,7 +917,8 @@ export default function App() {
       {showProvenance && <ProvenancePanel onClose={() => setShowProvenance(false)} />}
 
       {evaActive && (
-        <EvaHud playback={playback} right={narrow ? 6 : PANEL_W + 12} narrow={narrow} compact={compact} onAbort={handleAbortEva} onStop={handleStopRover} />
+        <EvaHud playback={playback} right={narrow ? 6 : PANEL_W + 12} narrow={narrow} compact={compact} onAbort={handleAbortEva} onStop={handleStopRover}
+          o2Scenario={mission.o2?.scenario} onO2Scenario={(sc) => setMission(m => ({ ...m, o2: { ...m.o2, scenario: sc } }))} />
       )}
 
       {/* Toasts */}
