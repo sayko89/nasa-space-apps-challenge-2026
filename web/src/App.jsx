@@ -688,7 +688,7 @@ export default function App() {
     interferenceTicksRef.current = 0;
     if (IS_DEM) {
       playback.setHazard(hazard);
-      showToast('Dust devil placed. If it sits on the route ahead, the crew aborts and walks home.', 'info', 5500);
+      showToast('Dust devil placed. If it lies on the route ahead, the planner looks for a safe route around it; if there is none, the crew walks home.', 'info', 6000);
       addLog(`Dust devil placed at (${pos.x.toFixed(0)}, ${pos.z.toFixed(0)}), r=${hazard.radius} m. Route look-ahead active.`);
       return;
     }
