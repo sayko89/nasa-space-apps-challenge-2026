@@ -795,7 +795,7 @@ function ObjectivePicker({ objectiveId, setObjectiveId, science }) {
           <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Why it matters.</b> {sel.relevance}</div>
           <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Candidates.</b> {sel.candidates}</div>
           <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Selection.</b> {sel.criteria}
-            <span style={{color:'#7a8a7a'}}> Weights (design choice): {Object.entries(sel.plan.weights).filter(([, w]) => w > 0).map(([k, w]) => `${k} ${w}`).join(', ')}.</span></div>
+            <span style={{color:'#7a8a7a'}}> Weights (design choice): {Object.entries(sel.plan.weights).flatMap(([k, w]) => (typeof w === 'object' ? Object.entries(w) : [[k, w]])).filter(([, w]) => w > 0).map(([k, w]) => `${k} ${w}`).join(', ')}.</span></div>
           <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Data layers.</b> {sel.layers.join(' · ')}</div>
           <div style={{...OBJ_LINE,color:'#d8a868'}}><b>Uncertainty.</b> {sel.uncertainty}</div>
           {sel.availabilityNote && <div style={{...OBJ_LINE,color:'#e0a050'}}>⚠ {sel.availabilityNote}</div>}

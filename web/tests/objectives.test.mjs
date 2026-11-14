@@ -115,7 +115,11 @@ test('every objective is complete and points at data that exists for its site', 
         assert.ok(fs.existsSync(new URL('chemistry.json', sites(siteName))), `${o.id} needs ChemCam data`);
       }
       // weights: something must count, and filtered-out kinds must not
-      assert.ok(Object.values(o.plan.weights).some(w => w > 0));
+      const w = o.plan.weights;
+      const flat = Object.values(w).flatMap(v => (typeof v === 'object' ? Object.values(v) : [v]));
+      assert.ok(flat.some(v => v > 0), `${o.id}: something must count`);
+      for (const u of Object.keys(w.surfaceUnits || {})) assert.ok(geo.surface.units.includes(u), `${o.id}: weighted surface unit ${u}`);
+      for (const u of Object.keys(w.bedrockUnits || {})) assert.ok(geo.bedrock.units.includes(u), `${o.id}: weighted bedrock unit ${u}`);
       if (f.minerals?.length === 0) assert.equal(o.plan.weights.mineral, 0, `${o.id}: mineral weight`);
     }
   }
@@ -164,4 +168,13 @@ test('two anomalies of one rock make one stop, not two', () => {
   assert.equal(c.length, 1);
   assert.deepEqual(c[0].tags.filter(t => t[0] === 'X'), ['X:Al2O3 low', 'X:Na2O low']);
   assert.match(c[0].label, /Al2O3 low \(-8\.7 wt%\), Na2O low \(-1\.9 wt%\)/);
+});
+
+test('unit weights: only the named terrain classes score (no credit for other ground)', () => {
+  const o = findObjective('gale', 'water-alteration');
+  assert.equal(S.tagWeight('S:Smooth ground', o.plan.weights), 0);
+  assert.equal(S.tagWeight('S:Ridge or butte crest', o.plan.weights), 3);
+  assert.equal(S.tagWeight('B:Sulfate unit above the boxwork', o.plan.weights), 0);
+  assert.equal(S.tagWeight('B:Boxwork-bearing layer', o.plan.weights), 1);
+  assert.equal(S.tagWeight('X:CaO high', o.plan.weights), 3);
 });

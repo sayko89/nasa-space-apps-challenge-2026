@@ -131,7 +131,9 @@ export const OBJECTIVES = {
       availability: 'full',
       plan: {
         filter: { units: { surface: [RIDGE, HOLLOW], bedrock: [BOXWORK] }, contacts: false, minerals: [], chemTags: [], targets: 0 },
-        weights: { bedrock: 1, surface: 4, contact: 0, mineral: 0, chemistry: 0, target: 0 },
+        // only ridges, hollows and the boxwork layer count — other terrain classes / levels score 0
+        weights: { bedrock: 0, bedrockUnits: { [BOXWORK]: 1 }, surface: 0, surfaceUnits: { [RIDGE]: 4, [HOLLOW]: 4 },
+          contact: 0, mineral: 0, chemistry: 0, target: 0 },
       },
     },
     {
@@ -180,7 +182,8 @@ export const OBJECTIVES = {
       availability: 'full',
       plan: {
         filter: { units: { surface: [RIDGE, HOLLOW], bedrock: [BOXWORK] }, contacts: false, minerals: [], chemTags: ['CaO high'], targets: 0, maxChem: 2 },
-        weights: { bedrock: 1, surface: 3, contact: 0, mineral: 0, chemistry: 3, target: 0 },
+        weights: { bedrock: 0, bedrockUnits: { [BOXWORK]: 1 }, surface: 0, surfaceUnits: { [RIDGE]: 3, [HOLLOW]: 3 },
+          contact: 0, mineral: 0, chemistry: 3, target: 0 },
       },
     },
     {
