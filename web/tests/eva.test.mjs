@@ -247,3 +247,110 @@ test('EvaPlayback: point of no return event on a NO-GO plan; dust devil ahead ab
   assert.ok(pb2.aborted.t0 < st2.arriveS, 'aborted before reaching the dust devil');
   assert.ok(pb2.aborted.t0 > st2.arriveS - EP.HAZARD_LOOKAHEAD_S - 120, 'and not long before it came into the look-ahead window');
 });
+
+// ---- Dust devil ahead: plan around it (utils/dustReroute.js) ----
+const DR = await import('../src/utils/dustReroute.js');
+const maps = { hm, sm, cm };
+const planner = (extra = {}) => (ctx) => DR.planDustReroute({ ...ctx, maps, home: HOME, ...extra });
+const minDistTl = (tl, t0, x, z) => {
+  let m = Infinity;
+  for (let t = t0; t <= tl.totalS; t += 5) { const p = TL.sampleTimeline(tl, t); m = Math.min(m, Math.hypot(p.x - x, p.z - z)); }
+  return m;
+};
+function runUntil(pb, cond) { let g = 0; while (pb.status === 'playing' && !cond() && g++ < 200000) pb.tick(0.05); }
+
+test('dust devil on the leg ahead: the crew goes around it, keeps both stops and gets home', () => {
+  const r = planLoop().FAST;
+  const pb = new EP.EvaPlayback();
+  pb.load(r.path, r.stats, { budgetS: r.stats.budgetS }, envFor());
+  pb.setDustPlanner(planner());
+  const st1 = pb.nominal.stops[0], st2 = pb.nominal.stops[1];
+  // on the A → B leg, half way between the stops (well clear of both)
+  const mid = TL.sampleTimeline(pb.nominal, (st1.departS + st2.arriveS) / 2);
+  const hz = { x: mid.x, z: mid.z, radius: 20, interferenceRadius: 27 };
+  pb.setHazard(hz);
+  pb.setSpeed(30); pb.play();
+  runUntil(pb, () => pb.rerouted || pb.aborted);
+  assert.ok(pb.rerouted, 're-routed');
+  assert.ok(!pb.aborted, 'not aborted');
+  const ev = pb.events.find(e => e.kind === 'reroute');
+  assert.match(ev.text, /new route around it/);
+  assert.deepEqual(pb.rerouted.skipped, []);
+  assert.ok(pb.rerouted.checks.every(c => c.ok), JSON.stringify(pb.rerouted.checks));
+  assert.ok(pb.rerouted.extraS > 0, `a detour takes longer: ${pb.rerouted.extraS} ${pb.rerouted.t0} ${pb.nominal.totalS} ${r.stats.roundTripS}`);
+  // continuity: the crew does not jump at the re-route
+  const t0 = pb.rerouted.t0;
+  const a = TL.sampleTimeline(pb.active, t0);
+  assert.ok(Math.hypot(a.x - pb.rerouted.fromX, a.z - pb.rerouted.fromZ) < 1e-6);
+  // never within the trigger radius from here on; stops keep their numbers
+  assert.ok(minDistTl(pb.active, t0, hz.x, hz.z) > hz.interferenceRadius);
+  assert.deepEqual(pb.nominal.stops.map(s => s.n), [1, 2]);
+  pb.setSpeed(600);
+  runUntil(pb, () => false);
+  assert.equal(pb.status, 'done');
+  assert.ok(!pb.aborted, 'the dust devil does not fire again on the new route');
+  const end = pb.pose();
+  assert.ok(Math.hypot(end.x - HOME.x, end.z - HOME.z) < 1e-6, 'home');
+  assert.deepEqual(pb.events.filter(e => e.kind === 'arrive').map(e => e.stop), [1, 2]);
+  assert.ok(pb.marginAt() >= 0);
+  // restart returns to the plan as loaded
+  pb.restart(false);
+  assert.equal(pb.rerouted, null);
+  assert.equal(pb.nominal.totalS, r.stats.roundTripS);
+});
+
+test('dust devil on a stop: that stop is skipped, the rest of the EVA continues', () => {
+  const r = planLoop().FAST;
+  const pb = new EP.EvaPlayback();
+  pb.load(r.path, r.stats, { budgetS: r.stats.budgetS }, envFor());
+  pb.setDustPlanner(planner());
+  const st2 = pb.nominal.stops[1];
+  pb.setHazard({ x: st2.x, z: st2.z, radius: 20, interferenceRadius: 27 });
+  pb.setSpeed(30); pb.play();
+  runUntil(pb, () => pb.rerouted || pb.aborted);
+  assert.ok(pb.rerouted && !pb.aborted);
+  assert.deepEqual(pb.rerouted.skipped, [2]);
+  assert.match(pb.events.find(e => e.kind === 'reroute').text, /skipped S2/);
+  pb.setSpeed(600); runUntil(pb, () => false);
+  assert.equal(pb.status, 'done');
+  assert.ok(!pb.events.some(e => e.kind === 'arrive' && e.stop === 2));
+});
+
+test('no safe route around it (budget): abort, and the walk home avoids the dust devil', () => {
+  const r = planLoop().FAST;
+  const pb = new EP.EvaPlayback();
+  // budget just enough for the plan: any detour breaks the walk-back margin
+  pb.load(r.path, r.stats, { budgetS: r.stats.roundTripS + 30 }, envFor());
+  pb.setDustPlanner(planner());
+  const st1 = pb.nominal.stops[0], st2 = pb.nominal.stops[1];
+  const mid = TL.sampleTimeline(pb.nominal, (st1.departS + st2.arriveS) / 2);
+  const hz = { x: mid.x, z: mid.z, radius: 20, interferenceRadius: 27 };
+  pb.setHazard(hz);
+  pb.setSpeed(30); pb.play();
+  runUntil(pb, () => pb.rerouted || pb.aborted);
+  assert.ok(pb.aborted && !pb.rerouted);
+  const f = pb.events.find(e => e.kind === 'reroute-failed');
+  assert.match(f.text, /no safe route around it .*margin/);
+  assert.match(pb.aborted.reason, /dust devil/);
+  assert.ok(minDistTl(pb.active, pb.aborted.t0, hz.x, hz.z) > hz.interferenceRadius, 'walk home stays clear of it');
+});
+
+test('planDustReroute: strict "no path" when the dust devil closes home; a second alarm for the same one aborts', () => {
+  const r = planLoop().FAST;
+  const tl = TL.buildTimeline(r.path, r.stats.elapsedS, r.stats.stops);
+  const p = TL.sampleTimeline(tl, tl.stops[0].departS + 100);
+  const res = DR.planDustReroute({ pos: p, t: tl.stops[0].departS + 100, stops: [], home: HOME, hazard: { x: HOME.x, z: HOME.z, radius: 20, interferenceRadius: 27 },
+    budgetS: r.stats.budgetS, nominalEndS: tl.totalS, maps });
+  assert.equal(res.ok, false);
+  assert.match(res.reason, /no walkable path around the dust devil/);
+
+  const pb = new EP.EvaPlayback();
+  pb.load(r.path, r.stats, { budgetS: r.stats.budgetS }, envFor());
+  pb.setDustPlanner(planner());
+  pb.setSpeed(1); pb.play(); pb.tick(tl.stops[0].departS + 50);
+  pb.hazard = { x: 1e6, z: 1e6, radius: 20, interferenceRadius: 27 };   // far away: the re-route succeeds trivially
+  pb._dustAhead();
+  assert.ok(pb.rerouted && !pb.aborted);
+  pb._dustAhead();                                                      // same dust devil again → home
+  assert.ok(pb.aborted);
+});

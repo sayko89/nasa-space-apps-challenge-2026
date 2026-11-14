@@ -47,7 +47,7 @@ export function buildTimeline(path, elapsedS, stops = [], t0 = 0) {
     totalS: dep[n - 1],
     lengthM: cum[n - 1],
     stops: sorted.map((s, k) => ({
-      n: k + 1, idx: s.idx, label: s.label || null,
+      n: s.n ?? k + 1, idx: s.idx, label: s.label || null,   // a re-planned EVA keeps the original stop numbers
       arriveS: arr[s.idx], departS: dep[s.idx], dwellS: dwell[s.idx],
       x: xs[s.idx], z: zs[s.idx],
     })),

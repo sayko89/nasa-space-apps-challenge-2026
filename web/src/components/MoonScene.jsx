@@ -897,6 +897,7 @@ export default function MoonScene({
   onCrewPose = null,        // DEM: throttled crew pose → App (minimap/telemetry)
   trailKey = 0,             // DEM: change to wipe boot prints
   returnPath = null,        // DEM: abort return path (dashed)
+  reroutePath = null,       // DEM: route re-planned around a dust devil
   sceneApiRef = null,       // optional: { camera, controls } for scripted captures
   overlay = null,           // DEM: { layer, opacity, refreshKey } map layer draped on the terrain
   overlays = null,          // DEM: [{ layer, opacity }] several draped layers, bottom → top (data catalog)
@@ -959,6 +960,7 @@ export default function MoonScene({
         : <RouteLine key={mode} points={pts} color={ROUTE_COLORS[mode] ?? '#ff8800'} active={mode === activeRoute} />
       ))}
       {IS_DEM && returnPath && <DemRouteLine points={returnPath} color="#ff8800" active dashed />}
+      {IS_DEM && reroutePath && <DemRouteLine points={reroutePath} color="#ffe066" active />}
 
       {/* Dust hazard — DEM: dust devil; Moon: dust cloud (world space, anchored to terrain) */}
       {dustHazard && (IS_DEM ? <DustDevil hazard={dustHazard} /> : <DustCloudHazard hazard={dustHazard} />)}
