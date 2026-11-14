@@ -1,0 +1,1350 @@
+{
+"site": "jezero",
+"model": "mars-terrain-v1",
+"model_card": "../../../models/mars-terrain-v1.json",
+"low_confidence_threshold": 0.3,
+"predicted_utc": "2026-11-14T20:24:39+00:00",
+"kind": "model prediction (image level) \u2014 not a NASA measurement, not georeferenced",
+"selection": "up to 3 full Navcam frames per rover position looking at the ground (elevation \u2264 0\u00b0), most downward first",
+"skipped": {
+"other cameras (out of training domain)": 774,
+"download errors": 0,
+"subframe strips (too thin to segment)": 100
+},
+"credit": "NASA/JPL-Caltech (Mars 2020 Perseverance raw images)",
+"items": [
+{
+"id": "NLF_0017_0668451937_008EBY_N0030578NCAM00195_04_0LLJ01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00017/ids/edr/browse/ncam/NLF_0017_0668451937_008EBY_N0030578NCAM00195_04_0LLJ01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NLF_0017_0668451937_008EBY_N0030578NCAM00195_04_0LLJ",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_LEFT",
+"sol": 17,
+"utc": "2021-03-08T05:07:20.728",
+"station": "3_578",
+"rover_x": 84.19,
+"rover_z": -312.96,
+"rover_lat": 18.4452799,
+"rover_lon": 77.45149726,
+"azimuth_deg": 61.0,
+"elevation_deg": -2.94699,
+"image_size": [
+800,
+602
+],
+"mask_size": [
+340,
+256
+],
+"fractions": {
+"soil": 0.2521,
+"bedrock": 0.054,
+"sand": 0.6352,
+"big_rock": 0.0569,
+"unknown": 0.0018
+},
+"confidence": {
+"mean": 0.708,
+"median": 0.722,
+"p10": 0.451
+}
+},
+{
+"id": "NLF_0045_0670932866_237ECM_N0031416NCAM00298_01_295J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00045/ids/edr/browse/ncam/NLF_0045_0670932866_237ECM_N0031416NCAM00298_01_295J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NLF_0045_0670932866_237ECM_N0031416NCAM00298_01_295J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_LEFT",
+"sol": 45,
+"utc": "2021-04-05T22:16:32.444",
+"station": "3_1416",
+"rover_x": 57.38,
+"rover_z": -292.99,
+"rover_lat": 18.44494297,
+"rover_lon": 77.45102048,
+"azimuth_deg": 76.6,
+"elevation_deg": -1.54393,
+"image_size": [
+800,
+600
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.2454,
+"bedrock": 0.2064,
+"sand": 0.5433,
+"big_rock": 0.0045,
+"unknown": 0.0004
+},
+"confidence": {
+"mean": 0.797,
+"median": 0.831,
+"p10": 0.56
+}
+},
+{
+"id": "NRM_0065_0672719709_543ECM_N0032150TRAV12002_01_2LLJ01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00065/ids/edr/browse/ncam/NRM_0065_0672719709_543ECM_N0032150TRAV12002_01_2LLJ01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRM_0065_0672719709_543ECM_N0032150TRAV12002_01_2LLJ",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 65,
+"utc": "2021-04-26T14:37:32.758",
+"station": "3_2150",
+"rover_x": 125.15,
+"rover_z": -276.59,
+"rover_lat": 18.44466622,
+"rover_lon": 77.45222556,
+"azimuth_deg": 173.1,
+"elevation_deg": -22.8151,
+"image_size": [
+800,
+600
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.2518,
+"bedrock": 0.5225,
+"sand": 0.1624,
+"big_rock": 0.0632,
+"unknown": 0.0001
+},
+"confidence": {
+"mean": 0.857,
+"median": 0.925,
+"p10": 0.587
+}
+},
+{
+"id": "NRF_0066_0672809519_731EBY_N0032208NCAM00413_00_0LLJ01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00066/ids/edr/browse/ncam/NRF_0066_0672809519_731EBY_N0032208NCAM00413_00_0LLJ01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0066_0672809519_731EBY_N0032208NCAM00413_00_0LLJ",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 66,
+"utc": "2021-04-27T15:34:22.928",
+"station": "3_2208",
+"rover_x": 129.2,
+"rover_z": -268.43,
+"rover_lat": 18.44452862,
+"rover_lon": 77.45229762,
+"azimuth_deg": 148.7,
+"elevation_deg": -16.49,
+"image_size": [
+800,
+602
+],
+"mask_size": [
+340,
+256
+],
+"fractions": {
+"soil": 0.3402,
+"bedrock": 0.6473,
+"sand": 0.0125,
+"big_rock": 0.0,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.859,
+"median": 0.925,
+"p10": 0.597
+}
+},
+{
+"id": "NRF_0135_0678933829_682ECM_N0051388NCAM03135_01_195J02_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00135/ids/edr/browse/ncam/NRF_0135_0678933829_682ECM_N0051388NCAM03135_01_195J02_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0135_0678933829_682ECM_N0051388NCAM03135_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 135,
+"utc": "2021-07-07T12:46:55.584",
+"station": "5_1388",
+"rover_x": 120.83,
+"rover_z": 525.38,
+"rover_lat": 18.4311366,
+"rover_lon": 77.45214885,
+"azimuth_deg": 250.8,
+"elevation_deg": -23.1894,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0942,
+"bedrock": 0.2492,
+"sand": 0.6099,
+"big_rock": 0.0466,
+"unknown": 0.0001
+},
+"confidence": {
+"mean": 0.838,
+"median": 0.914,
+"p10": 0.563
+}
+},
+{
+"id": "NRF_0136_0679020627_269ECM_N0051572NCAM03136_01_195J02_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00136/ids/edr/browse/ncam/NRF_0136_0679020627_269ECM_N0051572NCAM03136_01_195J02_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0136_0679020627_269ECM_N0051572NCAM03136_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 136,
+"utc": "2021-07-08T12:53:33.646",
+"station": "5_1572",
+"rover_x": 114.94,
+"rover_z": 559.27,
+"rover_lat": 18.43056477,
+"rover_lon": 77.45204412,
+"azimuth_deg": 228.7,
+"elevation_deg": -24.2148,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.5191,
+"bedrock": 0.2122,
+"sand": 0.2139,
+"big_rock": 0.053,
+"unknown": 0.0017
+},
+"confidence": {
+"mean": 0.77,
+"median": 0.8,
+"p10": 0.504
+}
+},
+{
+"id": "NRF_0168_0681867691_559ECM_N0060170NCAM03168_01_195J02_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00168/ids/edr/browse/ncam/NRF_0168_0681867691_559ECM_N0060170NCAM03168_01_195J02_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0168_0681867691_559ECM_N0060170NCAM03168_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 168,
+"utc": "2021-08-10T11:45:00.168",
+"station": "6_170",
+"rover_x": 90.34,
+"rover_z": 755.55,
+"rover_lat": 18.42725346,
+"rover_lon": 77.45160663,
+"azimuth_deg": 12.3,
+"elevation_deg": -21.4942,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.4813,
+"bedrock": 0.2199,
+"sand": 0.2519,
+"big_rock": 0.0463,
+"unknown": 0.0005
+},
+"confidence": {
+"mean": 0.774,
+"median": 0.806,
+"p10": 0.514
+}
+},
+{
+"id": "NRF_0170_0682043595_286ECM_N0060892NCAM02170_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00170/ids/edr/browse/ncam/NRF_0170_0682043595_286ECM_N0060892NCAM02170_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0170_0682043595_286ECM_N0060892NCAM02170_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 170,
+"utc": "2021-08-12T12:36:44.965",
+"station": "6_892",
+"rover_x": -44.89,
+"rover_z": 685.21,
+"rover_lat": 18.42844012,
+"rover_lon": 77.44920162,
+"azimuth_deg": 85.9,
+"elevation_deg": -24.7961,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0168,
+"bedrock": 0.0,
+"sand": 0.9068,
+"big_rock": 0.0764,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.901,
+"median": 0.966,
+"p10": 0.667
+}
+},
+{
+"id": "NRF_0171_0682126765_882ECM_N0061450NCAM03171_04_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00171/ids/edr/browse/ncam/NRF_0171_0682126765_882ECM_N0061450NCAM03171_04_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0171_0682126765_882ECM_N0061450NCAM03171_04_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 171,
+"utc": "2021-08-13T11:42:57.200",
+"station": "6_1450",
+"rover_x": -130.61,
+"rover_z": 619.56,
+"rover_lat": 18.42954757,
+"rover_lon": 77.44767725,
+"azimuth_deg": 335.4,
+"elevation_deg": -24.5058,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.198,
+"bedrock": 0.0008,
+"sand": 0.7589,
+"big_rock": 0.0419,
+"unknown": 0.0004
+},
+"confidence": {
+"mean": 0.872,
+"median": 0.951,
+"p10": 0.609
+}
+},
+{
+"id": "NRF_0171_0682126917_160ECM_N0061450NCAM02171_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00171/ids/edr/browse/ncam/NRF_0171_0682126917_160ECM_N0061450NCAM02171_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0171_0682126917_160ECM_N0061450NCAM02171_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 171,
+"utc": "2021-08-13T11:45:29.058",
+"station": "6_1450",
+"rover_x": -130.61,
+"rover_z": 619.56,
+"rover_lat": 18.42954757,
+"rover_lon": 77.44767725,
+"azimuth_deg": 42.7,
+"elevation_deg": -22.0655,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.125,
+"bedrock": 0.0001,
+"sand": 0.8487,
+"big_rock": 0.0262,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.892,
+"median": 0.985,
+"p10": 0.608
+}
+},
+{
+"id": "NRF_0173_0682308871_106ECM_N0061648NCAM03173_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00173/ids/edr/browse/ncam/NRF_0173_0682308871_106ECM_N0061648NCAM03173_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0173_0682308871_106ECM_N0061648NCAM03173_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 173,
+"utc": "2021-08-15T14:18:04.284",
+"station": "6_1648",
+"rover_x": -166.1,
+"rover_z": 615.75,
+"rover_lat": 18.42961188,
+"rover_lon": 77.44704605,
+"azimuth_deg": 14.8,
+"elevation_deg": -20.9896,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0112,
+"bedrock": 0.0072,
+"sand": 0.8996,
+"big_rock": 0.082,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.902,
+"median": 0.973,
+"p10": 0.661
+}
+},
+{
+"id": "NRF_0175_0682485002_694ECM_N0061752NCAM02175_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00175/ids/edr/browse/ncam/NRF_0175_0682485002_694ECM_N0061752NCAM02175_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0175_0682485002_694ECM_N0061752NCAM02175_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 175,
+"utc": "2021-08-17T15:13:36.175",
+"station": "6_1752",
+"rover_x": -180.34,
+"rover_z": 612.81,
+"rover_lat": 18.4296615,
+"rover_lon": 77.44679297,
+"azimuth_deg": 72.3,
+"elevation_deg": -16.1144,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0058,
+"bedrock": 0.0,
+"sand": 0.9633,
+"big_rock": 0.0309,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.929,
+"median": 0.99,
+"p10": 0.735
+}
+},
+{
+"id": "NRF_0175_0682484814_495ECM_N0061752NCAM03175_10_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00175/ids/edr/browse/ncam/NRF_0175_0682484814_495ECM_N0061752NCAM03175_10_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0175_0682484814_495ECM_N0061752NCAM03175_10_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 175,
+"utc": "2021-08-17T15:10:27.831",
+"station": "6_1752",
+"rover_x": -180.34,
+"rover_z": 612.81,
+"rover_lat": 18.4296615,
+"rover_lon": 77.44679297,
+"azimuth_deg": 9.0,
+"elevation_deg": -11.2848,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.9619,
+"bedrock": 0.0303,
+"sand": 0.0078,
+"big_rock": 0.0,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.806,
+"median": 0.832,
+"p10": 0.63
+}
+},
+{
+"id": "NRF_0177_0682666674_543ECM_N0062250NCAM02177_07_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00177/ids/edr/browse/ncam/NRF_0177_0682666674_543ECM_N0062250NCAM02177_07_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0177_0682666674_543ECM_N0062250NCAM02177_07_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 177,
+"utc": "2021-08-19T17:41:29.215",
+"station": "6_2250",
+"rover_x": -255.58,
+"rover_z": 562.29,
+"rover_lat": 18.43051391,
+"rover_lon": 77.44545493,
+"azimuth_deg": 103.3,
+"elevation_deg": -23.888,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.949,
+"bedrock": 0.0006,
+"sand": 0.0502,
+"big_rock": 0.0001,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.876,
+"median": 0.933,
+"p10": 0.641
+}
+},
+{
+"id": "NRF_0177_0682666454_660ECM_N0062250NCAM02177_10_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00177/ids/edr/browse/ncam/NRF_0177_0682666454_660ECM_N0062250NCAM02177_10_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0177_0682666454_660ECM_N0062250NCAM02177_10_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 177,
+"utc": "2021-08-19T17:37:50.995",
+"station": "6_2250",
+"rover_x": -255.58,
+"rover_z": 562.29,
+"rover_lat": 18.43051391,
+"rover_lon": 77.44545493,
+"azimuth_deg": 36.1,
+"elevation_deg": -21.9846,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.4289,
+"bedrock": 0.0,
+"sand": 0.5711,
+"big_rock": 0.0,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.781,
+"median": 0.796,
+"p10": 0.56
+}
+},
+{
+"id": "NRF_0204_0685061481_683ECM_N0071836NCAM03204_07_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00204/ids/edr/browse/ncam/NRF_0204_0685061481_683ECM_N0071836NCAM03204_07_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0204_0685061481_683ECM_N0071836NCAM03204_07_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 204,
+"utc": "2021-09-16T10:55:15.106",
+"station": "7_1836",
+"rover_x": -426.79,
+"rover_z": 391.32,
+"rover_lat": 18.43339824,
+"rover_lon": 77.44241011,
+"azimuth_deg": 155.3,
+"elevation_deg": -23.9963,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.9908,
+"bedrock": 0.0003,
+"sand": 0.0089,
+"big_rock": 0.0,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.932,
+"median": 0.967,
+"p10": 0.829
+}
+},
+{
+"id": "NRF_0204_0685061642_065ECM_N0071836NCAM03204_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00204/ids/edr/browse/ncam/NRF_0204_0685061642_065ECM_N0071836NCAM03204_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0204_0685061642_065ECM_N0071836NCAM03204_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 204,
+"utc": "2021-09-16T10:57:55.894",
+"station": "7_1836",
+"rover_x": -426.79,
+"rover_z": 391.32,
+"rover_lat": 18.43339824,
+"rover_lon": 77.44241011,
+"azimuth_deg": 222.8,
+"elevation_deg": -23.6828,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0092,
+"bedrock": 0.0243,
+"sand": 0.8613,
+"big_rock": 0.1044,
+"unknown": 0.0007
+},
+"confidence": {
+"mean": 0.845,
+"median": 0.925,
+"p10": 0.548
+}
+},
+{
+"id": "NRF_0238_0688077953_481ECM_N0072326NCAM02238_01_195J02_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00238/ids/edr/browse/ncam/NRF_0238_0688077953_481ECM_N0072326NCAM02238_01_195J02_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0238_0688077953_481ECM_N0072326NCAM02238_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 238,
+"utc": "2021-10-21T08:50:10.873",
+"station": "7_2326",
+"rover_x": -395.87,
+"rover_z": 363.58,
+"rover_lat": 18.43386612,
+"rover_lon": 77.44295996,
+"azimuth_deg": 262.9,
+"elevation_deg": -20.8781,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0231,
+"bedrock": 0.2493,
+"sand": 0.4378,
+"big_rock": 0.2887,
+"unknown": 0.0011
+},
+"confidence": {
+"mean": 0.751,
+"median": 0.774,
+"p10": 0.48
+}
+},
+{
+"id": "NRF_0238_0688078159_785ECM_N0072326NCAM02238_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00238/ids/edr/browse/ncam/NRF_0238_0688078159_785ECM_N0072326NCAM02238_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0238_0688078159_785ECM_N0072326NCAM02238_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 238,
+"utc": "2021-10-21T08:53:37.137",
+"station": "7_2326",
+"rover_x": -395.87,
+"rover_z": 363.58,
+"rover_lat": 18.43386612,
+"rover_lon": 77.44295996,
+"azimuth_deg": 328.6,
+"elevation_deg": -18.7972,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.1567,
+"bedrock": 0.2378,
+"sand": 0.5487,
+"big_rock": 0.0563,
+"unknown": 0.0005
+},
+"confidence": {
+"mean": 0.747,
+"median": 0.765,
+"p10": 0.488
+}
+},
+{
+"id": "NRF_0239_0688164877_774ECM_N0072440NCAM03239_01_195J02_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00239/ids/edr/browse/ncam/NRF_0239_0688164877_774ECM_N0072440NCAM03239_01_195J02_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0239_0688164877_774ECM_N0072440NCAM03239_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 239,
+"utc": "2021-10-22T08:58:56.444",
+"station": "7_2440",
+"rover_x": -392.95,
+"rover_z": 357.97,
+"rover_lat": 18.43396087,
+"rover_lon": 77.44301186,
+"azimuth_deg": 316.1,
+"elevation_deg": -23.0325,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0006,
+"bedrock": 0.2757,
+"sand": 0.6837,
+"big_rock": 0.0399,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.839,
+"median": 0.904,
+"p10": 0.566
+}
+},
+{
+"id": "NRF_0248_0688960837_803ECM_N0080000NCAM03248_10_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00248/ids/edr/browse/ncam/NRF_0248_0688960837_803ECM_N0080000NCAM03248_10_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0248_0688960837_803ECM_N0080000NCAM03248_10_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 248,
+"utc": "2021-10-31T14:05:01.929",
+"station": "8_0",
+"rover_x": -392.54,
+"rover_z": 357.78,
+"rover_lat": 18.43396406,
+"rover_lon": 77.44301922,
+"azimuth_deg": 309.9,
+"elevation_deg": -23.4704,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.7969,
+"bedrock": 0.1351,
+"sand": 0.068,
+"big_rock": 0.0,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.751,
+"median": 0.776,
+"p10": 0.531
+}
+},
+{
+"id": "NRF_0278_0691619127_442ECM_N0080064NCAM03277_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00278/ids/edr/browse/ncam/NRF_0278_0691619127_442ECM_N0080064NCAM03277_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0278_0691619127_442ECM_N0080064NCAM03277_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 278,
+"utc": "2021-12-01T08:30:12.498",
+"station": "8_64",
+"rover_x": -390.31,
+"rover_z": 360.04,
+"rover_lat": 18.43392588,
+"rover_lon": 77.44305879,
+"azimuth_deg": 272.3,
+"elevation_deg": -24.4206,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0004,
+"bedrock": 0.5247,
+"sand": 0.3974,
+"big_rock": 0.0773,
+"unknown": 0.0001
+},
+"confidence": {
+"mean": 0.82,
+"median": 0.881,
+"p10": 0.548
+}
+},
+{
+"id": "NRF_0278_0691619347_617ECM_N0080064NCAM03277_04_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00278/ids/edr/browse/ncam/NRF_0278_0691619347_617ECM_N0080064NCAM03277_04_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0278_0691619347_617ECM_N0080064NCAM03277_04_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 278,
+"utc": "2021-12-01T08:33:52.648",
+"station": "8_64",
+"rover_x": -390.31,
+"rover_z": 360.04,
+"rover_lat": 18.43392588,
+"rover_lon": 77.44305879,
+"azimuth_deg": 340.4,
+"elevation_deg": -24.0207,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0002,
+"bedrock": 0.2584,
+"sand": 0.2985,
+"big_rock": 0.4411,
+"unknown": 0.0018
+},
+"confidence": {
+"mean": 0.798,
+"median": 0.868,
+"p10": 0.507
+}
+},
+{
+"id": "NRF_0280_0691801294_901ECM_N0080256NCAM03280_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00280/ids/edr/browse/ncam/NRF_0280_0691801294_901ECM_N0080256NCAM03280_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0280_0691801294_901ECM_N0080256NCAM03280_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 280,
+"utc": "2021-12-03T11:06:22.509",
+"station": "8_256",
+"rover_x": -425.38,
+"rover_z": 363.06,
+"rover_lat": 18.433875,
+"rover_lon": 77.44243517,
+"azimuth_deg": 301.3,
+"elevation_deg": -22.9432,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0,
+"bedrock": 0.0033,
+"sand": 0.8489,
+"big_rock": 0.1478,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.919,
+"median": 0.998,
+"p10": 0.653
+}
+},
+{
+"id": "NRF_0286_0692337892_691ECM_N0090000NCAM02286_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00286/ids/edr/browse/ncam/NRF_0286_0692337892_691ECM_N0090000NCAM02286_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0286_0692337892_691ECM_N0090000NCAM02286_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 286,
+"utc": "2021-12-09T16:09:43.449",
+"station": "9_0",
+"rover_x": -485.11,
+"rover_z": 435.04,
+"rover_lat": 18.43266059,
+"rover_lon": 77.44137302,
+"azimuth_deg": 35.0,
+"elevation_deg": -21.2481,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.2498,
+"bedrock": 0.2875,
+"sand": 0.4147,
+"big_rock": 0.048,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.767,
+"median": 0.788,
+"p10": 0.534
+}
+},
+{
+"id": "NRF_0328_0696069717_508ECM_N0090082NCAM02328_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00328/ids/edr/browse/ncam/NRF_0328_0696069717_508ECM_N0090082NCAM02328_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0328_0696069717_508ECM_N0090082NCAM02328_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 328,
+"utc": "2022-01-21T20:47:19.685",
+"station": "9_82",
+"rover_x": -482.98,
+"rover_z": 438.49,
+"rover_lat": 18.43260239,
+"rover_lon": 77.4414109,
+"azimuth_deg": 100.4,
+"elevation_deg": -21.5889,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0007,
+"bedrock": 0.001,
+"sand": 0.9281,
+"big_rock": 0.0702,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.918,
+"median": 0.971,
+"p10": 0.732
+}
+},
+{
+"id": "NRF_0328_0696069586_684ECM_N0090082NCAM02328_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00328/ids/edr/browse/ncam/NRF_0328_0696069586_684ECM_N0090082NCAM02328_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0328_0696069586_684ECM_N0090082NCAM02328_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 328,
+"utc": "2022-01-21T20:45:08.855",
+"station": "9_82",
+"rover_x": -482.98,
+"rover_z": 438.49,
+"rover_lat": 18.43260239,
+"rover_lon": 77.4414109,
+"azimuth_deg": 35.3,
+"elevation_deg": -16.7541,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0874,
+"bedrock": 0.2101,
+"sand": 0.6547,
+"big_rock": 0.0478,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.824,
+"median": 0.866,
+"p10": 0.569
+}
+},
+{
+"id": "NRF_0340_0697121914_417ECM_N0090364NCAM00420_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00340/ids/edr/browse/ncam/NRF_0340_0697121914_417ECM_N0090364NCAM00420_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0340_0697121914_417ECM_N0090364NCAM00420_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 340,
+"utc": "2022-02-03T01:04:03.351",
+"station": "9_364",
+"rover_x": -506.33,
+"rover_z": 434.14,
+"rover_lat": 18.43267586,
+"rover_lon": 77.4409955,
+"azimuth_deg": 218.4,
+"elevation_deg": -12.1517,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0178,
+"bedrock": 0.1,
+"sand": 0.8021,
+"big_rock": 0.08,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.745,
+"median": 0.757,
+"p10": 0.555
+}
+},
+{
+"id": "NLF_0340_0697122026_068ECM_N0090364NCAM00421_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00340/ids/edr/browse/ncam/NLF_0340_0697122026_068ECM_N0090364NCAM00421_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NLF_0340_0697122026_068ECM_N0090364NCAM00421_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_LEFT",
+"sol": 340,
+"utc": "2022-02-03T01:05:54.953",
+"station": "9_364",
+"rover_x": -506.33,
+"rover_z": 434.14,
+"rover_lat": 18.43267586,
+"rover_lon": 77.4409955,
+"azimuth_deg": 259.5,
+"elevation_deg": -7.12818,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0073,
+"bedrock": 0.0329,
+"sand": 0.9558,
+"big_rock": 0.004,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.809,
+"median": 0.842,
+"p10": 0.623
+}
+},
+{
+"id": "NLF_0340_0697122140_744ECM_N0090364NCAM00422_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00340/ids/edr/browse/ncam/NLF_0340_0697122140_744ECM_N0090364NCAM00422_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NLF_0340_0697122140_744ECM_N0090364NCAM00422_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_LEFT",
+"sol": 340,
+"utc": "2022-02-03T01:07:49.722",
+"station": "9_364",
+"rover_x": -506.33,
+"rover_z": 434.14,
+"rover_lat": 18.43267586,
+"rover_lon": 77.4409955,
+"azimuth_deg": 295.2,
+"elevation_deg": -3.12402,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0195,
+"bedrock": 0.0194,
+"sand": 0.9525,
+"big_rock": 0.0084,
+"unknown": 0.0001
+},
+"confidence": {
+"mean": 0.803,
+"median": 0.85,
+"p10": 0.565
+}
+},
+{
+"id": "NRF_0341_0697226086_196ECM_N0092818NCAM02341_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00341/ids/edr/browse/ncam/NRF_0341_0697226086_196ECM_N0092818NCAM02341_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0341_0697226086_196ECM_N0092818NCAM02341_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 341,
+"utc": "2022-02-04T06:00:16.629",
+"station": "9_2818",
+"rover_x": -182.84,
+"rover_z": 606.37,
+"rover_lat": 18.42977022,
+"rover_lon": 77.4467485,
+"azimuth_deg": 13.1,
+"elevation_deg": -19.5125,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.2937,
+"bedrock": 0.1368,
+"sand": 0.4926,
+"big_rock": 0.0768,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.721,
+"median": 0.739,
+"p10": 0.494
+}
+},
+{
+"id": "NLF_0342_0697311583_966ECM_N0092858NCAM02342_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00342/ids/edr/browse/ncam/NLF_0342_0697311583_966ECM_N0092858NCAM02342_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NLF_0342_0697311583_966ECM_N0092858NCAM02342_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_LEFT",
+"sol": 342,
+"utc": "2022-02-05T05:45:14.514",
+"station": "9_2858",
+"rover_x": -171.35,
+"rover_z": 611.82,
+"rover_lat": 18.42967829,
+"rover_lon": 77.44695269,
+"azimuth_deg": 7.5,
+"elevation_deg": -20.3421,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.4502,
+"bedrock": 0.0602,
+"sand": 0.4318,
+"big_rock": 0.0562,
+"unknown": 0.0015
+},
+"confidence": {
+"mean": 0.771,
+"median": 0.821,
+"p10": 0.505
+}
+},
+{
+"id": "NRF_0342_0697311583_966ECM_N0092858NCAM02342_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00342/ids/edr/browse/ncam/NRF_0342_0697311583_966ECM_N0092858NCAM02342_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0342_0697311583_966ECM_N0092858NCAM02342_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 342,
+"utc": "2022-02-05T05:45:14.780",
+"station": "9_2858",
+"rover_x": -171.35,
+"rover_z": 611.82,
+"rover_lat": 18.42967829,
+"rover_lon": 77.44695269,
+"azimuth_deg": 7.9,
+"elevation_deg": -20.1394,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.3648,
+"bedrock": 0.0533,
+"sand": 0.5342,
+"big_rock": 0.0474,
+"unknown": 0.0003
+},
+"confidence": {
+"mean": 0.74,
+"median": 0.768,
+"p10": 0.48
+}
+},
+{
+"id": "NRF_0342_0697311758_352ECM_N0092858NCAM02342_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00342/ids/edr/browse/ncam/NRF_0342_0697311758_352ECM_N0092858NCAM02342_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0342_0697311758_352ECM_N0092858NCAM02342_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 342,
+"utc": "2022-02-05T05:48:09.547",
+"station": "9_2858",
+"rover_x": -171.35,
+"rover_z": 611.82,
+"rover_lat": 18.42967829,
+"rover_lon": 77.44695269,
+"azimuth_deg": 73.0,
+"elevation_deg": -18.6126,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0,
+"bedrock": 0.0,
+"sand": 0.9902,
+"big_rock": 0.0098,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.979,
+"median": 0.997,
+"p10": 0.957
+}
+},
+{
+"id": "NRF_0343_0697397778_661ECM_N0092982NCAM03343_01_195J01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00343/ids/edr/browse/ncam/NRF_0343_0697397778_661ECM_N0092982NCAM03343_01_195J01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRF_0343_0697397778_661ECM_N0092982NCAM03343_01_195J",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 343,
+"utc": "2022-02-06T05:41:49.434",
+"station": "9_2982",
+"rover_x": -166.45,
+"rover_z": 625.01,
+"rover_lat": 18.42945563,
+"rover_lon": 77.44703986,
+"azimuth_deg": 62.3,
+"elevation_deg": -20.1832,
+"image_size": [
+800,
+601
+],
+"mask_size": [
+341,
+256
+],
+"fractions": {
+"soil": 0.0036,
+"bedrock": 0.0,
+"sand": 0.9953,
+"big_rock": 0.0011,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.956,
+"median": 0.988,
+"p10": 0.872
+}
+},
+{
+"id": "NRE_0351_0698093167_055ECM_N0093478NCAM03350_02_0LLJ02_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00351/ids/edr/browse/ncam/NRE_0351_0698093167_055ECM_N0093478NCAM03350_02_0LLJ02_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NRE_0351_0698093167_055ECM_N0093478NCAM03350_02_0LLJ",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_RIGHT",
+"sol": 351,
+"utc": "2022-02-14T06:51:43.135",
+"station": "9_3478",
+"rover_x": -89.49,
+"rover_z": 653.48,
+"rover_lat": 18.42897532,
+"rover_lon": 77.44840845,
+"azimuth_deg": 20.1,
+"elevation_deg": -24.4509,
+"image_size": [
+800,
+597
+],
+"mask_size": [
+343,
+256
+],
+"fractions": {
+"soil": 0.0,
+"bedrock": 0.0052,
+"sand": 0.9493,
+"big_rock": 0.0455,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.922,
+"median": 0.975,
+"p10": 0.759
+}
+},
+{
+"id": "NLE_0383_0700953811_221ECM_N0131280SCAM15010_00_0LLJ01_800",
+"image_url": "https://mars.nasa.gov/mars2020-raw-images/pub/ods/surface/sol/00383/ids/edr/browse/ncam/NLE_0383_0700953811_221ECM_N0131280SCAM15010_00_0LLJ01_800.jpg",
+"source_page": "https://mars.nasa.gov/mars2020/multimedia/raw-images/NLE_0383_0700953811_221ECM_N0131280SCAM15010_00_0LLJ",
+"mission": "Mars 2020 (Perseverance)",
+"camera": "NAVCAM_LEFT",
+"sol": 383,
+"utc": "2022-03-19T09:29:32.340",
+"station": "13_1280",
+"rover_x": 666.87,
+"rover_z": -810.36,
+"rover_lat": 18.45367134,
+"rover_lon": 77.4618594,
+"azimuth_deg": 112.2,
+"elevation_deg": -21.3989,
+"image_size": [
+800,
+602
+],
+"mask_size": [
+340,
+256
+],
+"fractions": {
+"soil": 0.5357,
+"bedrock": 0.0277,
+"sand": 0.4286,
+"big_rock": 0.0079,
+"unknown": 0.0
+},
+"confidence": {
+"mean": 0.847,
+"median": 0.915,
+"p10": 0.571
+}
+}
+],
+"errors": []
+}
