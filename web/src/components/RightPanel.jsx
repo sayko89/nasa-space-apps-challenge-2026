@@ -8,7 +8,7 @@
  */
 
 import { buildShareURL } from '../utils/shareLink';
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
 import { PANEL_W, MAP_S, fs, UI_SCALE, SHEET_VH, useNarrow } from '../ui/layout';
 import { fmtHM, fmtSignedHM, fmtHourMin } from '../utils/format';
@@ -21,6 +21,8 @@ import { PovViewer, nearestPanorama } from './PovViewer';
 import { ChemistryCard, hasChemistry } from './ChemistryCard';
 import CuffCard from './CuffCard';
 import ElevationProfile from './ElevationProfile';
+import { objectivesFor, findObjective } from '../config/objectives';
+import { buildStopCard } from '../utils/stopCards';
 import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
@@ -622,12 +624,92 @@ function MarswalkStats({ mode, s }) {
   );
 }
 
+// ---- Mission objective (config/objectives.js): chosen before the science EVA is planned ----
+const OBJ_LINE = { fontSize:fs(7), lineHeight:1.5, color:'#a8b8a0', margin:'2px 0' };
+function ObjectivePicker({ objectiveId, setObjectiveId, science }) {
+  const list = objectivesFor(SITE.name);
+  const sel = findObjective(SITE.name, objectiveId);
+  const stale = science && science.objectiveId !== objectiveId;
+  return (
+    <div style={{marginBottom:6}}>
+      <div style={{fontSize:fs(7.5),color:'#ffcf8a',letterSpacing:'0.08em',marginBottom:3}}>① MISSION OBJECTIVE</div>
+      <div role="radiogroup" aria-label="Mission objective" style={{display:'flex',flexDirection:'column',gap:2}}>
+        {list.map(o => (
+          <button key={o.id} type="button" role="radio" aria-checked={o.id === objectiveId}
+            onClick={() => setObjectiveId(o.id)}
+            style={{textAlign:'left',cursor:'pointer',fontFamily:'monospace',fontSize:fs(7.5),padding:'3px 6px',borderRadius:3,
+              border:`1px solid ${o.id === objectiveId ? '#ffb347' : 'rgba(120,100,60,0.4)'}`,
+              background: o.id === objectiveId ? 'rgba(90,55,0,0.55)' : 'rgba(20,16,8,0.5)',
+              color: o.id === objectiveId ? '#ffd9a0' : '#c8b898'}}>
+            {o.id === objectiveId ? '● ' : '○ '}{o.name}
+            {o.availability === 'partial' && <span style={{color:'#e0a050'}}> · partial</span>}
+          </button>
+        ))}
+      </div>
+      {!sel && <div style={{...OBJ_LINE,color:'#e0a050'}}>Choose an objective: it decides which candidate stops exist and what each is worth.</div>}
+      {sel && (
+        <div style={{marginTop:4,padding:'4px 6px',border:'1px solid rgba(160,120,60,0.35)',borderRadius:3,background:'rgba(30,20,6,0.45)'}}>
+          <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Purpose.</b> {sel.purpose}</div>
+          <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Why it matters.</b> {sel.relevance}</div>
+          <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Candidates.</b> {sel.candidates}</div>
+          <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Selection.</b> {sel.criteria}
+            <span style={{color:'#7a8a7a'}}> Weights (design choice): {Object.entries(sel.plan.weights).filter(([, w]) => w > 0).map(([k, w]) => `${k} ${w}`).join(', ')}.</span></div>
+          <div style={OBJ_LINE}><b style={{color:'#e8d8b8'}}>Data layers.</b> {sel.layers.join(' · ')}</div>
+          <div style={{...OBJ_LINE,color:'#d8a868'}}><b>Uncertainty.</b> {sel.uncertainty}</div>
+          {sel.availabilityNote && <div style={{...OBJ_LINE,color:'#e0a050'}}>⚠ {sel.availabilityNote}</div>}
+          <div style={{...OBJ_LINE,color:'#7a8a7a'}}>Sources: {sel.sources.map((x, i) => (
+            <span key={i}>{i ? '; ' : ''}<a href={x.url} target="_blank" rel="noopener noreferrer" style={{color:'#9fc7ff'}}>{x.label}</a></span>))}</div>
+        </div>
+      )}
+      {stale && <div style={{...OBJ_LINE,color:'#e0a050'}}>The current plan was made for another objective — plan again.</div>}
+    </div>
+  );
+}
+
+// ---- Science stop card (utils/stopCards.js) ----
+const RISK_COL = { low: '#6c6', moderate: '#e8c050', high: '#ff6655', unknown: '#aaa' };
+function StopCard({ card, onGroundView, onChemistry }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li style={{marginBottom:3}}>
+      <div onClick={() => setOpen(v => !v)} style={{cursor:'pointer'}} title="Show why this stop was chosen">
+        <b style={{color:'#ffb347'}}>S{card.n}</b> {card.name}
+        <span style={{color:RISK_COL[card.risk.level],marginLeft:4}}>● {card.risk.level}</span>
+        <span style={{color:'#7a8a7a'}}> · {card.confidence.level} · {card.visitMin} min {open ? '▾' : '▸'}</span>
+      </div>
+      {onGroundView && <span onClick={onGroundView} style={{marginRight:6,color:'#ffcc88',cursor:'pointer',textDecoration:'underline'}}>ground view</span>}
+      {onChemistry && <span onClick={onChemistry} style={{color:'#88ccff',cursor:'pointer',textDecoration:'underline'}}>chemistry</span>}
+      {open && (
+        <div style={{margin:'3px 0 4px',padding:'3px 5px',borderLeft:'2px solid #ffb347',background:'rgba(30,20,6,0.4)',color:'#c8c0a8',fontSize:fs(7),lineHeight:1.5}}>
+          <div><b>Position:</b> {card.lat != null ? `${card.lat.toFixed(5)}°N ${card.lon.toFixed(5)}°E · ` : ''}x {card.x.toFixed(0)} m, z {card.z.toFixed(0)} m from the site centre</div>
+          <div><b>Objective:</b> {card.objective}</div>
+          <div><b>Why chosen:</b> {card.why}</div>
+          <div><b>Investigate:</b> {card.investigate}</div>
+          <div><b>Evidence:</b> {card.evidence.join(' · ') || '—'}</div>
+          <div><b>Data layers:</b> {card.layers.join(' · ')}</div>
+          <div><b>Terrain risk:</b> <span style={{color:RISK_COL[card.risk.level]}}>{card.risk.level}</span> — {card.risk.reason}</div>
+          <div><b>Data confidence:</b> {card.confidence.level} — {card.confidence.reason}</div>
+          {card.uncertainty && <div style={{color:'#d8a868'}}><b>Uncertainty:</b> {card.uncertainty}</div>}
+        </div>
+      )}
+    </li>
+  );
+}
+
 // ---- Stage 6: science EVA (geology stops) ----
-function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }) {
+function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, objectiveId, setObjectiveId }) {
   const [pov, setPov] = useState(null);
   const [chemStop, setChemStop] = useState(null);
+  const objective = findObjective(SITE.name, science?.objectiveId || objectiveId);
+  const cards = useMemo(() => (science ? science.stops.map((st, i) => buildStopCard(st, i + 1, {
+    objective: findObjective(SITE.name, science.objectiveId), weights: science.weights || SCIENCE_PARAMS.weights,
+    dwellS: science.dwellS, site: { geologyDerived: SITE.geology?.source?.kind === 'derived' },
+    limits: { maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRockReliefM: param('maxRockReliefM') },
+    latLon: localToLatLon,
+  })) : []), [science]);
   return (
     <>
+      {setObjectiveId && <ObjectivePicker objectiveId={objectiveId} setObjectiveId={setObjectiveId} science={science} />}
       <div style={{display:'flex',alignItems:'center',gap:5,fontSize:fs(7.5),color:'#9ab89a',marginBottom:4}}>
         <span>Time per stop</span>
         <input type="range" min={5} max={60} step={5} value={dwellMin}
@@ -635,35 +717,33 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled }
         <b style={{color:'#e8e0c8',width:44,textAlign:'right'}}>{dwellMin} min</b>
       </div>
       <div style={{fontSize:fs(6.5),color:'#7a6a4a',marginBottom:4}}>
-        Assumption: no sourced time per stop was found. Score = diversity of distinct units
-        (bedrock {SCIENCE_PARAMS.weights.bedrock}, surface {SCIENCE_PARAMS.weights.surface}, contact {SCIENCE_PARAMS.weights.contact}{SITE.chemistry ? `, ChemCam standout ${SCIENCE_PARAMS.weights.chemistry}` : ''}) — a design choice.
+        Assumption: no sourced time per stop was found. Stop selection: Held–Karp over the objective's candidates,
+        most distinct weighted features within the EVA budget — weights are a design choice.
       </div>
       {pov && <PovViewer stop={pov.stop} label={pov.label} onClose={() => setPov(null)} />}
       {chemStop && <ChemistryCard stop={chemStop.stop} label={chemStop.label} onClose={() => setChemStop(null)} />}
-      <Btn disabled={busy || disabled} onClick={onPlan}
+      <Btn disabled={busy || disabled || !objectiveId} onClick={onPlan}
+        title={objectiveId ? '' : 'Choose a mission objective first'}
         style={{width:'100%',background:'rgba(70,40,0,0.55)',borderColor:'rgba(230,150,60,0.6)',color:'#ffbb66',fontWeight:'bold'}}>
-        {busy ? 'SEARCHING…' : 'PLAN SCIENCE EVA'}
+        {busy ? 'SEARCHING…' : objectiveId ? 'PLAN SCIENCE EVA' : 'PLAN SCIENCE EVA — CHOOSE AN OBJECTIVE'}
       </Btn>
       {science && (
         <div style={{marginTop:5,fontSize:fs(7.5),lineHeight:1.5,color:'#b8c8b0'}}>
           <div>
+            {objective && <><b style={{color:'#ffd9a0'}}>{objective.name}</b><br/></>}
             {science.stops.length} stops / {science.candidates.length} candidates ·
             {' '}score <b style={{color:'#ffcc66'}}>{science.score}</b>/{science.maxScore}
             {' '}· plan {fmtHM(science.totalS)}
           </div>
-          <ol style={{margin:'3px 0 0',paddingLeft:14,color:'#e0d0b0'}}>
-            {science.stops.map((st, i) => (
-              <li key={i} title={st.tags.join('\n')}><b style={{color:'#ffb347'}}>S{i + 1}</b> {st.label}
-                {nearestPanorama(st.x, st.z) && (
-                  <span onClick={() => setPov({ stop: st, label: `S${i + 1} ${st.label}` })}
-                    style={{marginLeft:4,color:'#ffcc88',cursor:'pointer',textDecoration:'underline'}}>ground view</span>
-                )}
-                {hasChemistry(st.x, st.z) && (
-                  <span onClick={() => setChemStop({ stop: st, label: `S${i + 1} ${st.label}` })}
-                    style={{marginLeft:4,color:'#88ccff',cursor:'pointer',textDecoration:'underline'}}>chemistry</span>
-                )}
-              </li>
-            ))}
+          <ol style={{margin:'3px 0 0',paddingLeft:14,color:'#e0d0b0',listStyle:'none'}}>
+            {cards.map((card, i) => {
+              const st = science.stops[i];
+              return (
+                <StopCard key={i} card={card}
+                  onGroundView={nearestPanorama(st.x, st.z) ? () => setPov({ stop: st, label: `S${i + 1} ${st.label}` }) : null}
+                  onChemistry={hasChemistry(st.x, st.z) ? () => setChemStop({ stop: st, label: `S${i + 1} ${st.label}` }) : null} />
+              );
+            })}
           </ol>
           {science.candidates.length > science.stops.length && (
             <div style={{color:'#7a8a7a',marginTop:2}}>
@@ -1171,6 +1251,7 @@ export default function RightPanel({
   isPlanning = false,
   hasGeology = false, science = null, onPlanScience = () => {}, isPlanningScience = false,
   scienceDwellMin = 20, setScienceDwellMin = () => {},
+  objectiveId = null, setObjectiveId = null,
   mission = DEFAULT_MISSION, setMission = () => {},
   sunAngleDeg, setSunAngleDeg,
   sun = null, evaStartMs = null, setEvaStartMs = () => {},
@@ -1332,7 +1413,8 @@ export default function RightPanel({
         {hasGeology && (
         <Sect label="Science EVA">
           <SciencePanel science={science} onPlan={onPlanScience} busy={isPlanningScience || isPlanning}
-            dwellMin={scienceDwellMin} setDwellMin={setScienceDwellMin} disabled={isRoving} />
+            dwellMin={scienceDwellMin} setDwellMin={setScienceDwellMin} disabled={isRoving}
+            objectiveId={objectiveId} setObjectiveId={setObjectiveId} />
         </Sect>
         )}
 
@@ -1594,7 +1676,7 @@ export default function RightPanel({
               }
               const url = buildShareURL(window.location.href, SITE.name, {
                 waypoints, science: !!science, route: activeRoute, startMs: evaStartMs,
-                mission, dwellMin: scienceDwellMin,
+                mission, dwellMin: scienceDwellMin, objectiveId: science?.objectiveId || objectiveId,
               });
               try {
                 await navigator.clipboard.writeText(url);

@@ -11,6 +11,7 @@
  *   t  EVA start, ms since 1970 (UTC) — drives sun, temperature, DONKI
  *   m  mission setup { suit, equipmentKg, rover, limits }
  *   d  time per science stop, min
+ *   o  mission objective id (config/objectives.js)
  *
  * Pure (no React): tested in Node (tests/shareLink.test.mjs).
  */
@@ -32,7 +33,7 @@ const b64urlDecode = (s) => {
 const r1 = (v) => Math.round(v * 10) / 10;
 
 /** @returns {string} the `plan` query value */
-export function encodePlan({ waypoints = [], science = false, route, startMs, mission, dwellMin }) {
+export function encodePlan({ waypoints = [], science = false, route, startMs, mission, dwellMin, objectiveId }) {
   const st = {
     v: VERSION,
     w: (science ? waypoints.slice(0, 1) : waypoints).map((p) => [r1(p.x), r1(p.z)]),
@@ -42,6 +43,7 @@ export function encodePlan({ waypoints = [], science = false, route, startMs, mi
   if (Number.isFinite(startMs)) st.t = Math.round(startMs);
   if (mission) st.m = { suit: mission.suit, equipmentKg: mission.equipmentKg, rover: !!mission.rover, limits: mission.limits };
   if (Number.isFinite(dwellMin)) st.d = dwellMin;
+  if (typeof objectiveId === 'string' && objectiveId) st.o = objectiveId;
   return b64urlEncode(JSON.stringify(st));
 }
 
@@ -76,6 +78,7 @@ export function decodePlan(search) {
     startMs: num(st.t),
     dwellMin: num(st.d) != null ? Math.min(120, Math.max(1, st.d)) : null,
     mission: null,
+    objectiveId: typeof st.o === 'string' && /^[a-z0-9-]{1,40}$/.test(st.o) ? st.o : null,
   };
   if (st.m && typeof st.m === 'object') {
     out.mission = {

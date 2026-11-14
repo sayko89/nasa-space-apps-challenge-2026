@@ -56,7 +56,7 @@ self.onmessage = async (e) => {
     if (type === 'science') {
       if (!P) throw new Error('planner worker not initialised');
       const t0 = performance.now();
-      const result = P.planScience(e.data.home, maps.hm, e.data.opts || {});
+      const result = P.planScience(e.data.home, maps.hm, { ...(e.data.opts || {}), slopeMap: maps.sm });
       self.postMessage({ id, result, planMs: performance.now() - t0 });
       return;
     }

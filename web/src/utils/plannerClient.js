@@ -110,5 +110,5 @@ export async function planScience(home, maps, opts = {}) {
       disabled = true;
     }
   }
-  return planScienceSync(home, maps.hm, opts);
+  return planScienceSync(home, maps.hm, { ...opts, slopeMap: maps.sm });
 }

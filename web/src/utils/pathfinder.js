@@ -16,6 +16,7 @@ import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
 import { chemAnomalies } from './chemistry.js';
+import { findObjective } from '../config/objectives.js';
 import { evaDoseMSv, careerFraction } from './radiation.js';
 import { carryCheck, ROVER } from '../config/mission.js';
 import { thermalClass } from '../terrain/layers.js';
@@ -707,33 +708,68 @@ function chemCellMap() {
   return m;
 }
 
+/** Cell index → every measured ChemCam target in that cell (objective "re-investigate targets"). */
+function chemTargetCellMap() {
+  if (!SITE.chemistry) return null;
+  const m = new Map();
+  for (const t of SITE.chemistry.targets || []) {
+    const i = cellIndexAt(t.x, t.z);
+    if (!m.has(i)) m.set(i, []);
+    m.get(i).push({ name: t.name, sol: t.sol, points: t.points, rangeM: t.range_m });
+  }
+  return m;
+}
+
+/** What the ground at a stop is like — the same layers the route checks use. */
+function stopTerrain(idx, slopeMap) {
+  const deg = slopeMap ? Math.atan(slopeMap[idx] || 0) * 180 / Math.PI : null;
+  const rock = SITE.layers?.rock?.values?.[idx];
+  const min = SITE.layers?.minerals;
+  const conf = min?.code?.[idx] ? (min.confidence[idx] === 2 ? 'high' : 'medium') : null;
+  return {
+    slopeDeg: Number.isFinite(deg) ? deg : null,
+    rockReliefM: Number.isFinite(rock) ? rock : null,
+    mineralConfidence: conf,
+  };
+}
+
 /**
  * Science EVA (Stage 6): best set + order of geology stops from `home` within the
  * EVA budget (see utils/science.js). Serializable result (worker → main thread).
- * opts: { dwellMin, budgetS } override SCIENCE_PARAMS / the EVA duration.
+ * opts: { dwellMin, budgetS } override SCIENCE_PARAMS / the EVA duration;
+ *       objectiveId (config/objectives.js) restricts the candidates and sets the weights.
  */
 export function planScience(home, hMap, opts = {}) {
   const geo = SITE.geology;
   if (!IS_DEM || !geo) return null;
+  const objective = opts.objectiveId ? findObjective(SITE.name, opts.objectiveId) : null;
+  if (opts.objectiveId && !objective) throw new Error(`unknown mission objective "${opts.objectiveId}" for ${SITE.name}`);
+  const weights = objective ? objective.plan.weights : SCIENCE_PARAMS.weights;
   const homeMaps = getHomeMaps(home.x, home.z, hMap);
   const dwellS = (opts.dwellMin ?? SCIENCE_PARAMS.dwellMin) * 60;
   const budgetS = opts.budgetS ?? param('evaDurationH') * 3600;
   const r = planScienceEva(geo, homeMaps, hMap, getWallMap(), {
     cellM: CELL_SIZE, budgetS, dwellS, maxRadialM: param('maxRadialDistanceKm') * 1000,
-    weights: SCIENCE_PARAMS.weights, interiorR: SCIENCE_PARAMS.interiorR,
-    minHomeDistM: SCIENCE_PARAMS.minHomeDistM, maxCandidates: SCIENCE_PARAMS.maxCandidates,
+    weights, interiorR: SCIENCE_PARAMS.interiorR,
+    minHomeDistM: SCIENCE_PARAMS.minHomeDistM,
+    maxCandidates: objective?.plan.maxCandidates ?? SCIENCE_PARAMS.maxCandidates,
     minerals: SITE.layers?.minerals || null,
     chemCells: chemCellMap(),
+    targetCells: objective?.plan.filter.targets ? chemTargetCellMap() : null,
     maxChemCandidates: SCIENCE_PARAMS.maxChemCandidates,
     maxReturnS: opts.maxReturnS ?? null,
+    filter: objective?.plan.filter || null,
   });
-  const toWorld = (c) => { const { wx, wz } = gridToWorld(c.col, c.row); return { ...c, x: wx, z: wz }; };
+  const sm = opts.slopeMap || null;
+  const toWorld = (c) => { const { wx, wz } = gridToWorld(c.col, c.row); return { ...c, x: wx, z: wz, terrain: stopTerrain(c.idx, sm) }; };
   return {
+    objectiveId: objective?.id || null,
+    weights,
     candidates: r.candidates.map(toWorld),
     stops: r.stops.map(toWorld),
     order: r.tour.order,
     score: r.tour.score,
-    maxScore: tagScore([...new Set(r.candidates.flatMap(c => c.tags))], SCIENCE_PARAMS.weights), // all candidates
+    maxScore: tagScore([...new Set(r.candidates.flatMap(c => c.tags))], weights), // all candidates
     tags: r.tour.tags,
     totalS: r.tour.totalS, walkS: r.tour.walkS, dwellTotalS: r.tour.dwellTotalS,
     dwellS, budgetS,

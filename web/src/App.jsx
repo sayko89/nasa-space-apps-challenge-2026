@@ -25,6 +25,7 @@ import SiteSwitcher from './components/SiteSwitcher';
 import { PANEL_W, SHEET_VH, useNarrow, useCompact, COMPACT_QUERY } from './ui/layout';
 import { decodePlan } from './utils/shareLink';
 import { SUITS } from './config/mission';
+import { findObjective } from './config/objectives';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
@@ -189,6 +190,8 @@ export default function App() {
   // Stage 6 — science EVA (geology stops). null = none planned
   const [science, setScience] = useState(null);
   const [scienceDwellMin, setScienceDwellMin] = useState(SHARED?.dwellMin ?? SCIENCE_PARAMS.dwellMin);
+  // Mission objective (config/objectives.js): must be chosen before a science EVA is planned
+  const [objectiveId, setObjectiveId] = useState(() => (SHARED?.objectiveId && findObjective(SITE.name, SHARED.objectiveId) ? SHARED.objectiveId : null));
   // Suit, equipment and rover safe haven (config/mission.js)
   const [mission, setMission] = useState(() => {
     const m = { ...DEFAULT_MISSION, ...(SHARED?.mission || {}) };
@@ -475,15 +478,20 @@ export default function App() {
   // (worker), then turns them into waypoints home → stops → home with dwell.
   const handlePlanScience = useCallback(async () => {
     if (!IS_DEM || !SITE.geology) return;
+    const objective = findObjective(SITE.name, objectiveId);
+    if (!objective) {
+      showToast('Choose a mission objective first — it decides which stops the planner looks for.', 'warning');
+      return;
+    }
     const home = waypoints[0] || homeWaypointRef.current || { ...DEFAULT_HOME };
     setIsPlanningScience(true);
-    addLog(`Science EVA: choosing stops (dwell ${scienceDwellMin} min/stop)...`);
+    addLog(`Science EVA (${objective.name}): choosing stops (dwell ${scienceDwellMin} min/stop)...`);
     try {
       const t0 = performance.now();
-      const res = await planScience(home, getMaps(), { dwellMin: scienceDwellMin,
+      const res = await planScience(home, getMaps(), { dwellMin: scienceDwellMin, objectiveId: objective.id,
         ...(mission.rover ? { maxReturnS: ROVER.walkbackMin.value * 60 } : {}) });
       if (!res || res.stops.length === 0) {
-        showToast('No geology stop fits the EVA budget from this start.', 'warning');
+        showToast(`No stop for "${objective.name}" fits the EVA budget from this start.`, 'warning');
         addLog('Science EVA: no feasible stop.');
         return;
       }
@@ -505,7 +513,7 @@ export default function App() {
     } finally {
       setIsPlanningScience(false);
     }
-  }, [waypoints, getMaps, scienceDwellMin, addLog, showToast, mission]);
+  }, [waypoints, getMaps, scienceDwellMin, addLog, showToast, mission, objectiveId]);
 
   // Shared link: rebuild the plan once on load (same start, same settings → same stops and routes)
   const sharedDoneRef = useRef(false);
@@ -916,6 +924,7 @@ export default function App() {
         onPlanScience={handlePlanScience}
         isPlanningScience={isPlanningScience}
         scienceDwellMin={scienceDwellMin} setScienceDwellMin={setScienceDwellMin}
+        objectiveId={objectiveId} setObjectiveId={setObjectiveId}
         mission={mission} setMission={setMission}
         sunAngleDeg={sunAngleDeg}   setSunAngleDeg={setSunAngleDeg}
         sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs}
