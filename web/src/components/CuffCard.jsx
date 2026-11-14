@@ -32,7 +32,7 @@ const INK = '#111', ROUTE = '#e4572e';
 const PRINT_CSS = `
 @media print {
   @page { size: A4 portrait; margin: 0; }
-  html, body { background: #fff !important; }
+  html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
   body::before, body::after { display: none !important; content: none !important; }
   body > *:not(.cuff-print-root) { display: none !important; }
   .cuff-print-root { position: static !important; background: none !important; padding: 0 !important; overflow: visible !important; }
