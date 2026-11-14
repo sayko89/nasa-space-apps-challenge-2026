@@ -63,7 +63,7 @@ export default function MissionTimeline({ route, mode, startMs, oxygen, nowS = n
         ))}
         {Number.isFinite(nowS) && nowS > 0 && (
           <div aria-label="EVA clock" style={{ position: 'absolute', left: pct(nowS), top: -2, bottom: 0, borderLeft: `2px solid ${T.text}` }}>
-            <span style={{ position: 'absolute', top: -2, left: 3, fontSize: 9.5, color: T.text, fontFamily: T.mono, background: T.panel, padding: '0 2px' }}>{fmtHM(nowS)}</span>
+            <span style={{ position: 'absolute', top: 24, left: 3, fontSize: 9.5, color: T.text, fontFamily: T.mono, background: T.panel, padding: '0 2px', whiteSpace: 'nowrap' }}>now {fmtHM(nowS)}</span>
           </div>
         )}
       </div>

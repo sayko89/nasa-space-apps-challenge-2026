@@ -56,9 +56,33 @@ OPS       centre: 3D terrain + EVA timeline band      right: mission summary · 
 * Status indicator: filled chip with the word (never colour alone).
 * Map controls: grouped in one tool strip; no buttons floating over the terrain except the EVA HUD.
 
+## 5. What was built (components)
+
+| File | Role |
+|---|---|
+| `src/workspace/TopBar.jsx` | identity, site switcher, workspace tabs, mission status (objective · route · decision · EVA) |
+| `src/workspace/LayerCatalog.jsx` | data catalog: search, categories, visibility, opacity, order, legends, ⓘ → inspector |
+| `src/workspace/Inspector.jsx` | global inspector for point / layer / stop / route |
+| `src/workspace/MissionTimeline.jsx` | EVA timeline band (Plan Mission, Operations) |
+| `src/config/catalog.js` | catalog from the loaded site (pure) |
+| `src/utils/inspect.js` | point inspection + mission relevance (pure) |
+| `src/utils/missionTimeline.js` | timeline from the cuff-card table and the route limits (pure) |
+| `src/utils/routeModes.js` | what each route mode optimises, from `MODE_WEIGHTS` (pure) |
+| `src/ui/theme.js` | design tokens, workspace list |
+| `App.jsx`, `RightPanel.jsx`, `MoonScene.jsx`, `MiniMap.jsx`, `ui.jsx` | workspace state and layout; sections assigned to workspaces; several drapes, terrain click, inspect pin; site-map click → inspector; collapsible sections with summaries |
+
+Mission setup was split into *Astronaut & spacesuit*, *Payload mass*, *Oxygen & life support*,
+*Dust exposure & equipment reliability*, *EVA limits & safe haven* and *Environmental constraints*
+(same controls, same state). Tests: `tests/workspaces.test.mjs` (catalog, route modes, timeline,
+inspector on the real Jezero site); the browser tests open every workspace.
+
 ## Limitations
 
 * Inner parts of some existing panels keep their earlier colours (re-theming them line by line was
   out of scope); the frame, controls and new components use the new tokens.
 * AI terrain segmentation is not in this branch's data; the catalog category appears once
-  `segmentation.json` exists for a site.
+  `segmentation.json` exists for a site (`ai-predicted` is already a provenance kind).
+* The 3D scene shows one route mode's segments only through the inspector; segments are not
+  individually clickable in 3D.
+* Science stops are inspected from the stop list or the timeline (3D badges are not clickable).
+* On phones the EVA HUD and the bottom sheet still share the screen as before.
