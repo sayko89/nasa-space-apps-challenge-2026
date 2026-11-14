@@ -157,7 +157,7 @@ Selected model, per class on the test sets (IoU; pixel accuracy in the last colu
 | test-min3 | 0.954 | 0.915 | 0.911 | 0.267 | 0.965 |
 | test-m2020 | 0.772 | 0.664 | 0.560 | 0.315 | 0.803 |
 
-**What this means.** Soil, bedrock and sand are segmented well on Curiosity Navcam images (expert test, IoU 0.78–0.95). **Big rocks are not**: IoU 0.07–0.32 — they are rare in the training labels (0.9 % of labelled MSL pixels) and the model mostly misses them. On Perseverance Navcam (Jezero, crowdsourced labels) the scores are lower than on Curiosity (mIoU 0.58).
+**What this means.** Soil, bedrock and sand are segmented well on Curiosity Navcam images (expert test, IoU 0.78–0.95). **Big rocks are not**: IoU 0.08–0.32 — they are rare in the training labels (0.9 % of labelled MSL pixels) and the model mostly misses them. On Perseverance Navcam (Jezero, crowdsourced labels) the scores are lower than on Curiosity (mIoU 0.58).
 
 **Low-confidence threshold (measured on validation):** 0.3 — validation pixels above it are right 93.6 % of the time (target 90 %), the few below it 24.1 %. Confidence is reasonably calibrated: in the 0.9–1.0 bin, MSL validation pixels are right 98.5 % and M2020 94.4 % of the time.
 

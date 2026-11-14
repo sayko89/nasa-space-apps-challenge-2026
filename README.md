@@ -357,7 +357,7 @@ the confidence and the unknown (low-confidence) pixels, with the image's source 
 | Training | 14,068 Curiosity + 2,643 Perseverance images, split by Mars day (no near-duplicate frames across splits), 12 epochs, 3.5 h on CPU |
 | Curiosity Navcam, expert test (≈ Gale) | mIoU **0.64 / 0.68 / 0.76** (≥1 / ≥2 / ≥3 experts agree) · pixel accuracy 0.90–0.96 |
 | Perseverance Navcam, test (≈ Jezero, crowdsourced labels) | mIoU **0.58** · pixel accuracy 0.80 |
-| Per class (expert test) | soil 0.89–0.95 · bedrock 0.78–0.91 · sand 0.81–0.91 · **big rock 0.07–0.27** (rare in the labels; mostly missed) |
+| Per class (expert test) | soil 0.89–0.95 · bedrock 0.78–0.91 · sand 0.81–0.91 · **big rock 0.08–0.27** (rare in the labels; mostly missed) |
 | Predictions | 408 Curiosity frames at Gale, 37 Perseverance frames at Jezero |
 
 **Honest limits.** These are *model predictions on images*, not NASA measurements, and they are **not georeferenced**
