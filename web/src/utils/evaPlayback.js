@@ -25,7 +25,7 @@ import {
 } from './evaTimeline.js';
 import { fmtHM } from './format.js';
 import { oxygenState } from './oxygen.js';
-import { spliceTimeline } from './dustReroute.js';
+import { spliceTimeline, DUST_REROUTE } from './dustReroute.js';
 
 export const SPEEDS = [1, 30, 120, 600];
 export const DEFAULT_SPEED = 120;
@@ -280,7 +280,11 @@ export class EvaPlayback {
    */
   _dustAhead() {
     const reason = 'dust devil on the route ahead';
-    if (!this.dustPlanner || this.flags.rerouted) { this.abort(reason, this._lastAvoidReturn || null); return; }
+    if (!this.dustPlanner || this.flags.rerouted) {
+      if (this.flags.rerouted) this._event('reroute-failed', 'Dust devil on the new route again — returning to the start point for safety.');
+      this.abort(reason, this._lastAvoidReturn || null);
+      return;
+    }
     this.flags.rerouted = true;
     const t = this.t, p = sampleTimeline(this.active, t);
     const stops = this.nominal.stops.filter(s => s.arriveS > t + 1e-6);
@@ -299,8 +303,8 @@ export class EvaPlayback {
     });
     this._lastAvoidReturn = r?.returnPath || null;
     if (!r?.ok) {
-      this._event('reroute-failed', `DUST DEVIL AHEAD — no safe route around it (${r?.reason || 'planner unavailable'}). Returning home.`);
-      this.abort(`${reason} — no safe route around it`, r?.returnPath || null);
+      this._event('reroute-failed', `Dust devil detected — no new route found (${r?.reason || 'planner unavailable'}). Returning to the start point for safety.`);
+      this.abort(`${reason} — no new route found, returning to the start point for safety`, r?.returnPath || null);
       return;
     }
     const tl = spliceTimeline(this.nominal, t, p, r.path, r.elapsedS, r.stops, here ? { dwellS: wait, n: here.n, label: here.label } : null);
@@ -309,10 +313,10 @@ export class EvaPlayback {
     this._toHomeOverride = r.toHomeAt;
     this.rerouted = { t0: t, extraS: r.extraS, skipped: r.skipped.map(s => s.n), finishing: here ? here.n : null,
       path: r.path, checks: r.checks, fromX: p.x, fromZ: p.z };
-    const sk = r.skipped.length ? ` · skipped ${r.skipped.map(s => `S${s.n}`).join(', ')} (inside the dust devil's safety distance)` : '';
+    const sk = r.skipped.length ? ` · skipped ${r.skipped.map(s => `S${s.n}`).join(', ')} (inside the safety zone)` : '';
     const ct = here ? ` · S${here.n} finished first` : '';
     const ex = r.extraS >= 0 ? `+${fmtHM(r.extraS)}` : `−${fmtHM(-r.extraS)}`;
-    this._event('reroute', `DUST DEVIL AHEAD — new route around it (${ex})${sk}${ct}`, { extraS: r.extraS });
+    this._event('reroute', `Dust devil detected — ${DUST_REROUTE.safetyMarginM.value} m safety zone set; new SAFE route planned from here (${ex})${sk}${ct}`, { extraS: r.extraS });
     this._emit('status');
   }
 

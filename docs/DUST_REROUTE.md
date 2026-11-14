@@ -8,9 +8,10 @@ route comes within the dust devil's trigger radius (`interferenceRadius` = 1.35 
 decision below runs instead of an immediate abort.
 
 ## Decision
-1. **No-go disc**: trigger radius + safety distance (`DUST_REROUTE.safetyMarginM`, 25 m, design choice).
-   Stops inside the disc are skipped. If the crew is already inside it, there is nothing to plan → abort.
-2. **Re-plan from where the crew stands** to the remaining stops and home (SAFE mode, same A*, same
+1. **Safety zone**: when the crew notices the dust devil, a no-go zone of its radius + **25 m**
+   (`DUST_REROUTE.safetyMarginM`, design choice) is set around it — drawn as a dashed yellow ring.
+   Stops inside the zone are skipped. If the crew is already inside it, there is nothing to plan → return.
+2. **Re-plan in SAFE mode from the point where they noticed it** (the main goal) to the remaining stops and home (SAFE mode, same A*, same
    walking model), with the disc closed (`planAllRoutes(…, { block, strict: true })`). Strict mode
    returns a definite "no path" instead of the old BFS fallback that walked to the nearest cell.
    If the crew is sampling a stop, that stop is finished first.
@@ -22,9 +23,11 @@ decision below runs instead of an immediate abort.
    * the crew is home before sunset (when the sun position is known).
 4. Accepted → the timeline is spliced at the current time (walked part kept, stop numbers kept),
    the live margin and the oxygen check use the walk-home times around the dust devil, the new route
-   is drawn in yellow, and the log says the extra time and the skipped stops.
-   Rejected → abort; the walk home avoids the dust devil when a path exists (orange dashed),
-   otherwise the old fastest path home.
+   is drawn in yellow, and an **information** message says “Dust devil detected — 25 m safety zone set;
+   new SAFE route planned from here (+extra time) · skipped stops”.
+   Only if no such route exists → “Dust devil detected — no new route found (reason). Returning to the
+   start point for safety.” The walk home avoids the zone when a path exists (orange dashed),
+   otherwise the fastest path home.
 5. A second alarm for the same dust devil → abort (no second re-plan). A new dust devil may be
    avoided again. *Restart* returns to the plan as loaded.
 
