@@ -98,6 +98,20 @@ def assign_splits(samples, test_groups, rng, log):
         if src == 'm2020': m_seen += 1
         for s in groups[k]: s['split'] = sp
 
+def drop_duplicates(work, log):
+    """Byte-identical images: the three expert-test variants (min1/2/3) of one image are kept as they are; a training or
+    validation sample identical to any test image is dropped (leakage); among the rest the first copy is kept.
+    Returns the dropped samples."""
+    test_sha = {s['sha1'] for s in work if 'sha1' in s and s['split'].startswith('test')}
+    dropped, first = [], {}
+    for s in work:
+        if 'sha1' not in s or s['split'].startswith('test'): continue
+        if s['sha1'] in test_sha: why = 'identical to a test image (dropped from training / validation)'
+        elif s['sha1'] in first: why = 'exact duplicate image (second copy dropped)'
+        else: first[s['sha1']] = s; continue
+        log[why].append(s['label']); s['rejected'] = why; dropped.append(s)
+    return dropped
+
 def main():
     t0 = time.time()
     z = open_zip()
@@ -152,13 +166,7 @@ def main():
         for s, (res, why) in zip(work, ex.map(load, work)):
             if why: log[why].append(s['label']); s['rejected'] = why; continue
             arrays[s['label']] = res; s['sha1'] = res['sha1']; s['orig_size'] = res['orig']
-    # exact duplicate images (same bytes) across different names: keep the first, log the rest
-    first = {}
-    for s in work:
-        if 'sha1' not in s: continue
-        if s['sha1'] in first and first[s['sha1']]['split'] != s['split']:
-            log['exact duplicate image across splits (dropped)'].append(s['label']); s['rejected'] = 'duplicate'; arrays.pop(s['label'], None)
-        else: first.setdefault(s['sha1'], s)
+    for s in drop_duplicates(work, log): arrays.pop(s['label'], None)
     sets = collections.defaultdict(list)
     for s in work:
         if s['label'] in arrays: sets[s['split'] + ('' if s['split'].startswith('test') else f"-{s['source']}")].append(s)

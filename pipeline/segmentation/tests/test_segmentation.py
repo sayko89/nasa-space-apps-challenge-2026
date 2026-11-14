@@ -66,6 +66,19 @@ class Split(unittest.TestCase):
         self.assertEqual([x['split'] for x in a], [x['split'] for x in b])
 
 
+class Duplicates(unittest.TestCase):
+    def test_test_variants_kept_train_copies_of_test_images_dropped(self):
+        w = [{'label': 'g1', 'split': 'test-min1', 'sha1': 'A'}, {'label': 'g2', 'split': 'test-min2', 'sha1': 'A'},
+             {'label': 'g3', 'split': 'test-min3', 'sha1': 'A'}, {'label': 't1', 'split': 'train', 'sha1': 'A'},
+             {'label': 't2', 'split': 'train', 'sha1': 'B'}, {'label': 'v2', 'split': 'val', 'sha1': 'B'},
+             {'label': 't3', 'split': 'train', 'sha1': 'C'}]
+        log = collections.defaultdict(list)
+        dropped = {d['label'] for d in prepare.drop_duplicates(w, log)}
+        self.assertEqual(dropped, {'t1', 'v2'})
+        self.assertFalse(any(x['label'].startswith('g') and 'rejected' in x for x in w))
+        self.assertEqual(len(log), 2)
+
+
 class Validation(unittest.TestCase):
     """prepare.load() rejects bad samples with a reason instead of dropping them silently."""
     def run_load(self, img_bytes, lab_bytes):

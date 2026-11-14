@@ -37,9 +37,15 @@ def predict(img):
     return p.argmax(0).astype(np.uint8), p.max(0)
 
 def frames_for(site, st):
+    """Candidate frames, most downward first (the caller keeps the first PER_STATION usable ones)."""
     fr = [f for f in st['frames'] if (f['camera'].startswith('NAVCAM') if site == 'jezero' else f['camera'].startswith('NAV'))]
     fr = [f for f in fr if f.get('el') is not None and f['el'] <= 0]
-    return sorted(fr, key=lambda f: f['el'])[:PER_STATION]
+    return sorted(fr, key=lambda f: f['el'])
+
+def usable(img):
+    """Full frames only: subframe strips (e.g. 800×150 browse products) are too thin to segment."""
+    w, h = img.size
+    return min(w, h) >= SIZE and max(w, h) / min(w, h) <= 2.0
 
 def main():
     t0 = time.time(); log = collections.Counter()
@@ -49,13 +55,18 @@ def main():
         skipped_cam = sum(1 for st in pov['stations'] for f in st['frames'] if site == 'jezero' and not f['camera'].startswith('NAVCAM'))
         items, errors = [], []
         for st in pov['stations']:
+            kept = 0
             for f in frames_for(site, st):
+                if kept >= PER_STATION: break
                 url = f.get('medium') or f.get('small')
                 iid = os.path.splitext(os.path.basename(url))[0]
                 try:
                     raw = fetch(url); img = Image.open(io.BytesIO(raw)); img.load()
                 except Exception as e:
                     errors.append({'url': url, 'error': f'{type(e).__name__}: {e}'[:200]}); log['download error'] += 1; continue
+                if not usable(img):
+                    log[f'{site} skipped: subframe / strip {img.size[0]}×{img.size[1]}'] += 1; continue
+                kept += 1
                 cls, conf = predict(img)
                 shown = cls.copy(); shown[conf < THR] = IGNORE
                 Image.fromarray(shown).save(os.path.join(out_dir, f'{iid}.png'), optimize=True)
@@ -71,8 +82,9 @@ def main():
         index = {'site': site, 'model': card['version'], 'model_card': '../../../models/mars-terrain-v1.json', 'low_confidence_threshold': THR,
                  'predicted_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
                  'kind': 'model prediction (image level) — not a NASA measurement, not georeferenced',
-                 'selection': f'up to {PER_STATION} Navcam frames per rover position looking at the ground (elevation ≤ 0°)',
-                 'skipped': {'other cameras (out of training domain)': skipped_cam, 'download errors': len(errors)},
+                 'selection': f'up to {PER_STATION} full Navcam frames per rover position looking at the ground (elevation ≤ 0°), most downward first',
+                 'skipped': {'other cameras (out of training domain)': skipped_cam, 'download errors': len(errors),
+                             'subframe strips (too thin to segment)': sum(v for k, v in log.items() if k.startswith(f'{site} skipped'))},
                  'credit': pov.get('credit'), 'items': items, 'errors': errors[:50]}
         json.dump(index, open(os.path.join(out_dir, 'index.json'), 'w'), indent=0)
     print(dict(log), round(time.time() - t0, 1), 's')
