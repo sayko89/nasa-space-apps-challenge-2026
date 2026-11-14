@@ -1,51 +1,74 @@
+archive: /mnt/seg/ai4mars.zip
 {
  "splits": {
   "train-msl": {
-   "samples": 39,
-   "groups": 4,
+   "samples": 175,
+   "groups": 15,
    "pixels": {
-    "soil": 1181292,
+    "soil": 6431937,
     "bedrock": 0,
     "sand": 0,
     "big_rock": 2,
-    "unlabelled": 1374610
+    "unlabelled": 5036861
    }
   },
   "val-msl": {
-   "samples": 7,
-   "groups": 2,
+   "samples": 19,
+   "groups": 3,
    "pixels": {
-    "soil": 243757,
-    "bedrock": 0,
-    "sand": 0,
+    "soil": 596913,
+    "bedrock": 3043,
+    "sand": 81,
     "big_rock": 0,
-    "unlabelled": 214995
+    "unlabelled": 645147
    }
   },
   "test-min1": {
-   "samples": 5,
-   "groups": 2,
+   "samples": 322,
+   "groups": 48,
    "pixels": {
-    "soil": 138140,
-    "bedrock": 22397,
-    "sand": 0,
-    "big_rock": 0,
-    "unlabelled": 167143
+    "soil": 5567214,
+    "bedrock": 3750498,
+    "sand": 2798470,
+    "big_rock": 23839,
+    "unlabelled": 8962571
    }
   },
-  "test-min3": {
-   "samples": 1,
-   "groups": 1,
+  "train-m2020": {
+   "samples": 120,
+   "groups": 8,
    "pixels": {
-    "soil": 2722,
-    "bedrock": 2926,
-    "sand": 0,
-    "big_rock": 0,
-    "unlabelled": 59888
+    "soil": 5963811,
+    "bedrock": 2973162,
+    "sand": 220576,
+    "big_rock": 42507,
+    "unlabelled": 5207624
+   }
+  },
+  "val-m2020": {
+   "samples": 39,
+   "groups": 5,
+   "pixels": {
+    "soil": 1354939,
+    "bedrock": 602225,
+    "sand": 77609,
+    "big_rock": 10073,
+    "unlabelled": 1359698
+   }
+  },
+  "test-m2020": {
+   "samples": 41,
+   "groups": 3,
+   "pixels": {
+    "soil": 1682460,
+    "bedrock": 272846,
+    "sand": 138203,
+    "big_rock": 10847,
+    "unlabelled": 1474524
    }
   }
  },
  "leaking_groups": {},
- "seconds": 101.0
+ "seconds": 17.4
 }
-rejections: {'duplicate image (.jpg kept .jpeg)': 287, 'excluded set: geology taxonomy (M2020_GEO)': 2, 'excluded set: MSL Mastcam: undocumented label value 4': 1, 'excluded set: MER: range mask not applied': 1, 'label without image': 200, 'unreadable image (RemoteIOError)': 1094, 'unreadable label (RemoteIOError)': 11, 'empty label (no labelled pixel)': 2, 'exact duplicate image across splits (dropped)': 7}
+rejections: {'duplicate image (.jpg kept .jpeg)': 287, 'excluded set: geology taxonomy (M2020_GEO)': 2, 'excluded set: MSL Mastcam: undocumented label value 4': 1, 'excluded set: MER: range mask not applied': 1, 'empty label (no labelled pixel)': 42, 'exact duplicate image across splits (dropped)': 608}
