@@ -1,7 +1,7 @@
 {
  "version": "mars-terrain-v1",
  "file": "mars-terrain-v1.onnx",
- "selected": "scratch-cedice",
+ "selected": "pretrained-cedice",
  "selected_on": "mean validation mIoU (MSL + M2020)",
  "classes": [
   "soil",
@@ -52,7 +52,7 @@
   }
  },
  "output": "softmax probabilities per class",
- "low_confidence_threshold": 0.95,
+ "low_confidence_threshold": 0.3,
  "dataset": {
   "name": "AI4Mars merged v0.6",
   "doi": "10.5281/zenodo.15995036",
@@ -67,5 +67,5 @@
   ]
  },
  "lunar_model": "not available \u2014 transfer from a lunar model (approach A) was not run",
- "created_utc": "2026-11-14T13:03:01+00:00"
+ "created_utc": "2026-11-14T20:24:13+00:00"
 }
