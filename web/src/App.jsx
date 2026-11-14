@@ -36,6 +36,13 @@ import LayerCatalog from './workspace/LayerCatalog';
 import Inspector from './workspace/Inspector';
 import MissionTimeline from './workspace/MissionTimeline';
 import WelcomeGuide, { shouldShowWelcome } from './workspace/WelcomeGuide';
+import EvaCuff from './workspace/EvaCuff';
+import { cuffModel, hazardPoints } from './utils/evaCuff';
+import { evaSnapshot } from './utils/evaPlayback';
+import { scienceStopCards } from './workspace/scienceCards';
+import { routeHazards, HAZARD_CLASSES } from './utils/hazards';
+import { getHazardMap } from './utils/heatmaps';
+import { cellIdx } from './utils/evaAssessments';
 import { T, CATALOG_W } from './ui/theme';
 import { buildCatalog } from './config/catalog';
 import { provenanceFor } from './config/provenance';
@@ -249,6 +256,8 @@ export default function App() {
     return ['explore', 'analyze', 'plan', 'ops'].includes(w) ? w : SHARED ? 'plan' : 'explore';
   });
   const [showGuide, setShowGuide] = useState(() => IS_DEM && shouldShowWelcome());
+  const [cuffOpen, setCuffOpen] = useState(false);          // MARTIAN EVA CUFF wrist console
+  const [cuffPrintReq, setCuffPrintReq] = useState(0);      // ask the panel to open the printable backup
   const [selection, setSelection] = useState(null);   // inspector: { type: 'point'|'layer'|'stop'|'route', … }
   const [catalogOpen, setCatalogOpen] = useState(false); // tablet / phone: catalog drawer
   const catalog = useMemo(() => (IS_DEM ? buildCatalog(SITE, { drapeLayers: HEATMAP_OPTIONS }) : []), []);
@@ -926,7 +935,27 @@ export default function App() {
   const showTimeline = WS && !narrow && (workspace === 'plan' || workspace === 'ops');
   const activeR = routes?.[activeRoute] || null;
   const activeAssess = WS && activeR ? evaAssessments(activeR, hudWx, { mission, startMs: evaStartMs }) : null;
-  const inspectFloating = WS && !narrow && (workspace === 'plan' || workspace === 'ops') && selection;
+  const inspectFloating = WS && !narrow && (workspace === 'plan' || workspace === 'ops') && selection && !cuffOpen;
+  // MARTIAN EVA CUFF: the selected route + the playback (utils/evaCuff.js); recomputed with the EVA clock
+  const cuff = (() => {
+    if (!WS || !cuffOpen || !activeR?.stats?.elapsedS) return null;
+    const snap = playback.loaded ? evaSnapshot(playback) : null;
+    const hz = getHazardMap();
+    let returnPath = null;
+    if (snap && playback.aborted && playback.active) {
+      const tl = playback.active;
+      returnPath = { path: Array.from({ length: tl.n }, (_, i) => [tl.xs[i], 0, tl.zs[i]]) };
+    } else if (snap?.pose && snap.status !== 'idle') returnPath = fastestReturnPath(snap.pose.x, snap.pose.z, getMaps().hm);
+    return cuffModel({
+      route: activeR, mode: activeRoute, site: { name: SITE.name, label: SITE.meta?.label || SITE.name }, startMs: evaStartMs, mission,
+      assess: activeAssess, hazards: hz ? routeHazards(activeR.path, hz.cls, cellIdx) : null,
+      hazardPts: hz ? hazardPoints(activeR.path, hz.cls, cellIdx, HAZARD_CLASSES) : [],
+      cards: scienceStopCards(science), objective: findObjective(SITE.name, science?.objectiveId || objectiveId), snap,
+      suit: SUITS[mission.suit], segmentation: SITE.segmentation,
+      limits: { maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRockReliefM: param('maxRockReliefM'), maxRadialKm: param('maxRadialDistanceKm') },
+      returnPath,
+    });
+  })();
   const inspect = (sel) => { setSelection(sel); if (narrow && sel) setCatalogOpen(false); };
   const inspector = WS ? (
     <Inspector selection={selection} onClose={selection ? () => setSelection(null) : null} provByKey={provByKey} catalogItem={catalogItem}
@@ -1029,6 +1058,14 @@ export default function App() {
       {showTimeline && timeline && (
         <div style={{ position: 'absolute', top: topH + 8, left: leftW + 10, right: PANEL_W + 10, zIndex: 15 }}>{timeline}</div>
       )}
+      {WS && cuffOpen && (
+        <div style={narrow ? { position: 'absolute', top: topH + 4, left: 4, right: 4, zIndex: 18, display: 'flex', justifyContent: 'center' }
+          : { position: 'absolute', top: topH + (showTimeline ? 92 : 10), left: leftW + 10, zIndex: 18 }}>
+          <EvaCuff model={cuff} siteName={SITE.name} compact={narrow} evaStatus={evaStatus} onClose={() => setCuffOpen(false)}
+            onToggle={activeR ? () => (playback.loaded ? playback.toggle() : handleStartRover()) : null}
+            onAbort={evaActive ? handleAbortEva : null} onPrint={activeR ? () => setCuffPrintReq(n => n + 1) : null} />
+        </div>
+      )}
       {inspectFloating && (
         <div style={{ position: 'absolute', top: topH + 104, left: leftW + 10, width: 340, maxHeight: `calc(100vh - ${topH + 104 + 16}px)`, overflowY: 'auto', zIndex: 17,
           background: T.panel, border: `1px solid ${T.ruleStrong}`, padding: '9px 11px', boxShadow: '0 6px 22px rgba(0,0,0,0.5)' }}>{inspector}</div>
@@ -1100,6 +1137,7 @@ export default function App() {
         inspector={inspector} hasSelection={!!selection} timeline={narrow ? timeline : null}
         onInspect={WS ? inspect : null} onProvenance={() => setShowProvenance(true)}
         catalog={catalog}
+        cuffOpen={cuffOpen} setCuffOpen={setCuffOpen} cuffPrintReq={cuffPrintReq}
       />
     </div>
   );

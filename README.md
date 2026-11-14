@@ -384,6 +384,14 @@ The challenge lists five NASA resources; we also looked at NASA's other public m
 
 ![Gale: Curiosity's own route as a pale line with the three labelled levels and a planned EVA over it; the map swipes between the terrain-class layer and the HiRISE image; the SAFE route card (right) carries the route's elevation profile](docs/img/resources.jpg)
 
+## Martian EVA Cuff — the mission on the astronaut's wrist
+
+**04 OPERATIONS → Martian EVA Cuff** opens a proposed forearm console: STATUS, MAP, TASKS, HAZARDS and RETURN
+on five keys, a guarded EMER key one press from anywhere, PLAY / ABORT wired to the EVA playback. It shows the selected
+mission and follows the playback — position marked PLANNED or SIMULATED, oxygen as the scenario model — and is never GO
+when the return is unsafe. The printed cuff card gained a second page, an **EVA backup checklist** usable without
+the console. A design concept, not a NASA or flight-qualified device — see [`docs/EVA_CUFF.md`](docs/EVA_CUFF.md).
+
 ## Inspiration: Apollo cuff checklists
 
 On the Moon, Apollo crews did not carry a screen. They wore a small spiral-bound checklist on the wrist, about 18 × 9 cm, its pages turnable in pressurised gloves, and travelled — on foot or by lunar rover — to stations planned on photo maps. The Apollo 17 traverse planning data gave, for every station, the time to spend there (Station 2: 0+50, Station 3: 0+45 …) and the walk back to the lunar module if the rover failed, with a 30-minute life-support reserve on top.
@@ -439,12 +447,12 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (170 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed, together with:
+`node --test web/tests/*.test.mjs` (174 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed, together with:
 
 - **Lint** (`pnpm --filter martian-map lint`): undefined names, JSX components that do not exist, rules of hooks.
 - **README figures** (`pnpm --filter martian-map readme:figures:check`): every route figure in this README is marked `<!--fig:…-->` and recomputed from the real site files by the planner. The deploy fails if one has drifted; `pnpm --filter martian-map readme:figures` rewrites them.
 - **Browser tests** (`.github/workflows/e2e.yml`, `pnpm --filter martian-map e2e` after a build): the production build in headless Chromium.
-  - Jezero plan → decision and three assessments → EVA HUD → cuff card with all its sections, printed as a **one-page** PDF.
+  - Jezero plan → decision and three assessments → EVA HUD → cuff card with all its sections + the EVA backup checklist, printed as a two-page A4 PDF (one page each); the wrist console screens and one-press EMER.
   - Phone and tablet: 13-step workflow, no horizontal scroll, HUD clear of the site switcher and the panel.
   - Gale objectives, and the Moon simulator unchanged.
   - Screenshots are uploaded as a build artifact.

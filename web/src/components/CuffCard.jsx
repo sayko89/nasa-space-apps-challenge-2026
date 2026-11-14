@@ -20,6 +20,8 @@ import { fmtHourMin } from '../utils/format';
 import { param, getEvaProfile, EVA_PROFILES } from '../config/marswalkProfile';
 import { SUITS, ROVER } from '../config/mission';
 import { localToLatLon } from '../terrain/siteData';
+import { cuffModel, CUFF_SOURCE } from '../utils/evaCuff';
+import { scienceStopCards } from '../workspace/scienceCards';
 
 const HALF = TERRAIN_SIZE / 2;
 const MAP_W_MM = 190;
@@ -36,6 +38,7 @@ const PRINT_CSS = `
   .cuff-print-root { position: static !important; background: none !important; padding: 0 !important; overflow: visible !important; }
   .cuff-noprint { display: none !important; }
   .cuff-sheet { box-shadow: none !important; margin: 0 !important; transform: none !important; }
+  .cuff-sheet + .cuff-sheet { break-before: page; page-break-before: always; }
 }`;
 
 /** Crop box [x0,z0,x1,z1] around the route with the map's aspect ratio. */
@@ -178,7 +181,7 @@ const num = { ...cell, textAlign: 'right', whiteSpace: 'nowrap' };
  * @param objective the mission objective the stops were chosen for (null for a hand-made route)
  * @param hazards   routeHazards() of this route
  */
-export default function CuffCard({ mode, route, startMs, mission, onClose, decision = null, assess = null, objective = null, hazards = null }) {
+export default function CuffCard({ mode, route, startMs, mission, onClose, decision = null, assess = null, objective = null, hazards = null, science = null }) {
   decision = assess?.decision || decision;
   const mapRef = useRef(null);
   const [grid, setGrid] = useState(null);
@@ -214,6 +217,12 @@ export default function CuffCard({ mode, route, startMs, mission, onClose, decis
   const tight = card.rows.find(r => r.n === t.tightestStop);
   const fmtT = (k) => (k == null ? '—' : `${K_TO_C(k).toFixed(0)}°`);
   const dateUtc = new Date(startMs).toISOString().slice(0, 16).replace('T', ' ');
+  // page 2: the same mission model as the wrist console (utils/evaCuff.js), so both always agree
+  const bk = useMemo(() => cuffModel({
+    route, mode, site: { name: SITE.name, label: SITE.meta?.label || SITE.name }, startMs, mission, assess, hazards,
+    cards: scienceStopCards(science), objective, suit,
+    limits: { maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRockReliefM: param('maxRockReliefM'), maxRadialKm: param('maxRadialDistanceKm') },
+  }), [route, mode, startMs, mission, assess, hazards, science, objective, suit]);
 
   return createPortal(
     <div className="cuff-print-root" style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.78)', overflow: 'auto', padding: '16px 0' }}>
@@ -344,8 +353,83 @@ export default function CuffCard({ mode, route, startMs, mission, onClose, decis
           Martian Map · NASA Space Apps Challenge 2026 · Team PERIAPSIS
         </div>
       </div>
+      {bk && <BackupSheet bk={bk} mode={mode} objective={objective} decision={decision} t={t} mission={mission} />}
     </div>,
     document.body,
+  );
+}
+
+/** Page 2 — EVA BACKUP CHECKLIST: usable without the wrist console (Apollo cuff-checklist style). */
+function BackupSheet({ bk, mode, objective, decision, t, mission }) {
+  const box = { display: 'inline-block', width: '2.6mm', height: '2.6mm', border: '0.3mm solid #111', marginRight: '1.2mm', verticalAlign: '-0.4mm' };
+  const H2 = ({ children }) => <div style={{ fontWeight: 'bold', borderBottom: '0.4mm solid #111', margin: '1.5mm 0 1mm', letterSpacing: '0.2mm' }}>{children}</div>;
+  const o2 = bk.status.o2;
+  return (
+    <div className="cuff-sheet" style={{
+      width: '210mm', height: '297mm', margin: '6mm auto 0', background: '#fff', color: INK, boxSizing: 'border-box',
+      padding: '9mm 10mm', fontFamily: '"Courier New", Courier, monospace', fontSize: '2.7mm', lineHeight: 1.32,
+      boxShadow: '0 4px 30px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '0.6mm solid #111', paddingBottom: '1.5mm' }}>
+        <div>
+          <div style={{ fontSize: '5mm', fontWeight: 'bold', letterSpacing: '0.4mm' }}>EVA BACKUP CHECKLIST</div>
+          <div>MARTIAN EVA CUFF · {bk.status.id} · {bk.status.site} · {mode} route</div>
+          <div>OBJECTIVE: {objective ? objective.name.toUpperCase() : 'none (hand-made route)'}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ display: 'inline-block', border: '0.6mm solid #111', padding: '0.8mm 2.5mm', fontSize: '4.5mm', fontWeight: 'bold' }}>{decision ? decision.status : t.go ? 'GO' : 'NO-GO'}</div>
+          <div style={{ marginTop: '1mm' }}>usable without the wrist console</div>
+        </div>
+      </div>
+
+      <H2>EVA SEQUENCE — tick each line</H2>
+      <div><span style={box} />H · depart habitat: suit check, comms check, tools stowed</div>
+      {bk.tasks.map(k => (
+        <div key={k.n} style={{ margin: '0.8mm 0', breakInside: 'avoid' }}>
+          <div><span style={box} /><b>S{k.n} {k.name}</b> — arrive {fmtMET(k.arriveS)}, stay {k.durationMin} min, <b>LEAVE BY {fmtMET(k.leaveByS)}</b></div>
+          {k.activity && <div style={{ paddingLeft: '4mm' }}>DO: {k.activity}</div>}
+          {k.context && <div style={{ paddingLeft: '4mm' }}>GEOLOGY: {k.context}</div>}
+          {k.risk && <div style={{ paddingLeft: '4mm' }}>TERRAIN: {k.risk.level} — {k.risk.reason}</div>}
+        </div>
+      ))}
+      <div><span style={box} />H · arrive habitat — {fmtMET(bk.card.home.arriveS)} after start</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5mm' }}>
+        <div>
+          <H2>EQUIPMENT</H2>
+          {bk.equipment.map(e => <div key={e.label}><span style={box} />{e.label} — {e.kg} kg</div>)}
+          {mission?.rover && <div><span style={box} />Pressurized rover parked at the start (safe haven)</div>}
+          <H2>RESOURCE LIMITS</H2>
+          <div>EVA budget {fmtMET(bk.status.budgetS)} · planned {fmtMET(t.roundTripS)}</div>
+          <div>Tightest walk-back margin {fmtMET(t.minMarginS)}</div>
+          <div>{o2 ? `O₂ ${o2.initialKg.toFixed(2)} kg · ${o2.rateKgH} kg/h (${o2.scenario}) · lasts ${fmtMET(o2.enduranceS)} — model estimate` : 'O₂: settings incomplete — no oxygen figure given'}</div>
+          <div>Slope ≤ {param('maxWalkableSlopeDeg')}° · ≤ {param('maxRadialDistanceKm')} km from H · home before sunset</div>
+        </div>
+        <div>
+          <H2>RETURN — when to turn back</H2>
+          {bk.ret.warnings.length ? bk.ret.warnings.map(w => <div key={w}><b>■ {w}</b></div>) : <div>No return warning on this plan.</div>}
+          <div>Late at a station → skip the next station, walk home.</div>
+          <div>BACK time and →H direction per station: page 1.</div>
+          <H2>HAZARDS ON THIS ROUTE</H2>
+          {bk.hazards.slice(0, 7).map(h => <div key={h.key}>{h.level === 'block' ? '■' : h.level === 'caution' ? '▲' : '·'} {h.text} [{CUFF_SOURCE[h.src]}]</div>)}
+        </div>
+      </div>
+
+      <H2>EMERGENCY REFERENCE</H2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1mm 5mm' }}>
+        {bk.emergency.map(e => (
+          <div key={e.key} style={{ breakInside: 'avoid' }}>
+            <b>{e.title}</b> [{CUFF_SOURCE[e.src]}]
+            {e.lines.map((l, i) => <div key={i}>{l}</div>)}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 'auto', borderTop: '0.3mm solid #999', paddingTop: '1mm', fontSize: '2.15mm', color: '#444', lineHeight: 1.35 }}>
+        Same mission data as the wrist console ({bk.status.id}). PROJECT RULE = the rule this planner applies; SIMULATED = a drill of the app; NASA REF = source the limits are taken from.
+        Spacesuit failure procedures are not modelled. Planning aid — not flight-certified, not a NASA document. Martian Map · Team PERIAPSIS
+      </div>
+    </div>
   );
 }
 
