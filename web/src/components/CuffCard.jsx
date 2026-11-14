@@ -13,6 +13,7 @@ import { SITE, TERRAIN_SIZE } from '../three/terrainGenerator';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { loadOrthoImage } from '../utils/orthoImage';
 import { buildCuffCard, fmtMET, compass } from '../utils/cuffCard';
+import ElevationProfile from './ElevationProfile';
 import { sunPosition, j2000tt, ltst } from '../utils/marsTime';
 import { airTempAt, K_TO_C, climateInstrument } from '../utils/climate';
 import { fmtHourMin } from '../utils/format';
@@ -21,7 +22,7 @@ import { SUITS, ROVER } from '../config/mission';
 
 const HALF = TERRAIN_SIZE / 2;
 const MAP_W_MM = 190;
-const mapHeightMm = (nStops) => (nStops <= 6 ? 132 : nStops <= 8 ? 118 : 104);   // fill the page, keep one page
+const mapHeightMm = (nStops) => (nStops <= 6 ? 113 : nStops <= 8 ? 99 : 85);     // + 19 mm elevation profile   // fill the page, keep one page
 const PX_PER_MM = 12;                          // ≈ 300 dpi
 const INK = '#111', ROUTE = '#e4572e';
 
@@ -241,6 +242,11 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
         <div style={{ fontSize: '2.3mm', color: '#444', marginTop: '-1.2mm' }}>
           H = habitat (start/finish) · 1–{card.rows.length} stations (a dot and a line when a number is moved off its spot) · orange = planned route, chevrons show direction · grid {grid ?? '—'} m from H ·
           base: {SITE.ortho ? `HiRISE orthomosaic (${SITE.ortho.source?.creators?.split(',')[0] || 'USGS'})` : 'shaded relief'}
+        </div>
+
+        {/* elevation profile */}
+        <div style={{ border: '0.4mm solid #111', padding: '0.6mm 1mm 0', marginTop: '-0.8mm' }}>
+          <ElevationProfile path={route.path} stats={route.stats} originM={SITE.heightOrigin || 0} print width={640} height={62} />
         </div>
 
         {/* station table */}

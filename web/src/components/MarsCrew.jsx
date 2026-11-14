@@ -487,6 +487,33 @@ export function DemRouteLine({ points, color, active, dashed = false }) {
   );
 }
 
+// ---------------------------------------------------------------- rover track + named places
+// The rover's own route through the site as a pale line with labels, as on NASA's route maps
+// for Curiosity (PIA23179, PIA26042). Data: sites/<site>/track.json (pipeline/build_track.py).
+const TRACK_LABELS = {
+  sol:    { font: '9px monospace', fg: '#e8e8f0', bg: 'rgba(20,24,40,0.7)', border: 'rgba(200,210,255,0.5)', radius: 3 },
+  place:  { font: 'bold 10px monospace', fg: '#ffffff', bg: 'rgba(20,24,40,0.8)', border: '#ffffff', radius: 3 },
+  region: { font: 'bold 10px monospace', fg: '#ffe9a8', bg: 'rgba(50,36,0,0.75)', border: '#e0b040', radius: 3 },
+};
+export const trackLabelText = (l, rover) => (l.kind === 'sol' ? `${rover} · ${l.text}` : l.derived ? `${l.text} (derived)` : l.text);
+
+export function RoverTrack({ track, markerScale = 1 }) {
+  const lines = useMemo(() => (track?.segments || []).map(seg => drapePath(seg.map(([x, z]) => [x, 0, z]))), [track]);
+  if (!track) return null;
+  return (
+    <>
+      {lines.map((pts, i) => (
+        <Line key={i} points={pts} color="#e6e8ff" lineWidth={1.6} transparent opacity={0.75} depthWrite={false}
+          polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-6} renderOrder={3} />
+      ))}
+      {track.labels.map((l, i) => (
+        <LabelSprite key={i} position={[l.x, getTerrainHeight(l.x, l.z) + (l.kind === 'region' ? 6 : 3.2) * markerScale, l.z]}
+          text={trackLabelText(l, track.rover)} style={TRACK_LABELS[l.kind] || TRACK_LABELS.sol} heightPx={l.kind === 'sol' ? 14 : 16} />
+      ))}
+    </>
+  );
+}
+
 // ---------------------------------------------------------------- science stop badges
 export function StopBadges({ waypoints, markerScale, visited = [] }) {
   const stops = (waypoints || []).map((w, i) => ({ ...w, i })).filter(w => w.dwellS > 0);

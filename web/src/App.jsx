@@ -205,6 +205,8 @@ export default function App() {
   // DEM: map layer draped on the 3D terrain (null = off)
   const [drapeLayer, setDrapeLayer] = useState(null);
   const [drapeOpacity, setDrapeOpacity] = useState(0.6);
+  // DEM: the rover's own route and named places, on the map and in 3D
+  const [showTrack, setShowTrack] = useState(true);
 
   // Stage 7 — EVA playback (DEM): controller + the bits of its state React needs
   const playback = useMemo(() => new EvaPlayback(), []);
@@ -865,6 +867,7 @@ export default function App() {
             trailKey={trailKey}
             returnPath={returnPath}
             sceneApiRef={sceneApiRef}
+            showTrack={showTrack}
             overlay={IS_DEM && drapeLayer ? { layer: drapeLayer, opacity: drapeOpacity, refreshKey: routes } : null}
           />
         </Suspense>
@@ -925,6 +928,7 @@ export default function App() {
         evaStatus={evaStatus}
         onAbortEva={handleAbortEva}
         onPauseEva={() => playback.pause()}
+        showTrack={showTrack} setShowTrack={setShowTrack}
         drapeLayer={drapeLayer} setDrapeLayer={setDrapeLayer}
         drapeOpacity={drapeOpacity} setDrapeOpacity={setDrapeOpacity}
         slopeMap={sm}

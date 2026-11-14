@@ -20,6 +20,7 @@ import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive, DOSE_COMPARISON, days
 import { PovViewer, nearestPanorama } from './PovViewer';
 import { ChemistryCard, hasChemistry } from './ChemistryCard';
 import CuffCard from './CuffCard';
+import ElevationProfile from './ElevationProfile';
 import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
 import { DUST_STATES } from '../utils/dustHazardModel';
@@ -44,6 +45,9 @@ const HM_COLORS = {
   'Slip Risk':'#ff8844','Illumination':'#ffffaa','Hazard Score':'#ff6655','Traversability':'#44ffaa',
   'Experience':'#cc66ff', 'Geology: Bedrock':'#d6a060', 'Geology: Surface':'#e8c070',
 };
+const ORTHO_LAYER = 'HiRISE image';   // compare-only layer: the orbital photo itself
+const CMP_TAG = { position:'absolute', top:4, maxWidth:'46%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+  font:'bold 9px monospace', color:'#fff', background:'rgba(0,0,0,0.65)', padding:'1px 4px', borderRadius:2, pointerEvents:'none' };
 const WP_COLORS_2D = ['#22ff55','#ffcc22','#44ddff','#ff88ff','#ffaa33','#aaffaa'];
 
 // ---- World ↔ Map coordinate helpers ----
@@ -60,7 +64,7 @@ function clamp(vx,vy,zoom) {
 }
 
 // ---- Mini-map ----
-function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr, orthoOn }) {
+function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr, orthoOn, showTrack }) {
   const canvasRef   = useRef(null);
   const terrainRef  = useRef(null);
   const zoomRef     = useRef(1);
@@ -124,6 +128,30 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
         ctx.beginPath(); ctx.moveTo(x,y-s); ctx.lineTo(x+s,y); ctx.lineTo(x,y+s); ctx.lineTo(x-s,y); ctx.closePath();
         ctx.fill(); ctx.stroke();
       }
+    }
+
+    // The rover's own route (pale line) and named places — as on NASA's Curiosity route maps
+    if (showTrack && SITE.track) {
+      ctx.save();
+      ctx.strokeStyle='rgba(230,232,255,0.85)'; ctx.lineWidth=1.1; ctx.lineJoin='round';
+      for (const seg of SITE.track.segments) {
+        ctx.beginPath();
+        seg.forEach(([wx,wz],i)=>{ const {x,y}=w2m(wx,wz,vx,vy,zoom); if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y); });
+        ctx.stroke();
+      }
+      ctx.font=CANVAS_FONT(6.5,true); ctx.textBaseline='middle';
+      for (const l of SITE.track.labels) {
+        const {x,y}=w2m(l.x,l.z,vx,vy,zoom);
+        if (x<0||y<0||x>W||y>H) continue;
+        const text = l.kind==='sol' ? l.text : l.text;
+        const tw=ctx.measureText(text).width, right = x+6+tw > W-2;
+        ctx.fillStyle = l.kind==='region' ? '#e0b040' : '#fff';
+        ctx.beginPath(); ctx.arc(x,y,1.8,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(right ? x-6-tw-2 : x+4, y-5, tw+4, 10);
+        ctx.fillStyle = l.kind==='region' ? '#ffe9a8' : '#fff';
+        ctx.fillText(text, right ? x-6-tw : x+6, y);
+      }
+      ctx.restore();
     }
 
     // Routes
@@ -223,7 +251,7 @@ function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, d
     // Zoom badge
     ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(W-36,3,33,15);
     ctx.fillStyle='#88cc88';ctx.font=CANVAS_FONT(7);ctx.fillText(`${zoom.toFixed(1)}x`,W-32,14);
-  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode, ponr, baseTick]);
+  }, [routes, activeRoute, waypoints, roverPos, pickMode, dustHazard, dustPickMode, ponr, baseTick, showTrack]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -678,6 +706,12 @@ function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard }) {
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:fs(8)}}>{s.distance.toFixed(1)}m</span>}
             </div>
             {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} />}
+            {s && s.walkTimeS !== undefined && active && r.path?.length > 1 && (
+              <div style={{ marginTop:5, borderTop:'1px solid rgba(60,100,60,0.3)', paddingTop:3 }}
+                title="Elevation along the route (MOLA metres), stops numbered — as Mars Trek plots for a measured path">
+                <ElevationProfile path={r.path} stats={s} originM={SITE.heightOrigin || 0} color={color} />
+              </div>
+            )}
             {s && s.walkTimeS !== undefined && active && s.stopCount > 0 && onCuffCard && (
               <button onClick={(e) => { e.stopPropagation(); onCuffCard(mode); }} title="One printable page: route map + station times, Apollo cuff-checklist style"
                 style={{ marginTop:5, width:'100%', background:'rgba(244,162,97,0.12)', color:'#f4c49a', border:'1px solid rgba(244,162,97,0.55)',
@@ -712,6 +746,34 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drap
   useEffect(() => { if (drape && drape !== sel) onDrape?.(sel); }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
   const [open,setOpen]=useState(false);
   const [tick,setTick]=useState(0);
+  // Compare (swipe): layer A on the left, layer B on the right of a draggable line —
+  // the comparison mode of NASA Worldview, here between two layers of the same site.
+  const refB=useRef(null);
+  const [compare,setCompare]=useState(false);
+  const [selB,setSelB]=useState(SITE.ortho ? ORTHO_LAYER : 'Elevation');
+  const [split,setSplit]=useState(0.5);
+  const dragSplit = useCallback((e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setSplit(Math.min(0.97, Math.max(0.03, (e.clientX - r.left) / r.width)));
+  }, []);
+  useEffect(()=>{
+    const cv = refB.current;
+    if (!compare || !cv) return undefined;
+    let alive = true;
+    if (selB === ORTHO_LAYER) {
+      loadOrthoImage().then(img => {
+        if (!alive || !img) return;
+        const ctx = cv.getContext('2d');
+        ctx.globalCompositeOperation='source-over';
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        ctx.globalCompositeOperation='multiply'; ctx.fillStyle='#e9b48a'; ctx.fillRect(0,0,cv.width,cv.height);
+        ctx.globalCompositeOperation='source-over';
+      });
+    } else {
+      generateHeatmapCanvas(cv, selB, sunAngle, undefined, sunElevation);
+    }
+    return () => { alive = false; };
+  }, [compare, selB, sunAngle, sunElevation, refreshKey]);
   // Experience map is mutated in place (same array reference), so it needs a
   // live poll while visible — other layers are derived from static terrain data.
   useEffect(()=>{
@@ -749,8 +811,38 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drap
           </div>
         )}
       </div>
-      <canvas ref={ref} width={MAP_S} height={MAP_S}
-        style={{width:MAP_S,height:MAP_S,display:'block',borderRadius:3,border:'1px solid rgba(80,120,60,0.3)'}}/>
+      <div style={{position:'relative',width:MAP_S,height:MAP_S,touchAction:compare?'none':'auto',cursor:compare?'ew-resize':'default'}}
+        onPointerDown={compare ? (e)=>{ e.currentTarget.setPointerCapture(e.pointerId); dragSplit(e); } : undefined}
+        onPointerMove={compare ? (e)=>{ if (e.buttons || e.pointerType==='touch') dragSplit(e); } : undefined}>
+        <canvas ref={ref} width={MAP_S} height={MAP_S}
+          style={{width:MAP_S,height:MAP_S,display:'block',borderRadius:3,border:'1px solid rgba(80,120,60,0.3)',boxSizing:'border-box'}}/>
+        {compare && (<>
+          <canvas ref={refB} width={MAP_S} height={MAP_S} aria-label={`Layer B: ${selB}`}
+            style={{position:'absolute',inset:0,width:MAP_S,height:MAP_S,borderRadius:3,pointerEvents:'none',
+              clipPath:`inset(0 0 0 ${(split*100).toFixed(2)}%)`}}/>
+          <div style={{position:'absolute',top:0,bottom:0,left:`${split*100}%`,width:2,marginLeft:-1,background:'#fff',boxShadow:'0 0 4px #000',pointerEvents:'none'}}>
+            <div style={{position:'absolute',top:'50%',left:-9,marginTop:-9,width:20,height:18,borderRadius:9,background:'#fff',color:'#111',
+              font:'bold 10px monospace',textAlign:'center',lineHeight:'18px'}}>◂▸</div>
+          </div>
+          <span style={{...CMP_TAG,left:4}}>A · {sel}</span>
+          <span style={{...CMP_TAG,right:4}}>B · {selB}</span>
+        </>)}
+      </div>
+      {IS_DEM && (
+        <div style={{display:'flex',alignItems:'center',gap:5,marginTop:4}}>
+          <Btn active={compare} color="#9fd0ff" onClick={()=>setCompare(c=>!c)} style={{flex:'none',padding:'3px 7px'}}
+            title="Swipe between two layers of this site — drag the line on the map">
+            {compare ? '◧ COMPARING ✓' : '◧ COMPARE LAYERS'}
+          </Btn>
+          {compare && (
+            <select value={selB} onChange={e=>setSelB(e.target.value)} aria-label="Layer B (right side)"
+              style={{flex:1,minWidth:0,background:'rgba(18,36,18,0.9)',color:'#cfe6ff',border:'1px solid rgba(100,150,200,0.5)',
+                borderRadius:3,fontFamily:'monospace',fontSize:fs(8),padding:'2px 3px'}}>
+              {[...(SITE.ortho ? [ORTHO_LAYER] : []), ...HEATMAP_OPTIONS].filter(o=>o!==sel).map(o=><option key={o} value={o}>B: {o}</option>)}
+            </select>
+          )}
+        </div>
+      )}
       {dataLayerLegend(sel) ? (
         <DataLayerLegend lg={dataLayerLegend(sel)} />
       ) : geologyLegend(sel) ? (
@@ -1085,6 +1177,7 @@ export default function RightPanel({
   cameraMode, setCameraMode,
   wireframe, setWireframe,
   orthoOn, setOrthoOn,
+  showTrack = false, setShowTrack = null,
   onStartRover, onStopRover, isRoving,
   evaStatus = 'idle', onAbortEva = () => {}, onPauseEva = null,
   drapeLayer = null, setDrapeLayer = null, drapeOpacity = 0.6, setDrapeOpacity = () => {},
@@ -1158,6 +1251,7 @@ export default function RightPanel({
             dustPickMode={dustPickMode}
             onDustPlace={onDustPlaced}
             orthoOn={!wireframe && orthoOn}
+            showTrack={showTrack}
           />
           <div style={{fontSize:fs(7),color:'#3a5a3a',marginTop:3,display:'flex',gap:4,justifyContent:'space-between'}}>
             <span style={{color:startPos?'#22ff66':'#2a4a2a'}}>
@@ -1167,6 +1261,17 @@ export default function RightPanel({
               E: {endPos&&waypoints.length>1?`${endPos.x.toFixed(0)},${endPos.z.toFixed(0)}`:'--'}
             </span>
           </div>
+          {IS_DEM && SITE.track && setShowTrack && (
+            <div style={{marginTop:5}}>
+              <Btn active={showTrack} color="#c8ccff" onClick={()=>setShowTrack(v=>!v)} style={{width:'100%'}}
+                title={`${SITE.track.rover}'s own route through this site (sols ${SITE.track.sols[0]}–${SITE.track.sols[1]}, ${(SITE.track.length_m/1000).toFixed(1)} km) and named places — ${SITE.track.credit}`}>
+                {showTrack ? '✓ ' : ''}{SITE.track.rover.toUpperCase()}'S ROUTE & PLACES
+              </Btn>
+              {showTrack && SITE.track.labels.some(l=>l.derived) && (
+                <div style={{fontSize:fs(6.5),color:'#6a7a6a',marginTop:2}}>Region names: this project's derived levels, not NASA's mapped units.</div>
+              )}
+            </div>
+          )}
           <div style={{height:1,background:'rgba(30,70,30,0.2)',marginTop:8}}/>
         </div>
 
