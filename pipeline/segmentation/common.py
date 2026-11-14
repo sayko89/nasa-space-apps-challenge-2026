@@ -21,18 +21,20 @@ def msl_sol_group(name):
     return f'msl-{int(m.group(1)) // int(SOL_SECONDS)}' if m else None
 
 def m2020_sol_group(name):
-    """M2020 names carry the sol after the instrument code (e.g. NLF_0147_…); HAFIQ 'Vgnc' names: first number set."""
+    """M2020 names carry the sol after the instrument code (e.g. NLF_0147_…). HAFIQ 'Vgnc' names carry the spacecraft
+    clock (e.g. VgncRawLeft_0684693433-41490…): grouped by Mars day of that clock, so near-identical frames stay together."""
     b = os.path.basename(name)
     m = re.match(r'[A-Z]{2,3}[A-Z_]?_(\d{4})_', b)
     if m: return f'm2020-{int(m.group(1))}'
-    m = re.search(r'(\d+)', b)
-    return f'm2020-v{m.group(1)}' if m else None
+    m = re.match(r'Vgnc\w*?_(\d{9,10})', b)
+    return f'm2020-c{int(m.group(1)) // int(SOL_SECONDS)}' if m else None
 
 def base_key(name):
-    """Image identity without extension, label suffixes (_merged) or M2020 duplicate markers (-1 … -4)."""
+    """Image identity without extension, label suffixes (_merged, _merged60 …) or the M2020 'Vgnc' duplicate
+    markers (-1 … -4 after the two number sets, per the dataset's NAV_DATA_NOTE)."""
     b = os.path.splitext(os.path.basename(name))[0]
-    b = re.sub(r'_merged$', '', b)
-    return re.sub(r'-\d$', '', b)
+    b = re.sub(r'_merged\d*$', '', b)
+    return re.sub(r'(\d+-\d+)-\d(?=_|$)', r'\1', b)
 
 def sha1(data):
     return hashlib.sha1(data).hexdigest()

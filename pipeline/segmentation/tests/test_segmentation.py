@@ -23,7 +23,18 @@ class Names(unittest.TestCase):
 
     def test_base_key_matches_images_and_labels(self):
         self.assertEqual(base_key('a/NLB_1_EDR.JPG'), base_key('b/NLB_1_EDR_merged.png'))
-        self.assertEqual(base_key('NLF_0147_x-2.png'), base_key('NLF_0147_x.jpeg'))
+        # real AI4Mars v0.6 names (inventory.json)
+        self.assertEqual(base_key('m2020/labels/NAV/NLF_0009_0667755636_926ECM_N0030000NCAM05000_01_295J_merged60.png'),
+                         base_key('m2020/images/ncam/NLF_0009_0667755636_926ECM_N0030000NCAM05000_01_295J.jpeg'))
+        self.assertEqual(base_key('VgncRawLeft_0684693433-41490-2_rectified_merged.png'), base_key('VgncRawLeft_0684693433-41490_rectified.jpeg'))
+        self.assertEqual(base_key('VgncRawLeft_0684693433-41490-3.png'), base_key('VgncRawLeft_0684693433-41490.jpeg'))
+        self.assertNotEqual(base_key('NLA_397586928EDR_F0010008AUT_04096M1.JPG'), base_key('NLA_397586934EDR_F0010008AUT_04096M1.png'))
+
+    def test_vgnc_frames_group_by_mars_day(self):
+        a = m2020_sol_group('VgncRawLeft_0684693433-41490_rectified.jpeg')
+        b = m2020_sol_group('VgncRawLeft_0684693508-32241_rectified.jpeg')   # 75 s later
+        self.assertEqual(a, b)
+        self.assertNotEqual(a, m2020_sol_group(f'VgncRawLeft_{684693433 + 90000:010d}-1_rectified.jpeg'))
 
 
 class Split(unittest.TestCase):
@@ -59,6 +70,7 @@ class Validation(unittest.TestCase):
     """prepare.load() rejects bad samples with a reason instead of dropping them silently."""
     def run_load(self, img_bytes, lab_bytes):
         class Z:
+            read_fake = True
             def read(self, name): return {'i': img_bytes, 'l': lab_bytes}[name]
         prepare._local.z = Z()
         return prepare.load({'image': 'i', 'label': 'l'})

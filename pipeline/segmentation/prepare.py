@@ -38,16 +38,26 @@ def resize_pair(img, lab):
     lab = lab.resize((nw, nh), Image.NEAREST) if lab is not None else None
     return img, lab
 
+def read_retry(name, tries=6):
+    """Range request with back-off (Zenodo throttles bursts); the last error is raised after `tries`."""
+    for k in range(tries):
+        try: return rz().read(name)
+        except Exception:
+            if k == tries - 1: raise
+            if hasattr(_local, 'z') and not hasattr(_local.z, 'read_fake'):
+                try: del _local.z
+                except AttributeError: pass
+            time.sleep(min(60, 2 ** k))
+
 def load(sample):
     """Read, validate and resize one sample; returns (arrays, None) or (None, reason)."""
-    z = rz()
     try:
-        raw = z.read(sample['image'])
+        raw = read_retry(sample['image'])
         img = Image.open(io.BytesIO(raw)); img.load()
     except Exception as e:
         return None, f'unreadable image ({type(e).__name__})'
     try:
-        lab = Image.open(io.BytesIO(z.read(sample['label']))); lab.load()
+        lab = Image.open(io.BytesIO(read_retry(sample['label']))); lab.load()
     except Exception as e:
         return None, f'unreadable label ({type(e).__name__})'
     if lab.mode not in ('L', 'P'): return None, f'label mode {lab.mode}'
@@ -129,7 +139,7 @@ def main():
 
     # ---- read, validate, resize (parallel range requests)
     arrays = {}
-    with cf.ThreadPoolExecutor(16) as ex:
+    with cf.ThreadPoolExecutor(int(os.environ.get('SEG_THREADS', '8'))) as ex:
         for s, (res, why) in zip(work, ex.map(load, work)):
             if why: log[why].append(s['label']); s['rejected'] = why; continue
             arrays[s['label']] = res; s['sha1'] = res['sha1']; s['orig_size'] = res['orig']
