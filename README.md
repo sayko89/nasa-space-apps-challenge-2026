@@ -13,11 +13,11 @@
 
 ---
 
-The first people to walk on Mars will want the best map possible. **Martian Map** is that map for two real places where NASA rovers have worked: the floor of **Jezero crater** around the Perseverance landing site, and the **boxwork ridges of Mount Sharp** in Gale crater that Curiosity explored in 2025–26. It layers data from **four NASA Mars missions** into a single 3D view, plans a two-person **Marswalk** that visits the most interesting rocks, minerals and chemistry, proves at every step that the crew can still walk home (or back to their rover), plays the whole EVA out on a mission clock — and prints it as an Apollo-style **cuff card** for the wrist.
+The first people to walk on Mars will want the best map possible. **Martian Map** is that map for two real places where NASA rovers have worked: the floor of **Jezero crater** around the Perseverance landing site, and the **boxwork ridges of Mount Sharp** in Gale crater that Curiosity explored in 2025–26. It layers data from **four NASA Mars missions** into a single 3D view, plans a two-person **Marswalk** that visits the most interesting rocks, minerals and chemistry, proves at every step that the crew can still walk home (or back to their rover), plays the whole EVA out on a mission clock — re-planning a safe route on the spot when a dust devil crosses the way — and puts it on the astronaut's wrist as a **wrist console** and an Apollo-style printed **cuff card**. The work is split into four screens that follow a mission from start to finish: **01 EXPLORE → 02 ANALYZE → 03 PLAN MISSION → 04 OPERATIONS**.
 
 > **Why another Mars map?** Tools like JPL's Mars Trek and the USGS–NASA geologic maps layer data over the whole planet, at regional scale. An astronaut on a single Marswalk needs the opposite: one 2 km × 2 km area, every layer on the same **4 m grid**, rocks picked out at **1 m**, and a plan that says *where to walk, what to sample, and when to turn back*. Martian Map is built for that hyperlocal scale.
 
-![EV1 kneels to sample an olivine stop at Jezero while EV2 documents; the HUD shows the mission clock, the live walk-back margin, sun, air temperature and dose; the side panel shows the map, terrain modes and EVA limits](docs/img/hero.jpg)
+![04 OPERATIONS at Jezero: EV1 kneels to sample stop 1 while EV2 documents; the EVA timeline runs across the top; the HUD shows the mission clock, walk-back margin, distance from the habitat, sun, air temperature, dose and the oxygen & mass panel; the side panel shows the site map, START / RESUME EVA, the camera angle and the helmet camera](docs/img/hero.jpg)
 
 ## At a glance
 
@@ -34,10 +34,14 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Oxygen & mass** | live O₂ use per NASA BVAD life-support scenario (0.076 / 0.15 / 1.0 kg/h), O₂ for the walk home + reserve, carried mass falling as O₂ is used ([details](#oxygen-and-carried-mass)) |
 | **EVA assessment** | three separate results, no combined score: **A. Payload & Mass** · **B. Dust Exposure & Equipment Reliability** (qualitative, sourced) · **C. Terrain & Mobility** ([details](#suit-payload-and-dust--three-separate-assessments)) |
 | **Hazard map** | slope and rock walls, obstacle buffer, closed depressions, steep / rough ground, rover reach, ground known only from orbit |
-| **Provenance** | every layer labelled direct measurement / orbital / derived / transferred reference / modelled / simulated |
+| **Dust devil during the EVA** | 25 m safety zone around it, a new **SAFE route to the destination** planned from the point where the crew sees it; only if none is safe, back to the start the way they came ([details](#dust-devil-on-the-route--a-new-safe-route-not-a-run-home)) |
+| **Provenance** | every layer labelled direct measurement / orbital / derived / transferred reference / modelled / simulated / AI-predicted |
 | **EVA limit sets** | Lunar ConOps (NASA) or **Mars conservative** (derived for Mars gravity) |
-| **Outputs** | 3D planning view, live EVA HUD, printable **cuff card** (A4 / PDF); works on desktop, tablet and phone |
-| **Tests** | 146 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 7 Python + lint + README figure check on every push before deploy; browser tests (desktop, tablet, phone, cuff-card PDF, Gale, Moon) in their own workflow |
+| **AI terrain segmentation** | soil / bedrock / sand / big rock on 445 rover Navcam frames, model trained on NASA/JPL AI4Mars — measured accuracy, never changes a route ([details](#mars-ai-terrain-segmentation--what-the-ground-in-the-rover-images-is)) |
+| **3D terrain** | 4 m mesh lit by the **1 m HiRISE DTM** relief shading (×1 true, ×2 / ×4 emphasised), HiRISE image or elevation colours, data layers draped on top |
+| **Interface** | four workspaces — **Explore · Analyze · Plan Mission · Operations** — with a data catalog, one inspector for every point / layer / stop / route, an EVA timeline band and a first-visit guide ([details](#the-interface--four-workspaces)) |
+| **Outputs** | 3D planning view, live EVA HUD, **Martian EVA Cuff** wrist console, printable **cuff card + EVA backup checklist** (2 × A4 / PDF), JSON export, share link; works on desktop, tablet and phone |
+| **Tests** | 174 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 11 Python + lint + README figure check on every push before deploy; browser tests (all four workspaces, desktop, tablet, phone, two-page cuff PDF, wrist console, Gale, Moon) in their own workflow; 12 Python tests for the segmentation pipeline in its own workflow |
 
 ## Try it
 
@@ -47,32 +51,72 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Offline** | **Code → Download ZIP** → unzip → `MartianMap/Start-Windows.bat` (Windows) or `MartianMap/start-mac-linux.sh` (macOS / Linux). Needs only Python 3. |
 | **From source** | `pnpm install`, then `pnpm dev` (tests: `pnpm test`; lint: `pnpm --filter martian-map lint`; browser tests after a build: `pnpm --filter martian-map e2e`) |
 
-**Quick tour** — the 13 numbered buttons at the top of the panel walk through the same steps and show the next one. A step counts as done only when its inputs are complete and current; changing an upstream setting re-opens the steps that depend on it.
+**First visit.** A short guide opens once: what Martian Map is, the four workspaces and a three-click quick start. It is always under **? GUIDE** in the top bar, and each workspace has a closed *How to use this screen* slot with its three steps. Long explanations (what a route mode optimises, why a decision is CONDITIONAL …) sit in closed slots that open with a click, so the screen stays readable.
 
-1. **Mission objective** — choose one of the site's five; *PLAN SCIENCE EVA* stays locked until you do. Changing it later re-plans the stops.
-2. **Exploration site** — **JEZERO** or **MOUNT SHARP BOXWORK** at the top left (each site has its own objectives and layers).
-3. **Crew & equipment** — suit, **EVA limits** (Lunar ConOps / Mars conservative), pressurized rover as safe haven, *keep 4 m from obstacles*, **oxygen** scenario, initial O₂ and reserve.
-4. **Payload & mass** — one equipment figure or an itemised payload; total, limit and remaining capacity.
-5. **Dust & equipment reliability** — the four dust protection settings (done when none is left "not specified").
-6. **Data layers** — Map Layers (minerals, thermal inertia, geology, rocks, slope …), **COMPARE LAYERS** swipe, **DRAPE ON 3D TERRAIN**; *provenance table* in the data-sources box.
-7. **Hazard assessment** — the **Hazards** layer.
-8. **Science stops** — *PLAN SCIENCE EVA*; tap a stop for its card (why chosen, what to look at, evidence, risk, confidence), **ground view** or **chemistry**.
-9. **EVA route** — SAFE / ECO / FAST / AUTO, each with its elevation profile.
-10. **Terrain & mobility** — part C of the EVA assessment under the decision.
-11. **GO / NO-GO** — the mission summary, the decision with its reasons, and the three separate assessments.
-12. **EVA simulation** — **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**); the HUD shows the decision, payload, dust and mobility status and the O₂ & mass panel.
-13. **Mission export & cuff card** — **PRINT CUFF CARD** (objective, coordinates, stations with the direction home, hazards, equipment and dust warnings, data limits), **EXPORT JSON** (objective, stop cards, decisions, assessments, provenance), **SHARE LINK**.
+**Quick start — three clicks**
 
-## On a tablet or a phone
+1. **03 PLAN MISSION** → choose a mission objective → **PLAN SCIENCE EVA**.
+2. Read the decision at the top right (**GO / CONDITIONAL / NO-GO / INSUFFICIENT DATA**) and open *Why?* for the reasons.
+3. **04 OPERATIONS** → **START EVA** to watch the walk, **OPEN WRIST CONSOLE**, or **PRINT CUFF CARD**.
 
-The same app adapts to the screen, so it can travel from the habitat display to a tablet or the crew's phone. On a phone the panel becomes a sheet under the 3D view and the EVA HUD shrinks to the four safety numbers.
+**The whole workflow — 13 steps.** The numbered strip at the top of the Plan Mission and Operations panels walks through the steps in order and shows the next one; each button opens the workspace that holds that step. A step counts as done only when its inputs are complete and current; changing an upstream setting re-opens the steps that depend on it.
+
+| # | Step | Where | What you do |
+|---:|---|---|---|
+| 1 | **Mission objective** | 03 PLAN MISSION | choose one of the site's five; *PLAN SCIENCE EVA* stays locked until you do. Changing it later re-plans the stops |
+| 2 | **Exploration site** | top bar | **JEZERO** or **MOUNT SHARP BOXWORK** (each site has its own objectives and layers) |
+| 3 | **Crew & equipment** | 03 PLAN MISSION → mission configuration | suit, **EVA limits** (Lunar ConOps / Mars conservative), pressurized rover as safe haven, *keep 4 m from obstacles*, **oxygen** scenario, initial O₂ and reserve |
+| 4 | **Payload & mass** | 03 PLAN MISSION | one equipment figure or an itemised payload; total, limit and remaining capacity |
+| 5 | **Dust & equipment reliability** | 03 PLAN MISSION | the four dust protection settings (done when none is left "not specified") |
+| 6 | **Data layers** | 01 EXPLORE · 02 ANALYZE | tick layers in the **data catalog** (several at once, each with its own opacity), **COMPARE LAYERS** swipe, **DRAPE ON 3D TERRAIN**; ⓘ or a click on the terrain opens the inspector |
+| 7 | **Hazard assessment** | 02 ANALYZE | the **Hazards** layer |
+| 8 | **Science stops** | 03 PLAN MISSION | *PLAN SCIENCE EVA*; open a stop for its card (why chosen, what to look at, evidence, risk, confidence), **ground view** or **chemistry** |
+| 9 | **EVA route** | 03 PLAN MISSION | SAFE / ECO / FAST / AUTO — each with what it optimises, its cost and elevation profile — and the route comparison |
+| 10 | **Terrain & mobility** | 04 OPERATIONS | part C of the EVA assessment under the decision |
+| 11 | **GO / NO-GO** | 04 OPERATIONS | the mission summary, the decision with its reasons, and the three separate assessments |
+| 12 | **EVA simulation** | 04 OPERATIONS | **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**), camera angle, helmet camera, **wrist console**; the HUD shows the decision, payload, dust and mobility status and the O₂ & mass panel |
+| 13 | **Mission export & cuff card** | 04 OPERATIONS | **PRINT CUFF CARD** (page 1: objective, coordinates, stations with the direction home, hazards, equipment and dust warnings, data limits; page 2: EVA backup checklist), **EXPORT JSON** (objective, stop cards, decisions, assessments, provenance), **SHARE LINK** |
+
+## The interface — four workspaces
+
+The Mars sites open in four workspaces, one per stage of a mission. Switching keeps everything (plan, layers, EVA clock); only the layout changes, and every number still comes from the same planner. The top bar always shows the site and the mission status: objective · route · decision · EVA. Design notes and the NASA tools that inspired the layout (Mars Trek, RSVP, Playbook, Eyes): [`docs/WORKSPACES.md`](docs/WORKSPACES.md).
+
+| Workspace | Left | Centre | Right panel, top to bottom |
+|---|---|---|---|
+| **01 EXPLORE** — look at the site and what each layer shows | data catalog | 3D terrain | inspector of the clicked point, site map, camera |
+| **02 ANALYZE** — check the data the plan rests on, and what is missing | data catalog | 3D terrain | inspector, terrain analysis (layers, legend, compare, drape), scientific data available and missing, helmet camera, **Mars AI terrain segmentation**, provenance table |
+| **03 PLAN MISSION** — set up the crew and plan the walk | — | 3D terrain + **EVA timeline** | **site map** → **waypoints** (mark points on the map) → **route modes** SAFE / ECO / FAST / AUTO → objective & science stops → route comparison → mission configuration |
+| **04 OPERATIONS** — decide and run the EVA | — | 3D terrain + **EVA timeline** | **site map** → **START EVA** (the route chosen in Plan, not asked again) → **camera angle** (free / follow EV1 / overview) → **helmet camera** (image processing: elevation / slope view) → **Martian EVA Cuff** → mission summary & GO / NO-GO → contingency, telemetry, export, log |
+
+- **Data catalog** — built from what the site actually loaded, by category (imagery, topography, geology, mineralogy, thermal, AI terrain segmentation, hazards, atmospheric, radiation). Tick a layer to drape it on the 3D terrain; several layers can be draped at once, each with its opacity and draw order; ⓘ opens its description and source.
+- **Inspector** — one card for a map point (coordinates, elevation, slope, hazard, distance home, *add as waypoint*), a data layer, a science stop or a route, with tabs for overview, scientific evidence, data source, technical details and mission relevance.
+- **EVA timeline** — walking legs, stops (S1, S2 …) and the walk home of the active route on one time axis, with the EVA budget, point of no return, sunset and oxygen limits; a cursor follows the EVA clock during playback, and a click on a stop opens it in the inspector.
+- **3D view** — the follow camera frames both astronauts, EV1 and EV2, side by side and full height, so their position and posture are clear from the first second; *Overview* shows the whole route from above. The astronauts carry the team's Periapsis patch on their backpacks.
+- **Readable on a screen across the room** — larger text across all panels, closed slots for long explanations, and status always written as a word next to its colour.
 
 <table>
 <tr>
-<td width="73%"><img src="docs/img/tablet.jpg" alt="Tablet (iPad Pro 11, landscape): EVA playback at Jezero — EV1 samples stop 1 while the HUD shows mission time, walk-back margin, distance from the habitat, sun, air temperature and dose; the side panel shows the dose comparison and the SAFE route card"></td>
-<td width="27%"><img src="docs/img/phone.jpg" alt="Phone (iPhone 13, portrait): a planned Gale EVA seen from above, with its SAFE route card in the sheet below"></td>
+<td width="50%"><img src="docs/img/ws-explore.jpg" alt="01 EXPLORE at Jezero: the data catalog on the left with CRISM minerals draped on the terrain, the planned route from above in the centre, and the inspector of a clicked map point (coordinates, elevation, slope, hazard, distance home) above the site map on the right"></td>
+<td width="50%"><img src="docs/img/ws-analyze.jpg" alt="02 ANALYZE at Jezero: the data catalog including the AI terrain segmentation and hazard layers, the two astronauts on the terrain, and the inspector of the CRISM mineral layer above the terrain analysis with the surface geology map and its legend"></td>
 </tr>
-<tr><td align="center"><b>Tablet</b> — EVA playback at Jezero</td><td align="center"><b>Phone</b> — a planned Gale EVA and its route card</td></tr>
+<tr><td align="center"><b>01 EXPLORE</b> — catalog, drapes, point inspector</td><td align="center"><b>02 ANALYZE</b> — layer inspector, terrain analysis</td></tr>
+<tr>
+<td width="50%"><img src="docs/img/ws-plan.jpg" alt="03 PLAN MISSION at Jezero: the EVA timeline across the top, both astronauts full height in the 3D view, and on the right the site map with the planned route, the waypoint list with ADD / REMOVE / PLAN PATH and the SAFE / ECO / FAST / AUTO route modes"></td>
+<td width="50%"><img src="docs/img/hero.jpg" alt="04 OPERATIONS at Jezero during the EVA: site map, RESUME / ABORT EVA, camera angle and helmet camera on the right, the HUD over the 3D view"></td>
+</tr>
+<tr><td align="center"><b>03 PLAN MISSION</b> — map → waypoints → route modes</td><td align="center"><b>04 OPERATIONS</b> — map → EVA → camera angle → helmet camera</td></tr>
+</table>
+
+## On a tablet or a phone
+
+The same app adapts to the screen, so it can travel from the habitat display to a tablet or the crew's phone. The four workspaces stay in the top bar (short names on a tablet; their own row on a phone). On a phone the panel becomes a sheet under the 3D view, the 3D view takes touch gestures (drag = rotate, two fingers = pan / zoom, tap = inspect) and the EVA HUD shrinks to the four safety numbers.
+
+<table>
+<tr>
+<td width="73%"><img src="docs/img/tablet.jpg" alt="Tablet (iPad Pro 11, landscape), 04 OPERATIONS: EVA playback at Jezero — EV1 samples stop 1 while the HUD shows mission time, walk-back margin, distance from the habitat, sun, air temperature, dose and oxygen; the side panel shows the site map, RESUME / ABORT EVA and the camera angle"></td>
+<td width="27%"><img src="docs/img/phone.jpg" alt="Phone (iPhone 13, portrait), 03 PLAN: a planned Gale EVA seen from above with the derived stratigraphic levels labelled, and the site map in the sheet below"></td>
+</tr>
+<tr><td align="center"><b>Tablet</b> — 04 OPERATIONS, EVA playback at Jezero</td><td align="center"><b>Phone</b> — 03 PLAN, a Gale EVA and the site map</td></tr>
 </table>
 
 ## Two sites, one pipeline
@@ -154,10 +198,11 @@ Every chosen stop has a **stop card**: position (lat / lon and metres from the s
 | Identify a **science objective** and a location | Five selectable objectives per site that **change the planner's candidates and weights** — from Jezero's olivine–smectite alteration to Gale's boxwork ridges and ChemCam re-sampling; each with purpose, relevance and sources, and a card for every stop saying why it was chosen. The Gale site follows the challenge's own example: Curiosity's 2025 boxwork study on Mount Sharp |
 | **Astronaut safety first**; space weather, radiation | A **dose-rate comparison** — Earth, ISS, Moon, Mars, all measured — so the crew sees why Mars is different; a **Mars-conservative EVA limit set**; walk-back margin and point of no return; per-route **GCR dose** vs the 600 mSv NASA career limit; **DONKI space-weather advisory** (solar particle event within ±2 days → postpone); **daylight** (home before sunset, or NO-GO); terrain shadow, expected air temperature. See [Safety first](#safety-first) |
 | Spacesuits and **carried equipment** affect mobility | **Mission setup**: Mars suit (104 kg) or lunar xEMU (170 kg) plus equipment; the carried weight on Mars must stay under NASA's 45 kg Earth-equivalent limit, or the plan is NO-GO. **Mars conservative** limits slow the walk by the measured suited cost at Mars gravity |
-| A **route map** that **avoids obstacles such as large rocks** | A* on walking time; slopes above 20° and **rock outcrops / boulders** found in the 1 m HiRISE DTM are walls; an optional **4 m buffer** inflates them; the **Hazards** layer adds closed depressions, steep and rough ground and ground known only from orbit |
+| A **route map** that **avoids obstacles such as large rocks** | A* on walking time; slopes above 20° and **rock outcrops / boulders** found in the 1 m HiRISE DTM are walls; an optional **4 m buffer** inflates them; the **Hazards** layer adds closed depressions, steep and rough ground and ground known only from orbit. During the EVA a **dust devil** becomes a moving-in obstacle: a 25 m safety zone and a new SAFE route to the destination, re-planned on the spot |
 | **Rovers** to transport the crew; astronauts **in pairs** | **Pressurized rover as safe haven**: the crew may never be more than a 30-minute walk from it; a two-person crew (EV1 + EV2) walks the plan |
 | **Point-of-view images** so the astronaut knows what to expect | **Ground view** on every science stop: the rover's own Navcam / Mastcam(-Z) frames taken from the position closest to the stop, facing it |
-| A format crews could use: habitat display, tablet, **HUD** | Planning view for the habitat (desktop / tablet; on a phone the panel becomes a bottom sheet under the 3D view), an EVA **HUD** with mission clock, live walk-back margin, distance home, sun, temperature and dose, and a printable **cuff card** for the wrist |
+| A format crews could use: habitat display, tablet, **HUD** | Four workspaces for the habitat display (desktop / tablet; on a phone the panel becomes a bottom sheet under the 3D view), an EVA **HUD** with mission clock, live walk-back margin, distance home, sun, temperature, dose and oxygen, the **Martian EVA Cuff** wrist console, and a printable **cuff card** with an EVA backup checklist |
+| Image data to understand the ground | **Mars AI terrain segmentation**: a model trained on NASA/JPL AI4Mars labels soil, bedrock, sand and big rock in the rover images near the route, with measured accuracy and honest limits |
 | A map that can be a **static snapshot**; **inspiration from maps made for other destinations** | The **cuff card**: one printed page per EVA — photo map of the route plus a station table with arrival, stay, walk-back and *leave-by* times — modelled on the Apollo 15–17 cuff checklists and traverse planning data. See [Inspiration](#inspiration-apollo-cuff-checklists) |
 | A time frame | Pick any date and local solar time: sun, shadows, temperature climatology and DONKI events follow it |
 
@@ -320,7 +365,8 @@ The data-sources box opens a **provenance table** (`web/src/config/provenance.js
 | **Derived (this project)** | rock relief | rock relief, **geological units** (an interpretation, not a published map) |
 | **Transferred reference** | **RAD radiation** (measured in Gale, ~3,750 km away), dose rates of Earth / ISS / Moon | dose rates of Earth / ISS / Moon |
 | **Modelled** | sun and local time (Mars24), suited walking speed | same |
-| **Simulated** | EVA playback, astronauts, dust devil | same |
+| **Simulated** | EVA playback, astronauts, dust devil and its re-route | same |
+| **AI-predicted** | terrain classes on 37 Perseverance Navcam frames | terrain classes on 408 Curiosity Navcam frames |
 | **Investigated, not available** | SuperCam / PIXL chemistry | CRISM minerals, THEMIS thermal inertia |
 
 ![Provenance table at Gale: each layer with its kind, mission and instrument, observation sols, resolution and coverage, processing, uncertainty and limitations; below, the layers that are not available and why](docs/img/provenance.jpg)
@@ -386,11 +432,26 @@ The challenge lists five NASA resources; we also looked at NASA's other public m
 
 ## Martian EVA Cuff — the mission on the astronaut's wrist
 
-**04 OPERATIONS → Martian EVA Cuff** opens a proposed forearm console: STATUS, MAP, TASKS, HAZARDS and RETURN
-on five keys, a guarded EMER key one press from anywhere, PLAY / ABORT wired to the EVA playback. It shows the selected
-mission and follows the playback — position marked PLANNED or SIMULATED, oxygen as the scenario model — and is never GO
-when the return is unsafe. The printed cuff card gained a second page, an **EVA backup checklist** usable without
-the console. A design concept, not a NASA or flight-qualified device — see [`docs/EVA_CUFF.md`](docs/EVA_CUFF.md).
+**04 OPERATIONS → Martian EVA Cuff → OPEN WRIST CONSOLE** opens a proposed forearm console for the selected mission, inspired by the Apollo 15–17 cuff checklists and rugged wrist displays. A design concept, not a NASA or flight-qualified device — see [`docs/EVA_CUFF.md`](docs/EVA_CUFF.md).
+
+| Key | Screen |
+|---|---|
+| **F1 STATUS** | mission elapsed time, EVA time left, decision, O₂ left and how long it lasts, walk-back margin, next waypoint |
+| **F2 MAP** | the route with stops (done / here / next), hazard marks, the crew's position and any walk-home path |
+| **F3 TASKS** | each stop: state, stay, arrival, *leave by*, what to do, geology, objective, kit and terrain risk |
+| **F4 HAZARDS** | the route's hazards, each with its kind of evidence (MEASURED, ORBITAL, DERIVED, MODEL, AI-PREDICTED, PROJECT RULE, SIMULATED, NASA REF) |
+| **F5 RETURN** | return status and warnings, distance and bearing to the habitat, fastest walk home, margin, EVA time left, O₂ left against the O₂ the walk home needs |
+| **EMER** (guarded) | the emergency reference, one press from any screen: only the rules this planner applies and their NASA sources — no invented suit or comms procedures |
+| **PLAY · ABORT · PRINT** | drive the EVA playback; open the printed backup |
+
+- **Honest labels.** Position is **PLANNED** before the EVA and **SIMULATED** during the playback, never live telemetry; oxygen is the scenario model, not a tank sensor. The console is **never GO** when the return is unsafe (margin < 0, point of no return passed, O₂ short): it shows **NO-GO / RETURN NOW**.
+- **One source of truth.** Console and printed page 2 are built by the same pure function (`web/src/utils/evaCuff.js` `cuffModel()`) from the planner, the decision, the stop cards, the oxygen model and the playback, so they always agree.
+- **Offline copy.** The last mission is kept in the browser and shown as *OFFLINE COPY hh:mm — may be stale* when no mission is loaded.
+- **Printed backup.** The cuff card gained a second A4 page, the **EVA backup checklist**: tick-box EVA sequence with *leave by* times, equipment, resource limits, return rules, hazards and the emergency reference — usable without the console.
+
+<img src="docs/img/eva-cuff.jpg" width="640" alt="Martian EVA Cuff wrist console during the simulated EVA at Jezero: F1–F5 keys on the left, the STATUS screen with mission time, EVA time left, CONDITIONAL status, oxygen left and duration, walk-back margin and the next waypoint, and the guarded EMER, PLAY, ABORT and PRINT keys on the right">
+
+Concept limits: no sensors, positioning, tank pressure, radio link, physical keys or glove testing — position, time and oxygen use come from the playback and the scenario model.
 
 ## Inspiration: Apollo cuff checklists
 
@@ -417,9 +478,23 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - Two astronauts walk the plan on a mission clock (×1 … ×600). Positions come from the planner's own timeline, so what you see is exactly what the GO decision was based on.
 - At each stop EV1 kneels and samples while EV2 documents; a flag marks every sampled stop.
 - The HUD shows mission elapsed time, the current activity, the **live walk-back margin**, distance from the habitat, the sun, the site's air temperature (MEDA or REMS) and the **radiation dose so far**.
-- **ABORT EVA** sends the crew home on the fastest path; a **dust devil** on the route within the next 10 minutes of walking triggers an automatic abort.
+- The **camera angle** sits right under START EVA: *Follow EV1* keeps both astronauts in frame, *Overview* shows the whole route, *Free* lets you fly around. The **helmet camera** under it is EV1's processed view of the ground ahead (elevation contours or slope classes).
+- **ABORT EVA** sends the crew home on the fastest path.
+- **SIMULATE DUST DEVIL** places a dust devil; what the crew does when they see it is below.
 
-![A dust devil on the route ahead triggers an abort; the crew walks home on the fastest path (dashed)](docs/img/abort.jpg)
+### Dust devil on the route — a new SAFE route, not a run home
+
+Every moment of the playback looks 10 minutes of walking ahead. When the route comes near a dust devil (`web/src/utils/dustReroute.js`):
+
+1. **Safety zone.** A no-go zone of the dust devil's radius **+ 25 m** is set around it, drawn as a dashed yellow ring. Stops inside it are skipped.
+2. **New route from where they are.** A new **SAFE** route is planned from the point where the crew saw it, through the remaining stops to the **destination** (the plan's last point), with the zone closed to the planner. A stop being sampled is finished first.
+3. **Accepted only if it is safe:** it never comes near the dust devil, the crew can walk home around it at every point within the EVA budget, the oxygen left covers the rest of the plan plus the reserve, and they are home before sunset.
+4. **The crew is told.** The new route is drawn in yellow, the EVA timeline, live walk-back margin and oxygen check switch to it, and a message says *"Dust devil detected — 25 m safety zone set; new SAFE route planned from here (+extra time) · skipped stops"*.
+5. **Only if no safe route exists** — for example because the terrain closes every way round — the message says *"no new route to the destination found (reason). Returning to the start point the way they came for safety"*, and the crew walks back along the path already walked (around the zone if that path enters it).
+
+A second alarm for the same dust devil aborts the EVA. Details and tests: [`docs/DUST_REROUTE.md`](docs/DUST_REROUTE.md).
+
+![A dust devil next to the route at Jezero seen from above: the dashed safety ring around it, the new SAFE route in yellow past it to stop 3, and the HUD message "Dust devil detected — 25 m safety zone set; new SAFE route planned from here"](docs/img/dust-reroute.jpg)
 
 ## The layers — real data, labelled by kind
 
@@ -447,17 +522,16 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (174 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed, together with:
+`node --test web/tests/*.test.mjs` (174 tests) and `python -m unittest discover pipeline/tests` (11 tests), run on every push before the demo is deployed, together with:
 
 - **Lint** (`pnpm --filter martian-map lint`): undefined names, JSX components that do not exist, rules of hooks.
 - **README figures** (`pnpm --filter martian-map readme:figures:check`): every route figure in this README is marked `<!--fig:…-->` and recomputed from the real site files by the planner. The deploy fails if one has drifted; `pnpm --filter martian-map readme:figures` rewrites them.
 - **Browser tests** (`.github/workflows/e2e.yml`, `pnpm --filter martian-map e2e` after a build): the production build in headless Chromium.
-  - Jezero plan → decision and three assessments → EVA HUD → cuff card with all its sections + the EVA backup checklist, printed as a two-page A4 PDF (one page each); the wrist console screens and one-press EMER.
+  - Jezero plan → all four workspaces → decision and three assessments → EVA HUD → cuff card with all its sections + the EVA backup checklist, printed as a two-page A4 PDF (one page each); the wrist console screens and one-press EMER.
   - Phone and tablet: 13-step workflow, no horizontal scroll, HUD clear of the site switcher and the panel.
   - Gale objectives, and the Moon simulator unchanged.
   - Screenshots are uploaded as a build artifact.
-
-| Area | What is checked |
+- **Segmentation pipeline** (`.github/workflows/mars-segmentation.yml`): 12 Python tests — the AI4Mars label key, splits by Mars day with no frame in two splits, image and label resizing and rejections, the confusion matrix, mean IoU and confidence calibration.
 
 | Area | What is checked |
 |---|---|
@@ -479,6 +553,11 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 | Workflow & export | the 13 steps in order; a step is done only when its inputs are complete and current (unknown dust setting, invalid payload or O₂, stops of another objective leave it open); the shared assessment helper and the JSON export carry the current plan, settings, decisions, assessments and provenance (real Jezero) |
 | Edge cases (real Jezero) | coordinates outside the site or not finite are rejected (never moved onto the edge); a Gale objective at Jezero is refused; nothing fits → empty stop list; a target in a wall → route ends on the nearest walkable cell; payload over the limit → NO-GO; missing dust settings → dust INSUFFICIENT DATA, decision unchanged; future date → space weather unknown, never GO; 7.5-h stay → negative margin, point of no return, NO-GO, oxygen NO-GO; excessive slope stays NO-GO whatever payload / dust / oxygen say; no start time → INSUFFICIENT DATA |
 | Oxygen & mass | BVAD values; depletion per scenario; zero boundary; pause and speed multipliers; walking, stops and abort consume; rate change mid-EVA not retroactive; reserve and depletion warnings; mass without double counting; NO-GO / CONDITIONAL / INSUFFICIENT DATA; real Jezero and Gale routes; Moon mode unaffected |
+| Dust devil re-route | around a dust devil on the leg ahead (both stops kept, never inside the trigger radius, home, margin ≥ 0, restart); a dust devil on a stop skips it; budget too tight → abort and the walk home avoids it; strict "no path" when it closes home; a second alarm aborts; a one-way plan re-routes to the destination, and the fallback retraces the way they came |
+| Wrist console | PLANNED before and SIMULATED during the EVA; route mode, payload and decision changes reach it; stop states and live margin follow the playback; never GO with an unsafe return; equipment and sources; no invented suit procedures |
+| Workspaces | the catalog lists only what the site loaded, each item with a provenance record; route-mode explanations are the planner's own weights; timeline legs, stops and walk home tile the planned round trip; the point inspector reads the grids and follows the planner's thresholds (real Jezero) |
+| 3D relief shading | the relief texture covers the site grid exactly; decoding (flat = straight up, 45° east face = 45°); emphasis changes only the shading, heights stay unchanged; Python tests for the normals from the 1 m DTM |
+| AI segmentation | AI4Mars class mapping and unknown pixels; mask colours and statistics; nearest prediction to a rover position; index and model card validation; both sites' prediction files present and linked to real rover positions |
 | Mobility & integration | no payload or dust penalty (real Jezero route and walking times identical with 0 and 40 kg); the Mars speed factor applies outbound and on the return; dust never changes the decision; an over-limit payload is NO-GO through the existing rule |
 | Provenance | every record complete and categorised against the real files; Jezero RAD transferred; Gale geology derived; CRISM / THEMIS / SuperCam shown as unavailable with reasons |
 | Rover track | waypoints come out in drive order and split where the rover leaves the site; every region label lies inside its own unit |
@@ -495,6 +574,9 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - **Dust and equipment.** Qualitative only: no validated data gives degradation rates or failure probabilities for suits or tools in Martian dust, so none are computed. Most evidence is lunar (Apollo, lunar simulant) and is used as an analogy; the Perseverance spacesuit samples are Mars data but their per-material results are not yet published. Dust-mantled ground is known only at Jezero (100 m thermal-inertia pixels); the dusty season is a seasonal pattern, not a storm forecast.
 - **Oxygen.** The rates are NASA architecture references for a 4-hour Mars sortie, not measured Mars-suit consumption, and they do not follow activity. A Mars-suit oxygen capacity is not published, so the sized initial oxygen is an assumption, as is the suit mass including its oxygen. Secondary oxygen and buddy sharing are not modelled.
 - **Payload.** Carried mass does not change walking speed, because no validated load–speed model at Mars gravity was found; the payload acts only through the weight limit. The suit radio is assumed to be inside the life-support mass.
+- **Dust devil.** It stands still (real ones drift with the wind); its 35 m radius, the ×1.35 trigger and the 25 m safety distance are illustrative design choices, and no NASA EVA dust-devil avoidance procedure was found — the re-route is a planning demonstration, not an operational rule.
+- **Wrist console.** A proposed concept running in the browser: no hardware, sensors, positioning, tank pressure or radio link; position, time and oxygen come from the playback and the scenario model, and the "offline copy" is browser storage.
+- **Interface.** The Moon simulator (`?site=moon`) keeps its original single-panel layout; 3D stop badges and route segments are not clickable (stops open from the stop list or the timeline).
 - **Hazards.** Closed depressions are found only where the DTM sees them (≥ 1 m deep); "known only from orbit" uses the positions the rover took ground views from, not everywhere it could see.
 - **Resolution.** A 1 m DTM shows rocks of a few metres, not smaller ones. Jezero's landing area was chosen for being smooth, so there only a handful of cells exceed the 0.5 m rock-relief limit. CRISM mineral names are the closest match of each spectral class. Thermal-inertia classes are guidance.
 - **Time.** Temperatures are a one-Mars-year climatology, not a forecast. Space weather is queried live from api.nasa.gov for the EVA date (public demo key, rate-limited); offline, or when the lookup fails, the advisory says there is no data. `fetch-donki.yml` can bundle a DONKI archive since 2012 so past dates also work offline — it needs a free NASA API key as the repository secret `NASA_API_KEY`, because GitHub's shared runners hit the demo-key limit. DONKI has no forecast: for a future EVA the advisory says there is no data.
@@ -522,6 +604,10 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - Thomson, B., Ettenborough, I., Buczkowski, D., Seelos, K. D., Weitz, C. (2023). *Updated geologic map of the western portion of Aeolis Mons, Gale crater.* GSA Connects 2023, Paper 113-12. [abstract](https://gsa.confex.com/gsa/2023AM/webprogram/Paper394643.html) — the 1:60,000 map not yet published.
 - Wiens, R. C., Maurice, S., et al. *MSL ChemCam LIBS derived data (RDR), major-oxide compositions*, PDS Geosciences Node (Release 42, 2026); calibration: Clegg, S. M., et al. (2017), Spectrochim. Acta B 129, 64–85.
 
+**Rover images for AI segmentation**
+- Swan, R. M., Atha, D., Leopold, H. A., Gildner, M., Oij, S., Chiu, C., Ono, M. (2021). *AI4Mars: A dataset for terrain-aware autonomous driving on Mars.* CVPR Workshops. Data: Swan, R. M., Ono, M., Atha, D. (2022), *AI4Mars merged v0.6*, NASA/JPL, Zenodo, [doi:10.5281/zenodo.15995036](https://doi.org/10.5281/zenodo.15995036) (CC BY 4.0)
+- Howard, A., et al. (2019). *Searching for MobileNetV3* (LR-ASPP segmentation head). ICCV 2019. [arXiv:1905.02244](https://arxiv.org/abs/1905.02244)
+
 **Atmosphere and radiation**
 - Hueso, R., et al. (2024). *Derived environmental temperatures at Jezero crater from the Perseverance Air Temperature Sensors* (v2). Zenodo. [doi:10.5281/zenodo.11198655](https://doi.org/10.5281/zenodo.11198655) (CC BY 4.0)
 - Gómez-Elvira, J., et al. (2012). REMS: The Environmental Sensor Suite for the Mars Science Laboratory Rover. *Space Sci. Rev.* 170, 583–640. Data: REMS MODRDR, NASA PDS Atmospheres Node (mslrem_1001).
@@ -539,11 +625,11 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - NASA/JPL-Caltech/ESA/Univ. of Arizona/JHUAPL/MSSS/USGS Astrogeology Science Center. *Curiosity's Proposed Path up Mount Sharp* (PIA23179, 2019) and *Curiosity's Path to Gediz Vallis Ridge and Beyond* ([PIA26042](https://science.nasa.gov/photojournal/curiositys-path-to-gediz-vallis-ridge-and-beyond/), 2023) — the route-map style. NASA/JPL *Mars Trek* ([about](https://trek.nasa.gov/mars/jpl/config/textAbout.html)) — elevation plots. NASA *Worldview* ([comparison mode](https://www.earthdata.nasa.gov/news/blog/introducing-worldviews-comparison-feature)) — layer swipe.
 - Allison, M. & McEwen, M. (2000). Mars24 algorithm, NASA GISS. Tobler, W. (1993), NCGIA TR 93-1.
 
-Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md). Payload, dust and mobility assessments: [docs/EVA_ASSESSMENT.md](docs/EVA_ASSESSMENT.md). Oxygen and carried mass: [docs/OXYGEN_AND_MASS.md](docs/OXYGEN_AND_MASS.md). Final integration and acceptance report: [docs/FINAL_VALIDATION.md](docs/FINAL_VALIDATION.md).
+Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md). Payload, dust and mobility assessments: [docs/EVA_ASSESSMENT.md](docs/EVA_ASSESSMENT.md). Oxygen and carried mass: [docs/OXYGEN_AND_MASS.md](docs/OXYGEN_AND_MASS.md). Four workspaces: [docs/WORKSPACES.md](docs/WORKSPACES.md). Dust devil re-route: [docs/DUST_REROUTE.md](docs/DUST_REROUTE.md). Wrist console and backup checklist: [docs/EVA_CUFF.md](docs/EVA_CUFF.md). AI terrain segmentation: [docs/MARS_SEGMENTATION.md](docs/MARS_SEGMENTATION.md). Final integration and acceptance report: [docs/FINAL_VALIDATION.md](docs/FINAL_VALIDATION.md).
 
 ## Use of AI
 
-Developed with AI assistance (Anthropic Claude) for code, data pipelines, tests and documentation, under the team's direction and review. All data come from the sources above. The astronauts, dust devil and other 3D objects are original procedural models written in code; no AI-generated images are used.
+Developed with AI assistance (Anthropic Claude) for code, data pipelines, tests and documentation, under the team's direction and review. All data come from the sources above. The astronauts, dust devil and other 3D objects are original procedural models written in code; no AI-generated images are used. The terrain segmentation model is a separate, small network the team trained on the NASA/JPL AI4Mars labels; its outputs are labelled AI-PREDICTED everywhere they appear and never change a route, a rule or a number.
 
 ## Repository map
 
@@ -554,14 +640,19 @@ web/     the web app (React + Three.js / react-three-fiber, Vite)
                           evaTimeline + evaPlayback · orthoImage · hazards · missionStatus · stopCards · shareLink
                           payload · dust · mobility (the three EVA assessments) · oxygen
                           evaAssessments (one route → decision + assessments + export) · workflow (13 steps)
+                          dustReroute (safety zone, SAFE re-plan to the destination, retrace fallback) · evaCuff (wrist console + backup model)
+                          relief (1 m shading) · segmentation (AI terrain classes) · inspect (point inspector) · missionTimeline · routeModes
   src/hooks/              useSpaceWeather (DONKI lookup for the EVA date)
   src/config/             marswalkProfile (EVA limits, hazard thresholds) · mission (suit, equipment, rover)
                           objectives (5 per site) · provenance (every layer, every kind) · dust (sources, components) · oxygen (BVAD scenarios)
-  src/components/         MoonScene (3D) · MarsCrew · EvaHud · RightPanel (panel layout) · SiteSwitcher · MiniMap · HeatmapViewer
-                          HelmetCamPreview · MissionDecision (workflow strip, summary, decision) · ui (small shared parts)
-                          PovViewer (ground view) · ChemistryCard · CuffCard · ElevationProfile · ProvenancePanel · EvaAssessment · OxygenPanel
-  public/sites/jezero/    grid.bin · ortho (HiRISE) · relief (1 m DTM normals) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov · track
-  public/sites/gale/      grid.bin · ortho (HiRISE) · relief (1 m DTM normals) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov · track
+                          catalog (data catalog from the loaded site) · crew (astronaut scale, EV2 offset)
+  src/workspace/          TopBar (site, workspaces, mission status) · LayerCatalog · Inspector · MissionTimeline · WelcomeGuide · EvaCuff (wrist console)
+  src/components/         MoonScene (3D, follow camera) · MarsCrew · EvaHud · RightPanel (panel per workspace) · SiteSwitcher · MiniMap · HeatmapViewer
+                          HelmetCamPreview · MissionDecision (workflow strip, summary, decision) · ui (small shared parts, closed slots)
+                          PovViewer (ground view) · ChemistryCard · CuffCard (+ backup checklist) · ElevationProfile · ProvenancePanel · EvaAssessment
+                          OxygenPanel · TerrainSegmentation
+  public/sites/jezero/    grid.bin · ortho (HiRISE) · relief (1 m DTM normals) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov · track · segmentation
+  public/sites/gale/      grid.bin · ortho (HiRISE) · relief (1 m DTM normals) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov · track · segmentation
   tests/                  node --test suites (incl. real Jezero / Gale runs and Moon mode)
   e2e/                    browser tests on the production build (Playwright)
   scripts/                readmeFigures (README route figures from the planner)
@@ -569,6 +660,7 @@ pipeline/                 fetch_sources · fetch_gale · fetch_chemistry · fetc
                           build_site · build_ortho · build_relief · build_layers · build_space_weather · build_pov · build_track
                           build_climate · build_climate_rems · build_geology · build_gale_geology · build_chemistry
                           build_offline
+  segmentation/           AI4Mars inventory · prepare · train · evaluate · infer_sites (Mars AI terrain segmentation)
 MartianMap/               ready-to-run offline package
 ```
 
@@ -586,6 +678,7 @@ The processed data are committed, so the app runs as is. Sources are fetched by 
 | `fetch-chemistry.yml` | ChemCam major-oxide tables and target geometry |
 | `fetch-rems.yml` | one Mars year of REMS air temperature, reduced to 5-min means |
 | `fetch-donki.yml` | DONKI solar particle events, Mars-bound CMEs and X flares since 2012 → `space_weather.json` (both sites; weekly). Needs the secret `NASA_API_KEY` |
+| `mars-segmentation.yml` | AI4Mars v0.6 from Zenodo and the rover Navcam frames; trains, evaluates and exports the segmentation model and the site predictions. Started by pushing `pipeline/segmentation/RUN` on an `ml/**` branch with a stage: `inventory`, `smoke`, `full`, or `finish <run-id>` |
 
 Then:
 
