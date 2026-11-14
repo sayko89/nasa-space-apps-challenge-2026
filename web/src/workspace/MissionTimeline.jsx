@@ -16,7 +16,7 @@ export default function MissionTimeline({ route, mode, startMs, oxygen, nowS = n
   const tl = useMemo(() => (route ? missionTimeline(route, { startMs, oxygen }) : null), [route, startMs, oxygen]);
   if (!tl) {
     return (
-      <div aria-label="EVA timeline" style={{ ...frame, ...style, color: T.muted, fontSize: 12, display: 'flex', alignItems: 'center' }}>
+      <div aria-label="EVA timeline" style={{ ...frame, ...style, color: T.muted, fontSize: 13, display: 'flex', alignItems: 'center' }}>
         EVA TIMELINE — plan a route to see walking legs, stops, the walk home and the time limits here.
       </div>
     );
@@ -29,7 +29,7 @@ export default function MissionTimeline({ route, mode, startMs, oxygen, nowS = n
   const crit = tl.marks.filter(m => m.critical);
   return (
     <div aria-label="EVA timeline" style={{ ...frame, ...style }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 10.5, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 12.5, marginBottom: 5 }}>
         <span style={{ fontWeight: 700, letterSpacing: 1, color: T.muted }}>EVA TIMELINE</span>
         <button type="button" onClick={() => onSelect?.({ type: 'route', mode })} style={{ all: 'unset', cursor: 'pointer', color, fontFamily: T.mono }}>{mode}</button>
         <span style={{ color: T.muted }}>home at <b style={{ color: T.text, fontFamily: T.mono }}>{fmtHM(tl.items[tl.items.length - 1].t1)}</b> · reserve <b style={{ color: tl.reserveS < 0 ? T.nogo : T.text, fontFamily: T.mono }}>{fmtHM(tl.reserveS)}</b> of budget {fmtHM(tl.budgetS)}</span>
@@ -39,7 +39,7 @@ export default function MissionTimeline({ route, mode, startMs, oxygen, nowS = n
         {/* hour grid */}
         {ticks.map(h => (
           <div key={h} style={{ position: 'absolute', left: pct(h * 3600), top: 0, bottom: 0, borderLeft: `1px solid ${T.rule}` }}>
-            <span style={{ position: 'absolute', bottom: -1, left: 3, fontSize: 9.5, color: T.faint, fontFamily: T.mono }}>{h}h</span>
+            <span style={{ position: 'absolute', bottom: -1, left: 3, fontSize: 11, color: T.faint, fontFamily: T.mono }}>{h}h</span>
           </div>
         ))}
         {/* activity band */}
@@ -58,7 +58,7 @@ export default function MissionTimeline({ route, mode, startMs, oxygen, nowS = n
         {tl.marks.map(m => (
           <div key={m.kind} title={`${m.label}: ${fmtHM(m.t)} after start`} style={{ position: 'absolute', left: pct(m.t), top: 0, height: 26,
             borderLeft: `${m.critical ? 2 : 1}px ${m.kind.startsWith('o2') ? 'dashed' : 'solid'} ${MARK_C[m.kind]}` }}>
-            <span style={{ position: 'absolute', top: 24, left: 2, fontSize: 9, color: MARK_C[m.kind], whiteSpace: 'nowrap' }}>{SHORT[m.kind]}</span>
+            <span style={{ position: 'absolute', top: 24, left: 2, fontSize: 11, color: MARK_C[m.kind], whiteSpace: 'nowrap' }}>{SHORT[m.kind]}</span>
           </div>
         ))}
         {Number.isFinite(nowS) && nowS > 0 && (

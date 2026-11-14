@@ -10,8 +10,8 @@ import { filterCatalog } from '../config/catalog';
 import { geologyLegend, dataLayerLegend, hazardLegend, HAZARD_LAYER } from '../utils/heatmaps';
 import { RELIEF_SCALES } from '../utils/relief';
 
-const row = { display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px 5px 10px', fontSize: 12 };
-const tiny = { all: 'unset', cursor: 'pointer', fontSize: 10.5, color: T.muted, padding: '1px 4px', border: `1px solid ${T.rule}`, borderRadius: 2, lineHeight: 1.3 };
+const row = { display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 6px 10px', fontSize: 13.5 };
+const tiny = { all: 'unset', cursor: 'pointer', fontSize: 11.5, color: T.muted, padding: '1px 5px', border: `1px solid ${T.rule}`, borderRadius: 2, lineHeight: 1.3 };
 
 function Legend({ layer }) {
   const g = geologyLegend(layer);
@@ -22,7 +22,7 @@ function Legend({ layer }) {
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', padding: '2px 0 0' }}>
         {entries.slice(0, 10).map(e => (
-          <span key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.muted }} title={e.pct != null ? `${e.pct.toFixed(1)} % of the site` : undefined}>
+          <span key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: T.muted }} title={e.pct != null ? `${e.pct.toFixed(1)} % of the site` : undefined}>
             <span style={{ width: 8, height: 8, background: e.color, display: 'inline-block', flexShrink: 0 }} />{e.name}
           </span>
         ))}
@@ -67,12 +67,13 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
       fontFamily: T.sans, color: T.text, minHeight: 0, ...style }}>
       <div style={{ padding: '10px 10px 8px', borderBottom: `1px solid ${T.rule}` }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.2, color: T.muted }}>DATA CATALOG</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: 1.2, color: T.text }}>DATA CATALOG</span>
           {drapes.length > 0 && <button type="button" style={tiny} onClick={() => setDrapes([])} title="Hide every draped layer">clear {drapes.length}</button>}
         </div>
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search layers and datasets" aria-label="Search the data catalog"
           style={{ marginTop: 7, width: '100%', boxSizing: 'border-box', background: T.sunken, border: `1px solid ${T.ruleStrong}`, color: T.text,
-            borderRadius: 2, padding: '5px 7px', fontSize: 12, fontFamily: T.sans, outline: 'none' }} />
+            borderRadius: 2, padding: '6px 8px', fontSize: 13.5, fontFamily: T.sans, outline: 'none' }} />
+        <div style={{ fontSize: 12, color: T.muted, marginTop: 6, lineHeight: 1.4 }}>Tick a layer to show it on the 3D terrain · ⓘ = what it is and where the data comes from</div>
       </div>
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {cats.map(c => {
@@ -81,7 +82,7 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
             <div key={c.id} style={{ borderBottom: `1px solid ${T.rule}` }}>
               <button type="button" onClick={() => setClosed(s => ({ ...s, [c.id]: !s[c.id] }))} aria-expanded={!isClosed}
                 style={{ all: 'unset', cursor: 'pointer', display: 'flex', width: '100%', boxSizing: 'border-box', padding: '7px 10px 5px',
-                  fontSize: 10.5, fontWeight: 700, letterSpacing: 1, color: T.muted }}>
+                  fontSize: 11.5, fontWeight: 700, letterSpacing: 1, color: T.muted }}>
                 <span style={{ width: 12 }}>{isClosed ? '▸' : '▾'}</span>{c.label.toUpperCase()}
                 <span style={{ marginLeft: 'auto', fontWeight: 400, fontFamily: T.mono }}>{c.items.length}</span>
               </button>
@@ -146,7 +147,7 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
       </div>
       <div style={{ padding: '6px 10px', borderTop: `1px solid ${T.rule}`, display: 'flex', flexWrap: 'wrap', gap: '2px 9px' }}>
         {Object.entries(CATEGORIES).map(([k, c]) => (
-          <span key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, color: T.muted }}>
+          <span key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: T.muted }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.color }} />{c.label}
           </span>
         ))}
