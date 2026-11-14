@@ -813,12 +813,13 @@ export default function RightPanel({
         .ws-plan > #route-compare { order: -16 }
         .ws-plan > [aria-label="Mission workflow"] { order: -15 }
         .ws-ops > #site-map { order: -20 }
-        .ws-ops > #eva-exec { order: -19 }
-        .ws-ops > #camera { order: -18 }
-        .ws-ops > #helmet-cam { order: -17 }
-        .ws-ops > #eva-cuff { order: -16 }
-        .ws-ops > #wf-decision { order: -15 }
-        .ws-ops > [aria-label="Mission workflow"] { order: -14 }
+        .ws-ops > #contingency { order: -19 }
+        .ws-ops > #eva-exec { order: -18 }
+        .ws-ops > #camera { order: -17 }
+        .ws-ops > #helmet-cam { order: -16 }
+        .ws-ops > #eva-cuff { order: -15 }
+        .ws-ops > #wf-decision { order: -14 }
+        .ws-ops > [aria-label="Mission workflow"] { order: -13 }
       `}</style>}
       <div className={ws ? `ws-${ws}` : undefined} style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
         {IS_DEM && show('plan', 'ops') && <WorkflowStrip steps={workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus })}
@@ -1077,7 +1078,7 @@ export default function RightPanel({
         )}
 
         {/* ── Hazard Control (DEM: contingency) ── */}
-        {show('ops') && <Sect label={IS_DEM ? 'Contingency' : 'Hazard Control'}>
+        {show('ops') && <Sect id="contingency" label={IS_DEM ? 'Contingency — dust devil' : 'Hazard Control'}>
           {/* Status banner */}
           {dustMode === DUST_STATES.INTERFERENCE && (
             <div style={{marginBottom:5,padding:'4px 6px',borderRadius:3,fontSize:fs(8),fontFamily:'monospace',
