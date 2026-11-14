@@ -439,7 +439,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (169 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed, together with:
+`node --test web/tests/*.test.mjs` (170 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed, together with:
 
 - **Lint** (`pnpm --filter martian-map lint`): undefined names, JSX components that do not exist, rules of hooks.
 - **README figures** (`pnpm --filter martian-map readme:figures:check`): every route figure in this README is marked `<!--fig:…-->` and recomputed from the real site files by the planner. The deploy fails if one has drifted; `pnpm --filter martian-map readme:figures` rewrites them.

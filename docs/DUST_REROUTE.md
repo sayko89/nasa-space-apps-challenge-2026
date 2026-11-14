@@ -11,7 +11,7 @@ decision below runs instead of an immediate abort.
 1. **Safety zone**: when the crew notices the dust devil, a no-go zone of its radius + **25 m**
    (`DUST_REROUTE.safetyMarginM`, design choice) is set around it — drawn as a dashed yellow ring.
    Stops inside the zone are skipped. If the crew is already inside it, there is nothing to plan → return.
-2. **Re-plan in SAFE mode from the point where they noticed it** (the main goal) to the remaining stops and home (SAFE mode, same A*, same
+2. **Re-plan in SAFE mode from the point where they noticed it** (the main goal) to the remaining stops and the **destination** — the last point of the plan, which is home only for a loop (SAFE mode, same A*, same
    walking model), with the disc closed (`planAllRoutes(…, { block, strict: true })`). Strict mode
    returns a definite "no path" instead of the old BFS fallback that walked to the nearest cell.
    If the crew is sampling a stop, that stop is finished first.
@@ -25,9 +25,9 @@ decision below runs instead of an immediate abort.
    the live margin and the oxygen check use the walk-home times around the dust devil, the new route
    is drawn in yellow, and an **information** message says “Dust devil detected — 25 m safety zone set;
    new SAFE route planned from here (+extra time) · skipped stops”.
-   Only if no such route exists → “Dust devil detected — no new route found (reason). Returning to the
-   start point for safety.” The walk home avoids the zone when a path exists (orange dashed),
-   otherwise the fastest path home.
+   Only if no such route exists → “Dust devil detected — no new route to the destination found (reason). Returning to the
+   start point the way they came for safety.” They walk back along the path they already walked
+   (orange dashed); if that would enter the zone, they walk home around it, otherwise the fastest path.
 5. A second alarm for the same dust devil → abort (no second re-plan). A new dust devil may be
    avoided again. *Restart* returns to the plan as loaded.
 

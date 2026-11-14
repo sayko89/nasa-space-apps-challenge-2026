@@ -25,7 +25,7 @@ import {
 } from './evaTimeline.js';
 import { fmtHM } from './format.js';
 import { oxygenState } from './oxygen.js';
-import { spliceTimeline, DUST_REROUTE } from './dustReroute.js';
+import { spliceTimeline, retracePath, safetyZoneRadius, DUST_REROUTE } from './dustReroute.js';
 
 export const SPEEDS = [1, 30, 120, 600];
 export const DEFAULT_SPEED = 120;
@@ -293,6 +293,7 @@ export class EvaPlayback {
     const hist = this.o2History;
     const r = this.dustPlanner({
       pos: { x: p.x, z: p.z }, t: t + wait, stops, hazard: this.hazard, budgetS: this.meta.budgetS, nominalEndS: this.active.totalS,
+      destination: { x: this.nominal.xs[this.nominal.n - 1], z: this.nominal.zs[this.nominal.n - 1] },
       mode: 'SAFE', startMs: this.meta.startMs, sunAt: this.env.sunAt || null,
       oxygenCheck: (planLeftS, backS) => {
         if (!this.o2cfg?.valid || !hist.length) return { ok: true, detail: 'no oxygen settings' };
@@ -303,8 +304,11 @@ export class EvaPlayback {
     });
     this._lastAvoidReturn = r?.returnPath || null;
     if (!r?.ok) {
-      this._event('reroute-failed', `Dust devil detected — no new route found (${r?.reason || 'planner unavailable'}). Returning to the start point for safety.`);
-      this.abort(`${reason} — no new route found, returning to the start point for safety`, r?.returnPath || null);
+      // fallback: back to the start the way they came (when that stays clear of the zone), else around it, else fastest
+      const back = retracePath(this.active, t, p, this.hazard, safetyZoneRadius(this.hazard));
+      const how = back ? 'the way they came' : 'around the safety zone';
+      this._event('reroute-failed', `Dust devil detected — no new route to the destination found (${r?.reason || 'planner unavailable'}). Returning to the start point ${how} for safety.`);
+      this.abort(`${reason} — no new route found, returning to the start point for safety`, back ? () => back : (r?.returnPath || null));
       return;
     }
     const tl = spliceTimeline(this.nominal, t, p, r.path, r.elapsedS, r.stops, here ? { dwellS: wait, n: here.n, label: here.label } : null);
@@ -316,7 +320,7 @@ export class EvaPlayback {
     const sk = r.skipped.length ? ` · skipped ${r.skipped.map(s => `S${s.n}`).join(', ')} (inside the safety zone)` : '';
     const ct = here ? ` · S${here.n} finished first` : '';
     const ex = r.extraS >= 0 ? `+${fmtHM(r.extraS)}` : `−${fmtHM(-r.extraS)}`;
-    this._event('reroute', `Dust devil detected — ${DUST_REROUTE.safetyMarginM.value} m safety zone set; new SAFE route planned from here (${ex})${sk}${ct}`, { extraS: r.extraS });
+    this._event('reroute', `Dust devil detected — ${DUST_REROUTE.safetyMarginM.value} m safety zone set; new SAFE route planned from here to the destination (${ex})${sk}${ct}`, { extraS: r.extraS });
     this._emit('status');
   }
 

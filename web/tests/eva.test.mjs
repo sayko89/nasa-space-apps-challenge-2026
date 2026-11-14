@@ -333,8 +333,9 @@ test('no safe route around it (budget): abort, and the walk home avoids the dust
   runUntil(pb, () => pb.rerouted || pb.aborted);
   assert.ok(pb.aborted && !pb.rerouted);
   const f = pb.events.find(e => e.kind === 'reroute-failed');
-  assert.match(f.text, /no new route found .*margin/);
-  assert.match(f.text, /Returning to the start point for safety/);
+  assert.match(f.text, /no new route to the destination found .*margin/);
+  assert.match(f.text, /the way they came/);
+  assert.match(f.text, /Returning to the start point/);
   assert.match(pb.aborted.reason, /returning to the start point for safety/);
   assert.match(pb.aborted.reason, /dust devil/);
   assert.ok(minDistTl(pb.active, pb.aborted.t0, hz.x, hz.z) > hz.interferenceRadius, 'walk home stays clear of it');
@@ -347,7 +348,7 @@ test('planDustReroute: strict "no path" when the dust devil closes home; a secon
   const res = DR.planDustReroute({ pos: p, t: tl.stops[0].departS + 100, stops: [], home: HOME, hazard: { x: HOME.x, z: HOME.z, radius: 20, interferenceRadius: 27 },
     budgetS: r.stats.budgetS, nominalEndS: tl.totalS, maps });
   assert.equal(res.ok, false);
-  assert.match(res.reason, /no walkable path around the safety zone/);
+  assert.match(res.reason, /destination is inside the safety zone/);
 
   const pb = new EP.EvaPlayback();
   pb.load(r.path, r.stats, { budgetS: r.stats.budgetS }, envFor());
@@ -358,4 +359,31 @@ test('planDustReroute: strict "no path" when the dust devil closes home; a secon
   assert.ok(pb.rerouted && !pb.aborted);
   pb._dustAhead();                                                      // same dust devil again → home
   assert.ok(pb.aborted);
+});
+
+test('one-way plan: the new route goes to the destination, not back to the start; fallback retraces the way they came', () => {
+  const r = P.planAllRoutes([HOME, { ...A, dwellS: 600, label: 'Unit A' }, B], sm, cm, hm, 45, null, { modes: ['FAST'] }).FAST;
+  const pb = new EP.EvaPlayback();
+  pb.load(r.path, r.stats, { budgetS: r.stats.budgetS }, envFor());
+  pb.setDustPlanner(planner());
+  const st1 = pb.nominal.stops[0];
+  const mid = TL.sampleTimeline(pb.nominal, (st1.departS + pb.nominal.totalS) / 2);
+  const hz = { x: mid.x, z: mid.z, radius: 20, interferenceRadius: 27 };
+  pb.setHazard(hz);
+  pb.setSpeed(30); pb.play();
+  runUntil(pb, () => pb.rerouted || pb.aborted);
+  assert.ok(pb.rerouted && !pb.aborted);
+  assert.match(pb.events.find(e => e.kind === 'reroute').text, /to the destination/);
+  pb.setSpeed(600); runUntil(pb, () => false);
+  const end = pb.pose();
+  assert.ok(Math.hypot(end.x - B.x, end.z - B.z) < 1e-6, 'ends at the destination B, not at the start');
+
+  // retrace: the walked part reversed, ending at the start
+  const tl = pb.planned;
+  const t = st1.departS + 120, p = TL.sampleTimeline(tl, t);
+  const back = DR.retracePath(tl, t, p);
+  const last = back.path[back.path.length - 1];
+  assert.ok(Math.hypot(back.path[0][0] - p.x, back.path[0][2] - p.z) < 1e-9);
+  assert.ok(Math.hypot(last[0] - tl.xs[0], last[2] - tl.zs[0]) < 1e-9, 'ends at the start');
+  assert.equal(DR.retracePath(tl, t, p, { x: tl.xs[0], z: tl.zs[0] }, 30), null, 'refused when it would enter the zone');
 });
