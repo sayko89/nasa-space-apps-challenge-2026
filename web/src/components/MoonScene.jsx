@@ -35,6 +35,7 @@ function marsSky(elDeg) {
 }
 import { useRoverController } from '../three/roverController';
 import { loadOrthoImage } from '../utils/orthoImage';
+import { hasRelief, reliefUrl, flatNormalGeometry } from '../utils/relief';
 import { ROUTE_COLORS } from '../utils/constants';
 
 // ---- Terrain ----
@@ -67,14 +68,43 @@ function useOrthoTexture(on) {
   return on ? tex : null;
 }
 
-function Terrain({ wireframe, orthoOn = false }) {
+// ---- Relief shading from the 1 m HiRISE DTM (pipeline/build_relief.py) ----
+// The mesh is the 4 m grid: lit by its own vertex normals it shows nothing finer than ~8 m, and on the
+// smooth Jezero floor that reads as a flat painted sheet. relief.jpg holds the 1 m DTM's surface normals
+// relative to the horizontal (R east, G north, B up; row 0 = north = UV v 1), so the mesh is given flat
+// (up) vertex normals and lit with the map: the shading is the measured 1 m relief. Heights, shadows
+// and silhouettes still come from the 4 m mesh. `scale` > 1 steepens the shading only (presentation aid).
+let _reliefTex = null, _flatGeo = null;
+function useReliefTexture(on) {
+  const [tex, setTex] = useState(_reliefTex);
+  useEffect(() => {
+    if (!on || _reliefTex || !hasRelief()) return undefined;
+    let alive = true;
+    new THREE.TextureLoader().load(reliefUrl(), (t) => {
+      t.colorSpace = THREE.NoColorSpace;                 // vectors, not colours
+      t.anisotropy = 8;
+      t.generateMipmaps = true;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      _reliefTex = t;
+      if (alive) setTex(t);
+    }, undefined, () => {});                              // no map → the mesh keeps its own normals
+    return () => { alive = false; };
+  }, [on]);
+  return on ? tex : null;
+}
+
+function Terrain({ wireframe, orthoOn = false, reliefScale = 1 }) {
   if (!_geo)          _geo          = generateTerrain();
   if (!_regolithTex)  _regolithTex  = createLunarRegolithTexture(512);
   if (!_normalMap)    _normalMap    = createLunarNormalMap(256);
   const ortho = useOrthoTexture(orthoOn && !wireframe);
+  const relief = useReliefTexture(!wireframe);
+  if (relief && !_flatGeo) _flatGeo = flatNormalGeometry(_geo);
+  const rs = [reliefScale, reliefScale];
+  const reliefProps = relief ? { normalMap: relief, normalScale: rs } : {};
 
   return (
-    <mesh geometry={_geo} receiveShadow>
+    <mesh geometry={relief ? _flatGeo : _geo} receiveShadow>
       {wireframe ? (
         <meshStandardMaterial key="wire" wireframe color="#44aa44" />
       ) : ortho ? (
@@ -82,8 +112,9 @@ function Terrain({ wireframe, orthoOn = false }) {
         // the mid-grey image); the image already holds the orbital lighting, so the scene light
         // adds only the relief of the 4 m terrain.
         <meshStandardMaterial
-          key="ortho"
+          key={relief ? 'ortho-relief' : 'ortho'}
           map={ortho}
+          {...reliefProps}
           color={ORTHO_TINT}
           roughness={0.95}
           metalness={0}
@@ -91,12 +122,13 @@ function Terrain({ wireframe, orthoOn = false }) {
         />
       ) : (
         <meshStandardMaterial
-          key="proc"
+          key={relief ? 'proc-relief' : 'proc'}
           vertexColors
           color="#ffffff"
           map={_regolithTex}
           normalMap={_normalMap}
           normalScale={[0.14, 0.14]}
+          {...reliefProps}
           roughness={0.88}
           metalness={0.04}
           envMapIntensity={0.0}
@@ -851,6 +883,7 @@ export default function MoonScene({
   overlay = null,           // DEM: { layer, opacity, refreshKey } map layer draped on the terrain
   showTrack = false,        // DEM: the rover's own route + named places (sites/<site>/track.json)
   orthoOn = false,          // DEM: HiRISE orthomosaic on the terrain (sites/<site>/ortho.jpg)
+  reliefScale = 1,          // DEM: relief shading emphasis (1 = true slopes; shading only)
 }) {
   const roverRef = useRef();
   const orbitRef = useRef();
@@ -884,7 +917,7 @@ export default function MoonScene({
       {/* Sun */}
       <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} playback={playback} />
 
-      <Terrain wireframe={wireframe} orthoOn={orthoOn} />
+      <Terrain wireframe={wireframe} orthoOn={orthoOn} reliefScale={reliefScale} />
       {IS_DEM && overlay?.layer && (
         <TerrainOverlay layer={overlay.layer} opacity={overlay.opacity ?? 0.6} refreshKey={overlay.refreshKey}
           sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />

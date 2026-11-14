@@ -33,6 +33,7 @@ import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsT
 import { airTemp, diurnalCurve, K_TO_C, climateInstrument, climateHeightM } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
 import { Sect, Label, Row, V, Btn } from './ui';
+import { hasRelief, RELIEF_SCALES } from '../utils/relief';
 import { PW, WP_COLORS_2D } from './panelConstants';
 import { useSpaceWeather } from '../hooks/useSpaceWeather';
 import { evaAssessments, routeDecision, missionExport, cellIdx } from '../utils/evaAssessments';
@@ -628,6 +629,7 @@ export default function RightPanel({
   cameraMode, setCameraMode,
   wireframe, setWireframe,
   orthoOn, setOrthoOn,
+  reliefScale = 1, setReliefScale,
   showTrack = false, setShowTrack = null,
   onStartRover, onStopRover, isRoving,
   evaStatus = 'idle', onAbortEva = () => {}, onPauseEva = null,
@@ -747,6 +749,21 @@ export default function RightPanel({
             )}
             <Btn active={wireframe}  onClick={()=>setWireframe(true)}>WIRE</Btn>
           </Row>
+          {hasRelief() && setReliefScale && !wireframe && (
+            <div style={{marginTop:5}}>
+              <Row>
+                {RELIEF_SCALES.map(k => (
+                  <Btn key={k} active={reliefScale===k} onClick={()=>setReliefScale(k)}
+                    title={k===1 ? 'True slopes of the 1 m HiRISE DTM' : `Relief shading ×${k}: slopes drawn ${k}× steeper. Shading only — heights, slopes, routes and every number stay true.`}>
+                    {k===1 ? 'RELIEF ×1' : `×${k}`}
+                  </Btn>
+                ))}
+              </Row>
+              <div style={{fontSize:fs(6.5),color:'#6a7a6a',marginTop:2}}>
+                Shading: 1 m HiRISE DTM{reliefScale>1 ? ` · slopes ×${reliefScale} for visibility (numbers unchanged)` : ' · true slopes'}
+              </div>
+            </div>
+          )}
         </Sect>
 
         {/* Waypoints */}

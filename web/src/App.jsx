@@ -188,6 +188,7 @@ export default function App() {
   const sunElevationDeg = sun ? sun.elevationDeg : undefined;
   const [wireframe, setWireframe]   = useState(false);
   const [orthoOn, setOrthoOn]       = useState(!!SITE.ortho);   // HiRISE image on the terrain
+  const [reliefScale, setReliefScale] = useState(1);            // 1 m DTM relief shading emphasis (1 = true)
   const [cameraMode, setCameraMode] = useState('follow');
   const [routeLog, setRouteLog]     = useState([`[${ts()}] Ready. ${IS_DEM ? 'Press PLAN SCIENCE EVA, or add waypoints and press PLAN PATH.' : 'Add waypoints and press PLAN PATH.'}`]);
   const [isRoving, setIsRoving]     = useState(false);
@@ -897,6 +898,7 @@ export default function App() {
             cameraMode={cameraMode}
             wireframe={wireframe}
             orthoOn={orthoOn}
+            reliefScale={reliefScale}
             sunAngleDeg={sunAngleDeg}
             sunElevationDeg={sunElevationDeg}
             learningModel={learningModel}
@@ -967,6 +969,7 @@ export default function App() {
         cameraMode={cameraMode}     setCameraMode={setCameraMode}
         wireframe={wireframe}       setWireframe={setWireframe}
         orthoOn={orthoOn}           setOrthoOn={setOrthoOn}
+        reliefScale={reliefScale}   setReliefScale={setReliefScale}
         onStartRover={handleStartRover}
         onStopRover={handleStopRover}
         isRoving={roving}
