@@ -35,7 +35,27 @@ function useSuitMaterials() {
     lamp:  new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#fff6d8', emissiveIntensity: 1.2 }),
     led:   new THREE.MeshStandardMaterial({ color: '#40e0ff', emissive: '#30d0ff', emissiveIntensity: 1.4 }),
     ledG:  new THREE.MeshStandardMaterial({ color: '#7dff7a', emissive: '#5cff58', emissiveIntensity: 1.4 }),
+    logo:  teamLogoMaterial(),
   }), []);
+}
+
+// Team patch on the back of the life-support backpack: the Periapsis logo (public/brand/periapsis-logo.png,
+// black on transparent, 1024 × 638). One shared material; the image is attached when it has loaded.
+const LOGO_ASPECT = 1024 / 638;
+let _logoMat = null;
+function teamLogoMaterial() {
+  if (_logoMat) return _logoMat;
+  _logoMat = new THREE.MeshStandardMaterial({ color: '#16171a', roughness: 0.75, metalness: 0, transparent: true,
+    opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}brand/periapsis-logo.png`, (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    _logoMat.map = t;                     // the logo's alpha cuts the shape; colour comes from `color`
+    _logoMat.alphaMap = null;
+    _logoMat.opacity = 0.92;
+    _logoMat.needsUpdate = true;
+  }, undefined, () => {});                // no logo file → nothing drawn (opacity 0)
+  return _logoMat;
 }
 
 // ---------------------------------------------------------------- the suit
@@ -103,6 +123,10 @@ function Astronaut({ J, ev1 }) {
             </mesh>
             <mesh material={m.dark} castShadow position={[0, 0.7, -0.25]}>
               <boxGeometry args={[0.36, 0.05, 0.16]} />
+            </mesh>
+            {/* team patch, centred on the backpack's back face (0.42 × 0.62 m), upper half */}
+            <mesh material={m.logo} position={[0, 0.46, -0.351]} rotation={[0, Math.PI, 0]} renderOrder={2}>
+              <planeGeometry args={[0.3, 0.3 / LOGO_ASPECT]} />
             </mesh>
             <mesh material={m.metal} position={[0.15, 0.82, -0.3]}>
               <cylinderGeometry args={[0.008, 0.008, 0.22, 6]} />
@@ -178,9 +202,9 @@ function applyPose(J, P) {
   J.elL.rotation.x = P.elL; J.elR.rotation.x = P.elR;
 }
 
-// Display scale of the crew figures. True size (~1.9 m with helmet) is a few pixels against 2 km of terrain
-// and the metre-scale relief; ×1.4 keeps them readable. Positions, routes, speeds and every number are unchanged.
-const CREW_SCALE = 9,4;
+// Display scale of the crew figures (true size ~1.9 m with helmet is a few pixels against 2 km of terrain).
+// Drawing only: positions, routes, speeds and every number are unchanged. Decimal point, not comma.
+const CREW_SCALE = 9.4;
 
 const wrapAngle = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
