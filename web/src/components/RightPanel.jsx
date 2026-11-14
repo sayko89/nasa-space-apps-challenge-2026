@@ -476,7 +476,7 @@ function ObjectivePicker({ objectiveId, setObjectiveId, science }) {
 
 // ---- Science stop card (utils/stopCards.js) ----
 const RISK_COL = { low: '#6c6', moderate: '#e8c050', high: '#ff6655', unknown: '#aaa' };
-function StopCard({ card, onGroundView, onChemistry }) {
+function StopCard({ card, onGroundView, onChemistry, onInspect }) {
   const [open, setOpen] = useState(false);
   return (
     <li style={{marginBottom:3}}>
@@ -486,7 +486,8 @@ function StopCard({ card, onGroundView, onChemistry }) {
         <span style={{color:'#7a8a7a'}}> · {card.confidence.level} · {card.visitMin} min {open ? '▾' : '▸'}</span>
       </div>
       {onGroundView && <span onClick={onGroundView} style={{marginRight:6,color:'#ffcc88',cursor:'pointer',textDecoration:'underline'}}>ground view</span>}
-      {onChemistry && <span onClick={onChemistry} style={{color:'#88ccff',cursor:'pointer',textDecoration:'underline'}}>chemistry</span>}
+      {onChemistry && <span onClick={onChemistry} style={{color:'#88ccff',cursor:'pointer',textDecoration:'underline',marginRight:6}}>chemistry</span>}
+      {onInspect && <span onClick={onInspect} style={{color:T.info,cursor:'pointer',textDecoration:'underline'}}>inspect</span>}
       {open && (
         <div style={{margin:'3px 0 4px',padding:'3px 5px',borderLeft:'2px solid #ffb347',background:'rgba(30,20,6,0.4)',color:'#c8c0a8',fontSize:fs(7),lineHeight:1.5}}>
           <div><b>Position:</b> {card.lat != null ? `${card.lat.toFixed(5)}°N ${card.lon.toFixed(5)}°E · ` : ''}x {card.x.toFixed(0)} m, z {card.z.toFixed(0)} m from the site centre</div>
@@ -505,7 +506,7 @@ function StopCard({ card, onGroundView, onChemistry }) {
 }
 
 // ---- Stage 6: science EVA (geology stops) ----
-function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, objectiveId, setObjectiveId, mission }) {
+function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, objectiveId, setObjectiveId, mission, onInspect = null }) {
   const [pov, setPov] = useState(null);
   const [chemStop, setChemStop] = useState(null);
   const objective = findObjective(SITE.name, science?.objectiveId || objectiveId);
@@ -548,7 +549,8 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, 
               return (
                 <StopCard key={i} card={card}
                   onGroundView={nearestPanorama(st.x, st.z) ? () => setPov({ stop: st, label: `S${i + 1} ${st.label}` }) : null}
-                  onChemistry={hasChemistry(st.x, st.z) ? () => setChemStop({ stop: st, label: `S${i + 1} ${st.label}` }) : null} />
+                  onChemistry={hasChemistry(st.x, st.z) ? () => setChemStop({ stop: st, label: `S${i + 1} ${st.label}` }) : null}
+                  onInspect={onInspect ? () => onInspect({ type: 'stop', n: i + 1 }) : null} />
               );
             })}
           </ol>
@@ -922,7 +924,7 @@ export default function RightPanel({
         <Sect label="Scientific objective & stops" id="wf-objective">
           <SciencePanel science={science} onPlan={onPlanScience} busy={isPlanningScience || isPlanning}
             dwellMin={scienceDwellMin} setDwellMin={setScienceDwellMin} disabled={isRoving}
-            objectiveId={objectiveId} setObjectiveId={setObjectiveId} mission={mission} />
+            objectiveId={objectiveId} setObjectiveId={setObjectiveId} mission={mission} onInspect={onInspect} />
         </Sect>
         )}
 
