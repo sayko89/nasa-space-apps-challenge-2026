@@ -36,7 +36,7 @@ jobs:
       - name: Run
         run: |
           STAGE="${{ steps.stage.outputs.stage }}"
-          [ -z "$STAGE" ] && STAGE=$(head -1 pipeline/segmentation/RUN | tr -d '[:space:]')
+          [ -z "$STAGE" ] && STAGE=$(head -1 pipeline/segmentation/RUN | awk '{print $1}')
           echo "stage: $STAGE"
           mkdir -p pipeline/sources/ai4mars
           bash pipeline/segmentation/run.sh "$STAGE" 2>&1 | tee pipeline/sources/ai4mars/$STAGE.log
