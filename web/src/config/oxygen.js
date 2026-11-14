@@ -18,6 +18,8 @@
  * and labelled an approximation; it can be changed during the EVA.
  */
 
+import { APOLLO17_RESERVE } from './marswalkProfile.js';
+
 const BVAD = 'NASA/TP-2015-218570/REV2 (BVAD, Feb 2022) §4.6.2';
 export const BVAD_URL = 'https://ntrs.nasa.gov/citations/20210024855';
 
@@ -42,9 +44,8 @@ export const DEFAULT_O2_SCENARIO = 'swing-bed';   // BVAD's suitport example use
 
 /** Oxygen reserve kept for the walk back. Configurable; default = Apollo 17 traverse-planning reserve. */
 export const O2_RESERVE = {
-  defaultMin: 30, min: 0, max: 120,
-  source: 'NASA MSC (1972), Apollo 17 Traverse Planning Data — 30-minute PLSS consumables reserve',
-  url: 'https://www.nasa.gov/wp-content/uploads/static/history/alsj/a17/A17TraversePlanningData.pdf',
+  defaultMin: APOLLO17_RESERVE.value, min: 0, max: 120,
+  source: APOLLO17_RESERVE.source, url: APOLLO17_RESERVE.url,
 };
 
 /**

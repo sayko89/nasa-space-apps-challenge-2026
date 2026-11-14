@@ -107,10 +107,10 @@ export function OxygenHud({ o, series, t, compact = false, onScenario, scenario 
         {cell('TO WALK HOME', Number.isFinite(o.returnNeedKg) ? `${o.returnNeedKg.toFixed(2)} kg` : 'no path', o.returnFeasible ? undefined : '#ff5a4a')}
         {cell('CARRIED MASS', o.mass ? `${o.mass.totalKg.toFixed(1)} kg` : '—')}
       </div>
-      <div style={{ fontSize: 10, color: 'rgba(232,196,168,0.7)', marginTop: 2 }}>
+      {!compact && <div style={{ fontSize: 10, color: 'rgba(232,196,168,0.7)', marginTop: 2 }}>
         {o.scenarioLabel} · {o.rateKgH} kg/h · reserve {o.reserveKg.toFixed(2)} kg
         {o.mass ? ` · mass = ${o.mass.fixedKg.toFixed(1)} fixed + ${o.mass.o2Kg.toFixed(2)} O₂ + ${o.mass.equipmentKg} equipment` : ''}
-      </div>
+      </div>}
       {(!o.returnFeasible || o.empty) && <div style={{ fontSize: 11, fontWeight: 'bold', color: '#ff5a4a' }}>⛔ Oxygen is no longer enough for the walk home</div>}
       {o.returnFeasible && !o.reserveOk && !o.empty && <div style={{ fontSize: 11, fontWeight: 'bold', color: '#ffb347' }}>⚠ Oxygen reserve insufficient for the walk home + reserve</div>}
       {o.reserveOk && o.planOk === false && <div style={{ fontSize: 11, fontWeight: 'bold', color: '#ffb347' }}>⚠ At this rate the oxygen will not last the rest of the plan with its reserve — plan an early return</div>}

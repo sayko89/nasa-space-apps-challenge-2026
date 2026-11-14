@@ -11,7 +11,7 @@ import {
 import { sunPosition, sunriseSunset } from './marsTime.js';
 import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
 import { evaWindowTemps } from './climate.js';
-import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getEvaProfile, getObstacleBufferM, planningKey } from '../config/marswalkProfile.js';
+import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getEvaProfile, getObstacleBufferM, planningKey, HAZARD_PARAMS } from '../config/marswalkProfile.js';
 import { dilate } from './hazards.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
@@ -32,6 +32,18 @@ const HALF = TERRAIN_SIZE / 2;
 // fallback. DEM: walls are steep-slope cells (no crater list), which form thin
 // bands/patches; 48 cells (~190 m at 4 m/cell) comfortably covers them.
 const CELL_SIZE = TERRAIN_SIZE / (GRID_RES - 1);
+
+/**
+ * A point the planner is asked to use must be a finite position inside the site. Grid lookups clamp
+ * to the edge, so without this check a point outside the 2 km DTM would be silently moved onto the
+ * edge (e.g. from a hand-edited share link) and planned as if it were valid.
+ */
+export function assertInSite(p, what = 'waypoint') {
+  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) throw new Error(`${what} has no valid coordinates`);
+  if (Math.abs(p.x) > HALF + 1e-6 || Math.abs(p.z) > HALF + 1e-6) {
+    throw new Error(`${what} (${p.x.toFixed(0)}, ${p.z.toFixed(0)}) m is outside the ${TERRAIN_SIZE.toFixed(0)} m site`);
+  }
+}
 const MAX_WALL_RADIUS_CELLS = CRATERS.length
   ? Math.ceil((Math.max(...CRATERS.map(c => c.radius)) * 1.05) / CELL_SIZE) + 2
   : 48;
@@ -346,13 +358,19 @@ function _fallback(sr,sc,er,ec) {
   return path;
 }
 
-function smoothPath(path, passes=3) {
-  if (path.length < 4) return path;
+/**
+ * Smooths and thins a grid path. `pinned` (raw indices — the waypoint / science-stop vertices) are
+ * kept exactly where they are and are never thinned out, so a stop is visited at its own position;
+ * `outIndex` (optional Map) receives raw index → index in the returned path for each pinned vertex.
+ */
+function smoothPath(path, passes=3, pinned=null, outIndex=null) {
+  if (path.length < 4) { if (outIndex && pinned) for (const i of pinned) outIndex.set(i, Math.min(i, path.length - 1)); return path; }
   const wall = getWallMap();
   let pts = [...path];
   for (let p=0; p<passes; p++) {
     const out = [pts[0]];
     for (let i=1; i<pts.length-1; i++) {
+      if (pinned && pinned.has(i)) { out.push(pts[i]); continue; }
       const px=(pts[i-1][0]+pts[i][0]*2+pts[i+1][0])/4;
       const pz=(pts[i-1][2]+pts[i][2]*2+pts[i+1][2])/4;
       // Don't smooth into a wall
@@ -365,8 +383,12 @@ function smoothPath(path, passes=3) {
   }
   const step = Math.max(1, Math.floor(pts.length/200));
   const result = [];
-  for (let i=0; i<pts.length; i+=step) result.push(pts[i]);
-  if (result[result.length-1] !== pts[pts.length-1]) result.push(pts[pts.length-1]);
+  for (let i=0; i<pts.length; i++) {
+    const keep = i % step === 0 || i === pts.length - 1 || (pinned && pinned.has(i));
+    if (!keep) continue;
+    if (outIndex && pinned && pinned.has(i)) outIndex.set(i, result.length);
+    result.push(pts[i]);
+  }
   return result;
 }
 
@@ -520,14 +542,15 @@ function computeLightStats(path, elapsedS, returnS, startMs, hMap) {
 // segEnds[w−1]. smoothPath keeps the point count, then keeps every `step`-th
 // point (+ the last), so raw index r ↦ smoothed index round(r/step).
 // Returns { map: Map(pathIdx → dwell s), list: [{ idx, dwellS, wp, label }] }.
-function dwellIndexMap(path, waypoints, segEnds, rawLen) {
+function dwellIndexMap(path, waypoints, segEnds, rawLen, pinIndex = null) {
   const m = new Map();
   const list = [];
   const step = Math.max(1, Math.floor(rawLen / 200));
   for (let w = 1; w < waypoints.length; w++) {
     if (!(waypoints[w].dwellS > 0)) continue;
     const r = segEnds[w - 1];
-    const i = r >= rawLen - 1 ? path.length - 1 : Math.min(path.length - 1, Math.round(r / step));
+    const i = pinIndex?.has(r) ? pinIndex.get(r)
+      : r >= rawLen - 1 ? path.length - 1 : Math.min(path.length - 1, Math.round(r / step));
     m.set(i, (m.get(i) || 0) + waypoints[w].dwellS);
     list.push({ idx: i, dwellS: waypoints[w].dwellS, wp: w, label: waypoints[w].label || null });
   }
@@ -546,7 +569,7 @@ export function computeLayerStats(path) {
     const k = row * GRID_RES + col;
     n++;
     if (L.thermal) { const v = L.thermal.values[k]; if (Number.isFinite(v)) ti.push(v); }
-    if (L.rock) { const v = L.rock.values[k]; if (Number.isFinite(v)) { rockMax = Math.max(rockMax, v); if (v > 0.5 * rockLim) rockN++; } }
+    if (L.rock) { const v = L.rock.values[k]; if (Number.isFinite(v)) { rockMax = Math.max(rockMax, v); if (v > HAZARD_PARAMS.roughFraction.value * rockLim) rockN++; } }
     if (L.minerals && L.minerals.code[k]) {
       const name = L.minerals.classes[L.minerals.code[k]];
       minerals.set(name, (minerals.get(name) || 0) + 1);
@@ -557,7 +580,7 @@ export function computeLayerStats(path) {
   return {
     thermal: L.thermal && ti.length ? { median: tiMedian, min: ti[0], max: ti[ti.length - 1], cls: thermalClass(L.thermal, tiMedian),
       dustShare: ti.filter(v => v < DUST_TI_MAX.value).length / ti.length } : null,   // dust-mantled ground (utils/dust.js)
-    rock: L.rock ? { maxReliefM: rockMax, roughShare: n ? rockN / n : 0, limitM: rockLim } : null,
+    rock: L.rock ? { maxReliefM: rockMax, roughShare: n ? rockN / n : 0, limitM: rockLim, roughM: HAZARD_PARAMS.roughFraction.value * rockLim } : null,
     minerals: L.minerals ? [...minerals.entries()].map(([name, c]) => ({ name, share: c / n })).sort((a, b) => b.share - a.share) : null,
   };
 }
@@ -570,7 +593,7 @@ function computeDemStats(path, slopeMap, craterMask, illumMap, costMap, homeMaps
   // Max slope alone is dominated by unavoidable spots (e.g. a steep endpoint),
   // so also report the share of path length on "steep" ground (> 75% of the
   // walkable limit — a display threshold, not a sourced value).
-  const steepDeg = 0.75 * param('maxWalkableSlopeDeg');
+  const steepDeg = HAZARD_PARAMS.steepFraction.value * param('maxWalkableSlopeDeg');   // same 'steep' as the hazard map
   let maxSlopeDeg = 0, maxRadialM = 0, steepLen = 0, totLen = 0;
   const [sx, , sz] = path[0];
   for (let i = 0; i < path.length; i++) {
@@ -648,6 +671,7 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
   if (!waypoints || waypoints.length < 2) throw new Error('Need at least 2 waypoints');
 
   if (IS_DEM) {
+    waypoints.forEach((w, i) => assertInSite(w, `waypoint ${i + 1}`));
     // Sun angle / learned experience don't enter the DEM cost (yet) — the
     // cost is physical walking time. Cache key is mode-only.
     const home = opts.home || waypoints[0];
@@ -660,8 +684,9 @@ export function planAllRoutes(waypoints, slopeMap, craterMask, hMap, sunAngleDeg
       const edge = { hMap, climbPenaltyS: w.climbPenaltyS };
       const segEnds = [];
       const rawPath = chainAStar(waypoints, _costCache[cacheKey], edge, segEnds);
-      const path = smoothPath(rawPath);
-      const dwell = waypoints.some(w => w.dwellS > 0) ? dwellIndexMap(path, waypoints, segEnds, rawPath.length) : null;
+      const pinIndex = new Map();
+      const path = smoothPath(rawPath, 3, new Set(segEnds), pinIndex);   // waypoints / stops stay where they are
+      const dwell = waypoints.some(w => w.dwellS > 0) ? dwellIndexMap(path, waypoints, segEnds, rawPath.length, pinIndex) : null;
       result[mode] = { path, stats: computeDemStats(path, slopeMap, craterMask, null, _costCache[cacheKey], homeMaps, opts.startMs, hMap, dwell, opts.mission || null) };
     }
     return result;
@@ -750,6 +775,7 @@ export function planScience(home, hMap, opts = {}) {
   if (!IS_DEM || !geo) return null;
   const objective = opts.objectiveId ? findObjective(SITE.name, opts.objectiveId) : null;
   if (opts.objectiveId && !objective) throw new Error(`unknown mission objective "${opts.objectiveId}" for ${SITE.name}`);
+  assertInSite(home, 'science EVA start');
   const weights = objective ? objective.plan.weights : SCIENCE_PARAMS.weights;
   const homeMaps = getHomeMaps(home.x, home.z, hMap);
   const dwellS = (opts.dwellMin ?? SCIENCE_PARAMS.dwellMin) * 60;

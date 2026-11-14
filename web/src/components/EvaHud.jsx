@@ -16,6 +16,7 @@ import { SITE } from '../three/terrainGenerator';
 import { param } from '../config/marswalkProfile';
 import { evaDoseMSv } from '../utils/radiation';
 import { OxygenHud } from './OxygenPanel';
+import { STATUS_STYLE as DECISION_STYLE } from '../utils/missionStatus';
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
@@ -122,7 +123,29 @@ function Activity({ snap }) {
  * @param {EvaPlayback} playback
  * @param {number} right  px from the right edge of the window (panel width + gap)
  */
-export default function EvaHud({ playback, right = 12, narrow = false, compact = narrow, onAbort, onStop, o2Scenario, onO2Scenario }) {
+/** Planned mission status for the loaded route — decision, objective and the three assessments (live, never cached). */
+function MissionLine({ assess, objective, compact }) {
+  if (!assess) return null;
+  const d = assess.decision, st = DECISION_STYLE[d.status];
+  const dustN = assess.dust ? assess.dust.warnings.filter(w => w.level !== 'info').length : null;
+  const terrain = d.environment.find(e => e.key === 'terrain');
+  const parts = [
+    objective ? objective.name : 'hand-made route',
+    assess.payload ? `payload ${assess.payload.status.toLowerCase()}` : null,
+    dustN != null ? `dust ${dustN} warning${dustN === 1 ? '' : 's'}` : null,
+    `mobility ${assess.mobility.status.toLowerCase()}`,
+    terrain && terrain.ok === false ? `hazards: ${terrain.detail}` : null,
+  ].filter(Boolean);
+  return (
+    <div title={d.summary} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: compact ? 10 : 11, marginTop: 3,
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <span style={{ fontSize: 10, fontWeight: 'bold', padding: '0 5px', borderRadius: 3, color: st.fg, background: st.bg }}>{d.status}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(232,196,168,0.8)' }}>{parts.join(' · ')}</span>
+    </div>
+  );
+}
+
+export default function EvaHud({ playback, right = 12, narrow = false, compact = narrow, onAbort, onStop, o2Scenario, onO2Scenario, assess = null, objective = null }) {
   const [snap, setSnap] = useState(() => evaSnapshot(playback));
   useEffect(() => {
     const id = setInterval(() => setSnap(evaSnapshot(playback)), 100);
@@ -173,6 +196,7 @@ export default function EvaHud({ playback, right = 12, narrow = false, compact =
         {sun && <span style={{ fontSize: compact ? 10 : 11, color: '#ffd166' }}>LTST {fmtHourMin(sun.ltst)} · Sol {Math.floor(sun.msd)}</span>}
       </div>
 
+      <MissionLine assess={assess} objective={objective} compact={compact} />
       <Timeline snap={snap} onSeek={snap.aborted ? null : seek} />
       <Activity snap={snap} />
 

@@ -12,7 +12,7 @@ function stats(over = {}) {
     walkTimeS: 3600, dwellTotalS: 1200, roundTripS: 3 * 3600, budgetS: 8 * 3600, distance: 2400, steepFrac: 0.05, steepDeg: 15,
     minMarginS: 3 * 3600, ponrIdx: -1, maxSlopeDeg: 12, maxRadialM: 900, stopCount: 3,
     carry: { earthEqKg: 43.1, limitKg: 45 }, light: { homeBySunset: true }, radiation: { doseMSv: 0.1 },
-    layers: { rock: { maxReliefM: 0.3, roughShare: 0.1, limitM: 0.5 } },
+    layers: { rock: { maxReliefM: 0.3, roughShare: 0.1, limitM: 0.5, roughM: 0.25 } },
     ...over, checks: { budget: true, carry: true, radial: true, slope: true, daylight: true, ...(over.checks || {}) },
   };
 }

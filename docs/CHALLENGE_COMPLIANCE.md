@@ -56,7 +56,7 @@ Gaps the brief points at, found in the audit:
 | 6 | GO / CONDITIONAL / NO-GO / INSUFFICIENT DATA with reasons | ✅ | `utils/missionStatus.js`; hard constraints vs environment vs notes; missing data is never GO |
 | 7 | RAD and DONKI separated, with dates, places and limits; no forecast claim | ✅ | Sun panel, provenance, decision; a future date shows "unknown", never "clear" |
 | 7 | Bundled DONKI archive | 🟡 | Pipeline and workflow ready; needs the repository secret `NASA_API_KEY`. Without it the app looks DONKI up live and says "unknown" offline |
-| 8 | 10-step workflow | ✅ | Strip at the top of the panel; each step jumps to its section; step 5 opens the Hazards layer |
+| 8 | Mission workflow (13 steps since the final integration) | ✅ | Strip at the top of the panel; each step jumps to its section; the Hazard step opens the Hazards layer; a step is done only when its inputs are complete and current |
 | 8 | Science stop cards | ✅ | Name, coordinates, objective, importance, layers, visit time, terrain risk, data confidence, rationale |
 | 8 | Mission summary | ✅ | From the planner's own stats; the same decision as the route cards and the cuff card |
 | 8 | Mission export | ✅ | JSON v2 adds objective, stop cards, decisions and provenance; cuff card; share link |

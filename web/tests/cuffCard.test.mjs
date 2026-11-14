@@ -56,3 +56,13 @@ test('environment lookups are taken at arrival time', () => {
   assert.equal(c.rows[0].sunElevDeg, 30);
   assert.throws(() => buildCuffCard(path, {}), /planned DEM route/);
 });
+
+test('emergency return: each station gives the direction and distance of the habitat', () => {
+  const c = buildCuffCard(path, stats, {});
+  const [a, b] = c.rows;
+  assert.equal(Math.round(a.homeBearingDeg), 270);   // A (100, 0) → home: west
+  assert.equal(compass(a.homeBearingDeg), 'W');
+  assert.equal(Math.round(a.homeDistM), 100);
+  assert.equal(Math.round(b.homeBearingDeg), 225);   // B (100, −100) → home: south-west
+  assert.equal(Math.round(b.homeDistM), 141);
+});

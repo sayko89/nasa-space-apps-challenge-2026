@@ -24,7 +24,7 @@ import ElevationProfile from './ElevationProfile';
 import { objectivesFor, findObjective } from '../config/objectives';
 import { buildStopCard } from '../utils/stopCards';
 import { provenanceFor } from '../config/provenance';
-import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
+import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER, sciencePlanKey } from '../config/mission';
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend, HAZARD_LAYER, hazardLegend, getHazardMap } from '../utils/heatmaps';
 import { missionDecision, STATUS_STYLE } from '../utils/missionStatus';
 import { routeHazards } from '../utils/hazards';
@@ -549,7 +549,7 @@ function DoseComparison() {
 // ---- Radiation / space weather (DONKI) for the EVA date ----
 /** Space-weather events for the EVA date: bundled archive, else a live DONKI lookup (past dates only).
  *  One lookup per date (fetchSpaceWeatherLive caches), shared by the sun panel and the route decision. */
-function useSpaceWeather(startMs) {
+export function useSpaceWeather(startMs) {
   const [live, setLive] = useState(null);
   let wx = Number.isFinite(startMs) ? spaceWeatherAt(SITE.spaceWeather, startMs) : null;
   const needLive = !!wx && wx.advisory === 'no-data' && startMs < Date.now();
@@ -595,17 +595,25 @@ function SpaceWeatherRow({ startMs }) {
   );
 }
 
-// ---- Mission workflow (10 steps) and summary ----
+// ---- Mission workflow (13 steps) and summary ----
 const WF = [
   ['Mission objective', 'wf-objective'], ['Exploration site', 'top'], ['Crew & equipment', 'wf-crew'],
-  ['Data layers', 'wf-layers'], ['Hazard assessment', 'wf-layers', 'Hazards'], ['Science stops', 'wf-objective'],
-  ['EVA route', 'wf-decision'], ['GO / NO-GO', 'wf-decision'], ['EVA simulation', 'wf-decision'], ['Mission export', 'wf-export'],
+  ['Payload & mass', 'wf-payload'], ['Dust & equipment reliability', 'wf-dust'], ['Data layers', 'wf-layers'],
+  ['Hazard assessment', 'wf-layers', 'Hazards'], ['Science stops', 'wf-objective'], ['EVA route', 'wf-decision'],
+  ['Terrain & mobility', 'wf-decision'], ['GO / NO-GO', 'wf-decision'], ['EVA simulation', 'wf-decision'],
+  ['Mission export & cuff card', 'wf-export'],
 ];
-function workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus }) {
+/** Step done = its inputs are complete and current (a stale or unknown input leaves the step open). */
+export function workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus }) {
   const r = routes?.[activeRoute];
+  const dustSet = !!mission?.dust && Object.values(mission.dust).every(v => v && v !== 'unknown');
+  const A = r?.stats?.walkTimeS !== undefined && mission ? evaAssessments(r, null, { mission }) : null;
   const done = [
-    !!objectiveId, true, !!mission, !!visited.layers, !!visited.hazards,
-    !!science?.stops?.length, !!r?.stats, !!r?.stats?.checks, evaStatus !== 'idle', !!visited.exported,
+    !!objectiveId, true, !!mission && oxygenConfig(mission).valid,
+    !!mission && payloadAssessment(mission).status !== 'INSUFFICIENT DATA', dustSet,
+    !!visited.layers, !!visited.hazards,
+    !!science?.stops?.length && science.objectiveId === objectiveId, !!r?.stats,
+    !!A && A.mobility.status !== 'INSUFFICIENT DATA', !!r?.stats?.checks, evaStatus !== 'idle', !!visited.exported,
   ];
   return WF.map(([label, target, layer], i) => ({ n: i + 1, label, target, layer, done: done[i] }));
 }
@@ -623,7 +631,7 @@ function WorkflowStrip({ steps, onStep }) {
         ))}
       </div>
       <div style={{ fontSize:fs(7), color:'#8fbf8f', marginTop:3 }}>
-        {next ? <>Next: <b style={{ color:'#ffd9a0' }}>{next.n}. {next.label}</b> — tap to go there</> : 'All ten steps done.'}
+        {next ? <>Next: <b style={{ color:'#ffd9a0' }}>{next.n}. {next.label}</b> — tap to go there</> : `All ${steps.length} steps done.`}
       </div>
     </div>
   );
@@ -824,7 +832,7 @@ function ObjectivePicker({ objectiveId, setObjectiveId, science }) {
             <span key={i}>{i ? '; ' : ''}<a href={x.url} target="_blank" rel="noopener noreferrer" style={{color:'#9fc7ff'}}>{x.label}</a></span>))}</div>
         </div>
       )}
-      {stale && <div style={{...OBJ_LINE,color:'#e0a050'}}>The current plan was made for another objective — plan again.</div>}
+      {stale && <div style={{...OBJ_LINE,color:'#e0a050'}}>The current plan was made for another objective — re-planning the stops for this one.</div>}
     </div>
   );
 }
@@ -860,7 +868,7 @@ function StopCard({ card, onGroundView, onChemistry }) {
 }
 
 // ---- Stage 6: science EVA (geology stops) ----
-function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, objectiveId, setObjectiveId }) {
+function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, objectiveId, setObjectiveId, mission }) {
   const [pov, setPov] = useState(null);
   const [chemStop, setChemStop] = useState(null);
   const objective = findObjective(SITE.name, science?.objectiveId || objectiveId);
@@ -898,6 +906,10 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, 
             {' '}score <b style={{color:'#ffcc66'}}>{science.score}</b>/{science.maxScore}
             {' '}· plan {fmtHM(science.totalS)}
           </div>
+          {mission && science.planKey && science.planKey !== sciencePlanKey(mission, dwellMin) && (
+            <div style={{color:'#e0a050'}}>⚠ These stops were chosen under other EVA limits / obstacle buffer / rover / stop time.
+              The route and the decision below are current; plan the science EVA again to re-choose the stops.</div>
+          )}
           <ol style={{margin:'3px 0 0',paddingLeft:14,color:'#e0d0b0',listStyle:'none'}}>
             {cards.map((card, i) => {
               const st = science.stops[i];
@@ -1639,7 +1651,7 @@ export default function RightPanel({
         <Sect label="Science EVA — objective & stops" id="wf-objective">
           <SciencePanel science={science} onPlan={onPlanScience} busy={isPlanningScience || isPlanning}
             dwellMin={scienceDwellMin} setDwellMin={setScienceDwellMin} disabled={isRoving}
-            objectiveId={objectiveId} setObjectiveId={setObjectiveId} />
+            objectiveId={objectiveId} setObjectiveId={setObjectiveId} mission={mission} />
         </Sect>
         )}
 
@@ -1811,7 +1823,9 @@ export default function RightPanel({
           <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs} mission={mission}/>
           {cuffMode && routes?.[cuffMode]?.stats?.marginS && (
             <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)}
-              decision={routeDecision(routes[cuffMode], cuffWx, { mission, startMs: evaStartMs })} />
+              assess={evaAssessments(routes[cuffMode], cuffWx, { mission, startMs: evaStartMs })}
+              objective={science?.objectiveId ? findObjective(SITE.name, science.objectiveId) : null}
+              hazards={(() => { const hz = getHazardMap(); return hz ? routeHazards(routes[cuffMode].path, hz.cls, cellIdx) : null; })()} />
           )}
         </Sect>
 

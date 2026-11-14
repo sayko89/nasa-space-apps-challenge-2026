@@ -1,3 +1,5 @@
+import { RESERVE_S } from './missionStatus.js';
+
 /**
  * Terrain & Mobility assessment — a view of what the planner already computed.
  *
@@ -34,7 +36,7 @@ export function mobilityAssessment(s, d, ctx = {}) {
     `${hard.slope?.detail ?? '—'}; ${Math.round((s.steepFrac || 0) * 100)} % of the route steeper than ${s.steepDeg?.toFixed(0) ?? '—'}°`);
   const rock = s.layers?.rock;
   add('roughness', 'Surface roughness (rock relief)', rock ? true : null,
-    rock ? `max ${rock.maxReliefM.toFixed(2)} m relief on the route; ${Math.round(rock.roughShare * 100)} % rough (> ${(rock.limitM / 2).toFixed(2)} m)`
+    rock ? `max ${rock.maxReliefM.toFixed(2)} m relief on the route; ${Math.round(rock.roughShare * 100)} % rough (> ${rock.roughM.toFixed(2)} m)`
       : 'no rock-relief layer');
   const rockLen = len('rock') + len('slope'), bufLen = len('buffer'), pitLen = len('depression');
   add('obstacles', 'Rock obstacles', ctx.hazards ? rockLen + bufLen === 0 : null,
@@ -47,7 +49,7 @@ export function mobilityAssessment(s, d, ctx = {}) {
   add('duration', 'Walking duration', hard.budget ? hard.budget.ok : null,
     `walk ${hm(s.walkTimeS)} + stops ${hm(s.dwellTotalS || 0)} = ${hm(s.roundTripS)} of ${hm(s.budgetS)}`);
   add('return', 'Return safety (walk-back margin, point of no return)', hard.budget?.ok ?? null,
-    `${hard.budget?.detail ?? '—'}${env.reserve ? `; ${env.reserve.ok ? 'keeps' : 'below'} the 30-min reserve` : ''}`);
+    `${hard.budget?.detail ?? '—'}${env.reserve ? `; ${env.reserve.ok ? 'keeps' : 'below'} the ${RESERVE_S / 60}-min reserve` : ''}`);
   if (hard.rover) add('rover', 'Rover walk-back', hard.rover.ok, hard.rover.detail);
   const p = ctx.profile;
   add('suit', 'Suit mobility', true,
