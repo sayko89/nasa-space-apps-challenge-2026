@@ -62,3 +62,24 @@ export function Btn({ children, active, onClick, disabled, color, title, style =
     </button>
   );
 }
+
+/**
+ * A closed "slot" for long explanations: one line (label + optional badge) that opens on click.
+ * Children stay mounted when closed (hidden), so their state and labels survive.
+ */
+export function More({ label, children, defaultOpen = false, badge = null, badgeColor = null, style = {} }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ border: `1px solid ${IS_DEM ? T.rule : 'rgba(40,80,40,0.4)'}`, borderRadius: 2, margin: '4px 0', background: IS_DEM ? T.sunken : 'rgba(0,12,0,0.4)', ...style }}>
+      <button type="button" onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} aria-expanded={open}
+        style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%', boxSizing: 'border-box',
+          padding: '5px 8px', fontSize: fs(7.5), color: IS_DEM ? T.text : '#9fcf9f', fontFamily: IS_DEM ? T.sans : 'monospace' }}>
+        <span style={{ color: IS_DEM ? T.accent : '#66aa66', width: 10, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>{label}</span>
+        {badge && <span style={{ fontSize: fs(6.5), fontWeight: 700, padding: '1px 6px', borderRadius: 2, flexShrink: 0,
+          background: badgeColor || (IS_DEM ? T.raised : '#133013'), color: badgeColor ? '#0d0f12' : (IS_DEM ? T.muted : '#88aa88') }}>{badge}</span>}
+      </button>
+      <div style={{ display: open ? 'block' : 'none', padding: '2px 8px 7px' }}>{children}</div>
+    </div>
+  );
+}

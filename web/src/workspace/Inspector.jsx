@@ -44,12 +44,12 @@ const USE = {
 
 const H = ({ children }) => <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.muted, margin: '10px 0 4px' }}>{children}</div>;
 const KV = ({ k, v, mono = true }) => (v == null || v === '' ? null : (
-  <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.45, padding: '1px 0' }}>
-    <span style={{ color: T.muted, width: 88, flexShrink: 0 }}>{k}</span>
+  <div style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.45, padding: '2px 0' }}>
+    <span style={{ color: T.muted, width: 96, flexShrink: 0 }}>{k}</span>
     <span style={{ color: T.text, fontFamily: mono ? T.mono : T.sans, minWidth: 0, overflowWrap: 'anywhere' }}>{v}</span>
   </div>
 ));
-const P = ({ children, c }) => <p style={{ margin: '3px 0', fontSize: 12, lineHeight: 1.5, color: c || T.text }}>{children}</p>;
+const P = ({ children, c }) => <p style={{ margin: '4px 0', fontSize: 13.5, lineHeight: 1.5, color: c || T.text }}>{children}</p>;
 const LEVEL_C = { block: T.nogo, caution: T.cond, info: T.text };
 
 function Tabs({ tabs, tab, setTab }) {
@@ -58,7 +58,7 @@ function Tabs({ tabs, tab, setTab }) {
     <div role="tablist" style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${T.rule}`, marginTop: 6, overflowX: 'auto' }}>
       {tabs.map(([id, label]) => (
         <button key={id} role="tab" aria-selected={tab === id} type="button" onClick={() => setTab(id)}
-          style={{ all: 'unset', cursor: 'pointer', padding: '5px 8px', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+          style={{ all: 'unset', cursor: 'pointer', padding: '6px 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
             color: tab === id ? T.text : T.muted, borderBottom: `2px solid ${tab === id ? T.accent : 'transparent'}` }}>{label}</button>
       ))}
     </div>
@@ -236,16 +236,18 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
       {pov && <PovViewer stop={pov.stop} label={pov.label} onClose={() => setPov(null)} />}
       {chem && <ChemistryCard stop={chem.stop} label={chem.label} onClose={() => setChem(null)} />}
       {!selection || !tabs.length ? (
-        <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.55 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>INSPECTOR</div>
-          Click the terrain to inspect a point, or ⓘ on any layer in the catalog. Stops and routes open here too.
+        <div style={{ fontSize: 13.5, color: '#c3c9d0', lineHeight: 1.55 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, marginBottom: 4, color: T.accent }}>INSPECTOR — NOTHING SELECTED YET</div>
+          <div style={{ display: 'flex', gap: 8, padding: '3px 0' }}><span style={{ color: T.accent, fontWeight: 700 }}>1</span><span><b>Click the 3D terrain</b> or the small site map below — you get the height, slope, rock type, hazards and nearby rover photos of that spot.</span></div>
+          <div style={{ display: 'flex', gap: 8, padding: '3px 0' }}><span style={{ color: T.accent, fontWeight: 700 }}>2</span><span>Press <b style={{ color: T.info }}>ⓘ</b> next to any layer on the left to see what it shows and which spacecraft measured it.</span></div>
+          <div style={{ display: 'flex', gap: 8, padding: '3px 0' }}><span style={{ color: T.accent, fontWeight: 700 }}>3</span><span>Ready to plan? Open <b>03 PLAN MISSION</b> in the top bar.</span></div>
         </div>
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.accent }}>{kicker}</div>
-              <div style={{ fontSize: compact ? 13 : 14, fontWeight: 600, lineHeight: 1.3, marginTop: 1 }}>{title}</div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, color: T.accent }}>{kicker}</div>
+              <div style={{ fontSize: compact ? 14.5 : 16, fontWeight: 600, lineHeight: 1.3, marginTop: 1 }}>{title}</div>
             </div>
             {onClose && <button type="button" onClick={onClose} aria-label="Close inspector" style={{ all: 'unset', cursor: 'pointer', color: T.muted, fontSize: 14, padding: '0 3px' }}>✕</button>}
           </div>

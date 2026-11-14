@@ -28,11 +28,11 @@ import EvaAssessment, { PayloadSetup, DustSetup } from './EvaAssessment';
 import { OxygenSetup } from './OxygenPanel';
 import { HAZARD_PARAMS } from '../config/marswalkProfile';
 import { DUST_STATES } from '../utils/dustHazardModel';
-import { MODE_WEIGHTS, param, EVA_PROFILES, MARS_SUIT_COST_RATIO } from '../config/marswalkProfile';
+import { param, EVA_PROFILES, MARS_SUIT_COST_RATIO } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
 import { airTemp, diurnalCurve, K_TO_C, climateInstrument, climateHeightM } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
-import { Sect, Label, Row, V, Btn } from './ui';
+import { Sect, Label, Row, V, Btn, More } from './ui';
 import { hasRelief, RELIEF_SCALES } from '../utils/relief';
 import { PW, WP_COLORS_2D } from './panelConstants';
 import { useSpaceWeather } from '../hooks/useSpaceWeather';
@@ -42,10 +42,11 @@ import { WorkflowStrip, MissionSummary, DecisionBadge, DecisionDetail } from './
 import { MiniMap } from './MiniMap';
 import { HeatmapViewer } from './HeatmapViewer';
 import { ProcessingMapPreview } from './HelmetCamPreview';
-import { T, WORKSPACES, WORKSPACE_OF_TARGET } from '../ui/theme';
+import { T, WORKSPACES, WORKSPACE_OF_TARGET, STATUS_COLOR } from '../ui/theme';
 import { O2_SCENARIOS } from '../config/oxygen';
 import { provenanceFor, CATEGORIES } from '../config/provenance';
 import { routeModeExplanation } from '../utils/routeModes';
+import { WORKSPACE_HELP } from '../workspace/WelcomeGuide';
 
 const WS_META = Object.fromEntries(WORKSPACES.map(w => [w.id, w]));
 
@@ -55,16 +56,19 @@ function RouteModeNote({ mode, routes, onInspect }) {
   const r = routes?.[mode], s = r?.stats;
   return (
     <div style={{ fontSize: fs(7.5), lineHeight: 1.5, color: T.text, margin: '2px 0 6px' }}>
-      <div><b>{mode}</b> — {ex.goal}.</div>
-      <div style={{ color: T.muted }}>A* step cost: <span style={{ fontFamily: T.mono, color: T.text }}>{ex.formula}</span></div>
-      <div style={{ color: T.muted }}>{ex.effect}</div>
+      <div><b>{mode}</b> — {ex.goal}</div>
       {s && Number.isFinite(s.walkTimeS) && (
-        <div style={{ marginTop: 3, fontFamily: T.mono }}>
+        <div style={{ marginTop: 3, fontFamily: T.mono, fontSize: fs(7) }}>
           {(s.distance / 1000).toFixed(2)} km · walk {fmtHM(s.walkTimeS)} · round trip {fmtHM(s.roundTripS)} · margin {fmtSignedHM(s.minMarginS)}
-          {onInspect && <button type="button" onClick={() => onInspect({ type: 'route', mode })}
-            style={{ all: 'unset', cursor: 'pointer', color: T.info, marginLeft: 6, textDecoration: 'underline', fontFamily: T.sans }}>segments & constraints</button>}
         </div>
       )}
+      <More label={`How does ${mode} choose its path?`}>
+        <div style={{ color: T.muted }}>The planner searches the 4 m terrain grid (A*). Each step costs:</div>
+        <div style={{ fontFamily: T.mono, color: T.text, margin: '3px 0' }}>{ex.formula}</div>
+        <div style={{ color: T.muted }}>{ex.effect}</div>
+        {onInspect && s && <button type="button" onClick={() => onInspect({ type: 'route', mode })}
+          style={{ all: 'unset', cursor: 'pointer', color: T.info, textDecoration: 'underline', marginTop: 4, display: 'inline-block' }}>open segments & constraints</button>}
+      </More>
     </div>
   );
 }
@@ -262,22 +266,26 @@ function LimitsPart({ mission, setMission, start }) {
             title={pr.desc} style={{ flex: 1, padding: '2px 4px' }}>{pr.label}</Btn>
         ))}
       </div>
-      <div style={{ fontSize: fs(6.5), color: '#6a8a6a', marginTop: -2, marginBottom: 4, lineHeight: 1.45 }}>
+      <More label="What do these limits mean?">
+      <div style={{ fontSize: fs(7), color: '#9aaa9a', lineHeight: 1.45 }}>
         {(mission.limits || 'lunar') === 'mars'
           ? <>Walk {param('levelWalkSpeedKmh')} km/h (suited cost on Mars ×{MARS_SUIT_COST_RATIO.value.toFixed(2)}, Norcross 2009) · budget {param('evaDurationH')} h (Apollo 17 30-min reserve) · ≤{param('maxRadialDistanceKm')} km. Re-plan the science EVA to fit.</>
           : <>NASA lunar EVA values (2 km/h, 8 h, 2 km) — optimistic for Mars gravity.</>}
       </div>
+      </More>
       <div style={{ ...missionRow, marginTop: 5 }}>
         <Btn active={mission.rover} color="#ffbb66" onClick={() => set('rover', !mission.rover)} style={{ flex: 1 }}>
           {mission.rover ? '✓ PRESSURIZED ROVER PARKED AT START' : 'PRESSURIZED ROVER AS SAFE HAVEN'}
         </Btn>
       </div>
       {mission.rover && (
+        <More label="How the rover safe haven works">
         <div style={{ fontSize: fs(7), color: '#b8c8b0', lineHeight: 1.5 }}>
           The rover drives the crew to the start point and waits there; the crew must stay within a
           {' '}<b>{ROVER.walkbackMin.value}-minute walk</b> of it.
           {drive && <> Drive from the habitat: {drive.km.toFixed(2)} km, ~{Math.round(drive.minutes)} min (straight line, {ROVER.driveSpeedKmh.value} km/h).</>}
         </div>
+        </More>
       )}
       <div style={{ ...missionRow, marginTop: 5 }}>
         <Btn active={!!mission.obstacleBuffer} color="#ff9ab0" onClick={() => set('obstacleBuffer', !mission.obstacleBuffer)} style={{ flex: 1 }}
@@ -286,9 +294,11 @@ function LimitsPart({ mission, setMission, start }) {
         </Btn>
       </div>
       {mission.obstacleBuffer && (
+        <More label="What the obstacle buffer changes">
         <div style={{ fontSize: fs(7), color: '#b8c8b0', lineHeight: 1.5 }}>
           Routes stay at least {HAZARD_PARAMS.obstacleBufferM.value} m from every slope / rock obstacle (assumption: {HAZARD_PARAMS.obstacleBufferM.note}). Longer routes, fewer stops in reach.
         </div>
+        </More>
       )}
     </>
   );
@@ -389,7 +399,11 @@ function MarswalkStats({ mode, s, decision }) {
         <br/>
         Walk-back margin (min): <span style={{color:fail(s.checks.budget)}}>{Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'no path home'}</span>
         {s.ponrIdx >= 0 && <span style={{color:'#ff6655'}}> · ⛔ point of no return at {Math.round(s.ponrIdx / Math.max(1, s.marginS.length - 1) * 100)}% of the route</span>}
-        <br/>
+      </div>
+      <More label="Route details — slope, daylight, weight, radiation, ground"
+        badge={[s.checks.slope, s.checks.radial, s.checks.carry, s.checks.daylight].every(v => v !== false) ? 'within limits' : 'limit exceeded'}
+        badgeColor={[s.checks.slope, s.checks.radial, s.checks.carry, s.checks.daylight].every(v => v !== false) ? null : '#e5534b'}>
+      <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55}}>
         Max slope: <span style={{color:fail(s.checks.slope)}}>{s.maxSlopeDeg.toFixed(1)}°</span> / {param('maxWalkableSlopeDeg')}°
         <br/>
         Steep ground (&gt;{s.steepDeg.toFixed(0)}°): <span style={{color:'#e8c890'}}>{(s.steepFrac*100).toFixed(0)}%</span>
@@ -427,7 +441,7 @@ function MarswalkStats({ mode, s, decision }) {
             {s.layers.minerals.slice(0, 3).map(m => `${m.name} ${(m.share * 100).toFixed(0)}%`).join(' · ')}</span></>}
         </div>
       )}
-      <div style={{color:'rgba(100,150,100,0.75)',fontSize:fs(7),marginTop:2}}>{MODE_WEIGHTS[mode]?.desc}</div>
+      </More>
     </>
   );
 }
@@ -567,7 +581,7 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, 
 
 
 
-function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs, mission }) {
+function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs, mission, openDecision = false }) {
   const wxState = useSpaceWeather(startMs);
   if (!routes) return (
     <div style={{fontSize:fs(8),color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
@@ -598,15 +612,31 @@ function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs, mis
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:fs(8)}}>{s.distance.toFixed(1)}m</span>}
             </div>
             {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} decision={IS_DEM ? routeDecision(r, wxState, { mission, startMs }) : null} />}
-            {IS_DEM && s && s.walkTimeS !== undefined && active && <DecisionDetail d={routeDecision(r, wxState, { mission, startMs })} />}
-            {IS_DEM && s && s.walkTimeS !== undefined && active && mission && (
-              <div onClick={e => e.stopPropagation()}><EvaAssessment a={evaAssessments(r, wxState, { mission, startMs })} /></div>
-            )}
+            {IS_DEM && s && s.walkTimeS !== undefined && active && (() => {
+              const d = routeDecision(r, wxState, { mission, startMs });
+              return (
+                <More label={`Why ${d.status}? — every rule and condition`} badge={d.status} badgeColor={STATUS_COLOR[d.status]} defaultOpen={openDecision}>
+                  <DecisionDetail d={d} />
+                </More>
+              );
+            })()}
+            {IS_DEM && s && s.walkTimeS !== undefined && active && mission && (() => {
+              const a = evaAssessments(r, wxState, { mission, startMs });
+              const st = [a?.payload?.status, a?.dust?.status, a?.mobility?.status].filter(Boolean);
+              return (
+                <div onClick={e => e.stopPropagation()}>
+                  <More label="Assessments A · B · C (payload, dust, terrain)" badge={st.length ? `${st.length} results` : null}>
+                    <EvaAssessment a={a} />
+                  </More>
+                </div>
+              );
+            })()}
             {s && s.walkTimeS !== undefined && active && r.path?.length > 1 && (
-              <div style={{ marginTop:5, borderTop:'1px solid rgba(60,100,60,0.3)', paddingTop:3 }}
-                title="Elevation along the route (MOLA metres), stops numbered — as Mars Trek plots for a measured path">
-                <ElevationProfile path={r.path} stats={s} originM={SITE.heightOrigin || 0} color={color} />
-              </div>
+              <More label="Elevation profile along the route">
+                <div title="Elevation along the route (MOLA metres), stops numbered — as Mars Trek plots for a measured path">
+                  <ElevationProfile path={r.path} stats={s} originM={SITE.heightOrigin || 0} color={color} />
+                </div>
+              </More>
             )}
             {s && s.walkTimeS !== undefined && active && s.stopCount > 0 && onCuffCard && (
               <button onClick={(e) => { e.stopPropagation(); onCuffCard(mode); }} title="One printable page: route map + station times, Apollo cuff-checklist style"
@@ -750,11 +780,16 @@ export default function RightPanel({
       {/* Header */}
       {ws ? (
         <div style={{ padding:'8px 10px 7px', borderBottom:`1px solid ${T.rule}`, background:T.ground, flexShrink:0 }}>
-          <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-            <span style={{ fontFamily:T.mono, fontSize:11, color:T.accent }}>{WS_META[ws].n}</span>
-            <span style={{ color:T.text, fontSize:12.5, fontWeight:700, letterSpacing:1.2 }}>{WS_META[ws].label}</span>
+          <div style={{ display:'flex', alignItems:'baseline', gap:7 }}>
+            <span style={{ fontFamily:T.mono, fontSize:13, color:T.accent }}>{WS_META[ws].n}</span>
+            <span style={{ color:T.text, fontSize:15, fontWeight:700, letterSpacing:1.2 }}>{WS_META[ws].label}</span>
           </div>
-          <div style={{ color:T.muted, fontSize:11, marginTop:2, lineHeight:1.35 }}>{WS_META[ws].hint}</div>
+          <div style={{ color:'#c3c9d0', fontSize:13.5, marginTop:3, lineHeight:1.4 }}>{WORKSPACE_HELP[ws].does}</div>
+          <More label="How to use this screen" style={{ marginBottom: 0 }}>
+            <ol style={{ margin:0, paddingLeft:18, fontSize:13, lineHeight:1.55, color:T.text }}>
+              {WORKSPACE_HELP[ws].steps.map((t, i) => <li key={i}>{t}</li>)}
+            </ol>
+          </More>
         </div>
       ) : (
       <div style={{padding:'7px 10px 5px',borderBottom:'1px solid rgba(35,70,35,0.4)',
@@ -764,7 +799,16 @@ export default function RightPanel({
       </div>
       )}
 
-      <div style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
+      {ws && <style>{`
+        .ws-plan > [aria-label="Mission workflow"] { order: -10 }
+        .ws-plan > #wf-objective { order: -9 }
+        .ws-plan > #route-modes { order: -8 }
+        .ws-plan > #route-compare { order: -7 }
+        .ws-ops > [aria-label="Mission workflow"] { order: -10 }
+        .ws-ops > #eva-exec { order: -9 }
+        .ws-ops > #wf-decision { order: -8 }
+      `}</style>}
+      <div className={ws ? `ws-${ws}` : undefined} style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
         {IS_DEM && show('plan', 'ops') && <WorkflowStrip steps={workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus })}
           onStep={(st) => {
             if (st.layer) setLayerRequest({ layer: st.layer, t: Date.now() });
@@ -946,7 +990,7 @@ export default function RightPanel({
         )}
 
         {/* Route selector + start */}
-        {show('plan', 'ops') && <Sect label={ws === 'plan' ? 'Route modes' : ws === 'ops' ? 'EVA execution' : IS_DEM ? 'Route & EVA' : 'Select Route'} id={ws === 'ops' ? 'eva-exec' : undefined}>
+        {show('plan', 'ops') && <Sect label={ws === 'plan' ? 'Route modes' : ws === 'ops' ? 'EVA execution' : IS_DEM ? 'Route & EVA' : 'Select Route'} id={ws === 'ops' ? 'eva-exec' : 'route-modes'}>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,marginBottom:5}}>
             {Object.entries(ROUTE_COLORS)
               .filter(([mode]) => mode !== 'HOME_RETURN')
@@ -1068,10 +1112,12 @@ export default function RightPanel({
 
           {/* Dust hazard info + clear button */}
           {IS_DEM && (
-            <div style={{fontSize:fs(6.5),color:'#7a6a4a',marginBottom:4,lineHeight:1.4}}>
-              A dust devil that lies on the route within the next {Math.round(600/60)} min of walking
+            <More label="What does the dust-devil drill simulate?">
+            <div style={{fontSize:fs(7),color:'#b0a080',lineHeight:1.45}}>
+              Press the button, then click the site map to drop a dust devil. One that lies on the route within the next {Math.round(600/60)} min of walking
               aborts the EVA; the crew walks home on the fastest path. Radius is illustrative.
             </div>
+            </More>
           )}
           {dustHazard && (
             <div style={{display:'flex',alignItems:'center',gap:3}}>
@@ -1088,9 +1134,9 @@ export default function RightPanel({
         </Sect>}
 
         {/* Route Analysis */}
-        {show('plan', 'ops') && <Sect label={ws === 'plan' ? 'Route comparison' : ws === 'ops' ? 'Mission summary & safety — GO / NO-GO' : 'Route Analysis — GO / NO-GO'} id={ws === 'plan' ? undefined : 'wf-decision'}>
+        {show('plan', 'ops') && <Sect label={ws === 'plan' ? 'Route comparison' : ws === 'ops' ? 'Mission summary & safety — GO / NO-GO' : 'Route Analysis — GO / NO-GO'} id={ws === 'plan' ? 'route-compare' : 'wf-decision'}>
           {IS_DEM && show('ops') && <MissionSummary routes={routes} activeRoute={activeRoute} science={science} mission={mission} startMs={evaStartMs} />}
-          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs} mission={mission}/>
+          <RouteAnalysis key={ws || 'all'} routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs} mission={mission} openDecision={ws === 'ops'}/>
           {cuffMode && routes?.[cuffMode]?.stats?.marginS && (
             <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)}
               assess={evaAssessments(routes[cuffMode], cuffWx, { mission, startMs: evaStartMs })}

@@ -84,9 +84,10 @@ test('Jezero, desktop: plan → decision and three assessments → EVA HUD → o
   const L = await layout(page);
   assert.equal(L.steps, 13, '13-step workflow');
   assert.ok(L.scrollW <= L.innerW, 'no horizontal scroll');
-  const panel = await page.innerText('[aria-label="EVA assessment"]');
+  // the assessments and the decision reasons sit in closed slots: read their text without opening them
+  const panel = await page.evaluate(() => document.querySelector('[aria-label="EVA assessment"]').textContent);
   for (const s of ['A. Payload & Mass', 'B. Dust Exposure & Equipment Reliability', 'C. Terrain & Mobility']) assert.ok(panel.includes(s), s);
-  const body = await page.innerText('body');
+  const body = await page.evaluate(() => document.body.textContent);
   assert.match(body, /Oxygen for a safe return from every point/);
   assert.match(body, /(GO|CONDITIONAL|NO-GO|INSUFFICIENT DATA): /);
   await page.screenshot({ path: fileURLToPath(new URL('jezero-desktop-plan.png', OUT)) });
@@ -167,7 +168,7 @@ test('Jezero, phone and tablet: workflow reachable, no horizontal scroll, HUD cl
 
 test('Gale loads with its objectives; Moon keeps the original simulator', { timeout: 600_000 }, async () => {
   const g = await open(`${BASE}/?site=gale&ws=plan`, { width: 1500, height: 950 });
-  await g.page.waitForSelector('text=PLAN SCIENCE EVA');
+  await g.page.waitForSelector('button:has-text("PLAN SCIENCE EVA")');
   const gt = await g.page.innerText('body');
   for (const s of ['Boxwork Ridge and Hollow Investigation', 'ChemCam Target Re-investigation']) assert.ok(gt.includes(s), s);
   assert.equal((await layout(g.page)).steps, 13);
@@ -183,6 +184,17 @@ test('Gale loads with its objectives; Moon keeps the original simulator', { time
   await g.page.waitForTimeout(2000);
   assert.deepEqual(g.errors, []);
   await g.page.close();
+
+  // first visit (no shared plan): the welcome guide explains the four workspaces; it closes into EXPLORE
+  const w = await open(`${BASE}/?site=jezero`, { width: 1500, height: 950 });
+  await w.page.waitForSelector('[aria-label="Welcome to Martian Map"]');
+  const guide = await w.page.innerText('[aria-label="Welcome to Martian Map"]');
+  for (const t of ['EXPLORE', 'ANALYZE', 'PLAN MISSION', 'OPERATIONS', 'QUICK START']) assert.ok(guide.includes(t), t);
+  await click(w.page, '^Explore the map first$');
+  await w.page.waitForSelector('[aria-label="Welcome to Martian Map"]', { state: 'detached' });
+  assert.match(await w.page.innerText('[aria-label="Inspector"]'), /NOTHING SELECTED YET/);
+  assert.deepEqual(w.errors, []);
+  await w.page.close();
 
   const m = await open(`${BASE}/?site=moon`, { width: 1500, height: 950 });
   await m.page.waitForSelector('text=PLAN PATH');

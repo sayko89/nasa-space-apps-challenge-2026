@@ -34,6 +34,7 @@ import TopBar, { topbarHeight } from './workspace/TopBar';
 import LayerCatalog from './workspace/LayerCatalog';
 import Inspector from './workspace/Inspector';
 import MissionTimeline from './workspace/MissionTimeline';
+import WelcomeGuide, { shouldShowWelcome } from './workspace/WelcomeGuide';
 import { T, CATALOG_W } from './ui/theme';
 import { buildCatalog } from './config/catalog';
 import { provenanceFor } from './config/provenance';
@@ -246,6 +247,7 @@ export default function App() {
     const w = new URLSearchParams(window.location.search).get('ws');
     return ['explore', 'analyze', 'plan', 'ops'].includes(w) ? w : SHARED ? 'plan' : 'explore';
   });
+  const [showGuide, setShowGuide] = useState(() => IS_DEM && shouldShowWelcome());
   const [selection, setSelection] = useState(null);   // inspector: { type: 'point'|'layer'|'stop'|'route', … }
   const [catalogOpen, setCatalogOpen] = useState(false); // tablet / phone: catalog drawer
   const catalog = useMemo(() => (IS_DEM ? buildCatalog(SITE, { drapeLayers: HEATMAP_OPTIONS }) : []), []);
@@ -943,9 +945,11 @@ export default function App() {
         <TopBar workspace={workspace} setWorkspace={(w) => { setWorkspace(w); setCatalogOpen(false); }} compact={narrow} medium={!wide}
           objective={findObjective(SITE.name, science?.objectiveId || objectiveId)} activeRoute={activeRoute}
           decision={activeAssess?.decision || null} evaStatus={evaStatus} aborted={!!playback.aborted}
+          onGuide={() => setShowGuide(true)}
           onMenu={!catalogDocked && (workspace === 'explore' || workspace === 'analyze') ? () => setCatalogOpen(o => !o) : null} />
       )}
       {WS && (catalogDocked || catalogOpen) && catalogPanel}
+      {WS && showGuide && <WelcomeGuide onClose={() => setShowGuide(false)} onGo={(w) => { setWorkspace(w); setShowGuide(false); }} />}
 
       {/* 3D Scene */}
       <div style={narrow

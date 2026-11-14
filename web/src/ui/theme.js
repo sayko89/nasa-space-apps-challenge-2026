@@ -7,8 +7,8 @@ export const T = {
   mono: "ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace",
 };
 export const STATUS_COLOR = { GO: T.go, CONDITIONAL: T.cond, 'NO-GO': T.nogo, 'INSUFFICIENT DATA': T.insuf };
-export const TOPBAR_H = 44;
-export const CATALOG_W = 292;
+export const TOPBAR_H = 48;
+export const CATALOG_W = 318;
 export const WORKSPACES = [
   { id: 'explore', n: '01', label: 'EXPLORE', short: 'EXPLORE', hint: 'Map and data catalog: look at the site, inspect any layer or point' },
   { id: 'analyze', n: '02', label: 'ANALYZE', short: 'ANALYZE', hint: 'Terrain, science data and provenance: compare layers and check the evidence' },
