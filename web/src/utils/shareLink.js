@@ -9,13 +9,17 @@
  *   sci true → re-run the science-stop planner from w[0] (the stops are deterministic)
  *   r  active route (SAFE / ECO / FAST / AUTO)
  *   t  EVA start, ms since 1970 (UTC) — drives sun, temperature, DONKI
- *   m  mission setup { suit, equipmentKg, rover, limits, buffer? }
+ *   m  mission setup { suit, equipmentKg, rover, limits, buffer?, p?: payload items [5 kg], du?: dust protection settings }
  *   d  time per science stop, min
  *   o  mission objective id (config/objectives.js)
  *
  * Pure (no React): tested in Node (tests/shareLink.test.mjs).
  */
 
+import { PAYLOAD_CATEGORIES } from './payload.js';
+import { DUST_OPTIONS } from '../config/dust.js';
+
+const PAYLOAD_KEYS = PAYLOAD_CATEGORIES.map(c => c.key);
 const VERSION = 1;
 const ROUTES = ['SAFE', 'ECO', 'FAST', 'AUTO'];
 
@@ -41,7 +45,12 @@ export function encodePlan({ waypoints = [], science = false, route, startMs, mi
   if (science) st.sci = true;
   if (ROUTES.includes(route)) st.r = route;
   if (Number.isFinite(startMs)) st.t = Math.round(startMs);
-  if (mission) st.m = { suit: mission.suit, equipmentKg: mission.equipmentKg, rover: !!mission.rover, limits: mission.limits, ...(mission.obstacleBuffer ? { buffer: true } : {}) };
+  if (mission) {
+    st.m = { suit: mission.suit, equipmentKg: mission.equipmentKg, rover: !!mission.rover, limits: mission.limits, ...(mission.obstacleBuffer ? { buffer: true } : {}) };
+    if (mission.payload) st.m.p = PAYLOAD_KEYS.map(k => mission.payload[k]);
+    const du = mission.dust ? Object.fromEntries(Object.entries(mission.dust).filter(([k, v]) => DUST_OPTIONS[k]?.options[v] && v !== 'unknown')) : {};
+    if (Object.keys(du).length) st.m.du = du;
+  }
   if (Number.isFinite(dwellMin)) st.d = dwellMin;
   if (typeof objectiveId === 'string' && objectiveId) st.o = objectiveId;
   return b64urlEncode(JSON.stringify(st));
@@ -88,6 +97,14 @@ export function decodePlan(search) {
       ...(st.m.buffer === true ? { obstacleBuffer: true } : {}),
       ...(st.m.limits === 'mars' || st.m.limits === 'lunar' ? { limits: st.m.limits } : {}),
     };
+    if (Array.isArray(st.m.p) && st.m.p.length === PAYLOAD_KEYS.length && st.m.p.every(v => num(v) != null && v >= 0 && v <= 100)) {
+      out.mission.payload = Object.fromEntries(PAYLOAD_KEYS.map((k, i) => [k, st.m.p[i]]));
+      out.mission.equipmentKg = Math.min(100, st.m.p.reduce((a, b) => a + b, 0));
+    }
+    if (st.m.du && typeof st.m.du === 'object') {
+      const du = Object.fromEntries(Object.keys(DUST_OPTIONS).map(k => [k, DUST_OPTIONS[k].options[st.m.du[k]] ? st.m.du[k] : 'unknown']));
+      if (Object.values(du).some(v => v !== 'unknown')) out.mission.dust = du;
+    }
   }
   return out;
 }

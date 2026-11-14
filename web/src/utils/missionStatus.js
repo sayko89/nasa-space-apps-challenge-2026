@@ -12,7 +12,10 @@
  *     tightest walk-back margin below the 30-min reserve of the Apollo 17 traverse plan
  *     route crosses mapped closed depressions or the obstacle buffer
  *   NOTES             (shown, do not change the status)
- *     radiation dose from a transferred reference (Jezero); ground known only from orbit
+ *     radiation dose from a transferred reference (Jezero); ground known only from orbit;
+ *     dust exposure & equipment warnings (utils/dust.js) — qualitative, never NO-GO or CONDITIONAL
+ *   PAYLOAD           an over-limit payload fails the existing carry check (NO-GO); a missing or
+ *                     invalid payload entry (utils/payload.js) → INSUFFICIENT DATA
  *
  * Pure: tested in Node (tests/missionStatus.test.mjs).
  */
@@ -28,7 +31,8 @@ const hm = (s) => {
 /**
  * @param {object} s    route stats (pathfinder computeDemStats): checks, minMarginS, maxSlopeDeg, maxRadialM, carry, rover, light, radiation
  * @param {object} ctx  { limits: { maxSlopeDeg, maxRadialM }, wx: spaceWeatherAt() result | null, wxLive?: bool,
- *                        startFuture?: bool, radiationLocal: bool, hazards?: routeHazards() result }
+ *                        startFuture?: bool, radiationLocal: bool, hazards?: routeHazards() result,
+ *                        payload?: payloadAssessment() result, dust?: dustAssessment() result }
  * @returns {{ status, hard, environment, notes, missing, summary }}
  */
 export function missionDecision(s, ctx = {}) {
@@ -55,6 +59,10 @@ export function missionDecision(s, ctx = {}) {
       c.daylight ? 'whole EVA in daylight' : 'part of the EVA is in darkness');
   } else {
     missing.push({ key: 'daylight', label: 'Daylight', detail: s.light ? 'sun never rises or never sets at this date — rule cannot be applied' : 'no EVA start time — daylight cannot be checked' });
+  }
+
+  if (ctx.payload?.status === 'INSUFFICIENT DATA') {
+    missing.push({ key: 'payload', label: 'Payload mass', detail: ctx.payload.invalid.map(i => `${i.label}: ${i.detail}`).join('; ') });
   }
 
   // ---- environment
@@ -86,6 +94,11 @@ export function missionDecision(s, ctx = {}) {
         : 'Curiosity RAD rate measured in Gale, used here as a reference (not a local measurement)'}; solar particle events not included` });
   }
   const unseen = (ctx.hazards || []).find(h => h.key === 'unseen');
+  if (ctx.dust) {
+    const w = ctx.dust.warnings.filter(x => x.level !== 'info');
+    notes.push({ key: 'dust', label: 'Dust & equipment', detail: `${w.length ? w.map(x => x.text).join(' ') : 'no protection warning'} `
+      + `${ctx.dust.missing.length ? `Not specified: ${ctx.dust.missing.map(m => m.label.toLowerCase()).join(', ')}. ` : ''}Degradation not quantified; does not change the decision.` });
+  }
   if (unseen) notes.push({ key: 'unseen', label: 'Ground known only from orbit', detail: `${Math.round(unseen.lengthM)} m of the route is more than 100 m from any rover ground view` });
 
   // ---- status

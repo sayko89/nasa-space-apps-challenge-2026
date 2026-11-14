@@ -41,3 +41,18 @@ test('bad or missing links are ignored, values are checked', () => {
   assert.equal(p.dwellMin, 120);
   assert.deepEqual(p.mission, { equipmentKg: 0, rover: false });
 });
+
+test('payload items and dust settings round-trip; bad values are dropped', async () => {
+  const { encodePlan: enc, decodePlan: dec } = await import('../src/utils/shareLink.js');
+  const m = { suit: 'mars', equipmentKg: 11, rover: false, limits: 'lunar',
+    payload: { instruments: 4, comms: 1.5, sampling: 3, emergency: 2, other: 0.5 },
+    dust: { outerLayer: 'ortho-fabric', jointProtection: 'unknown', equipmentProtection: 'enclosed', covers: 'fitted' } };
+  const p = dec(`?plan=${enc({ waypoints: [{ x: 0, z: 0 }], mission: m })}`);
+  assert.deepEqual(p.mission.payload, m.payload);
+  assert.equal(p.mission.equipmentKg, 11);
+  assert.deepEqual(p.mission.dust, m.dust);
+  const raw = Buffer.from(JSON.stringify({ v: 1, w: [[0, 0]], m: { suit: 'mars', p: [1, -2, 3, 4, 5], du: { covers: 'magic', outerLayer: 'ortho-fabric' } } })).toString('base64url');
+  const q = dec(`?plan=${raw}`);
+  assert.equal(q.mission.payload, undefined);
+  assert.deepEqual(q.mission.dust, { outerLayer: 'ortho-fabric', jointProtection: 'unknown', equipmentProtection: 'unknown', covers: 'unknown' });
+});
