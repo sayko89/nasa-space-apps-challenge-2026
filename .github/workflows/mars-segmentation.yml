@@ -5,6 +5,7 @@ name: Mars terrain segmentation (AI4Mars)
 #   inventory  list AI4Mars v0.6 remotely, read its documentation, check label pixel values
 #   smoke      the whole pipeline on a small subset (≤ 200 labels per source, 4-min training) — plumbing check
 #   full       prepare → 3 trainings in parallel → evaluation, ONNX export, Jezero / Gale inference
+#   finish <run-id>  only the last job, on the data and checkpoints of an earlier run (artifacts kept 3 / 7 days)
 # The last job commits the outputs back to the branch.
 on:
   push:
@@ -14,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  actions: read          # finish <run-id>: artifacts of an earlier run
 
 concurrency:
   group: mars-seg-${{ github.ref }}
@@ -29,12 +31,14 @@ jobs:
       stage: ${{ steps.s.outputs.stage }}
       limit: ${{ steps.s.outputs.limit }}
       minutes: ${{ steps.s.outputs.minutes }}
+      from_run: ${{ steps.s.outputs.from_run }}
     steps:
       - uses: actions/checkout@v5
       - id: s
         run: |
           STAGE=$(head -1 pipeline/segmentation/RUN | awk '{print $1}')
           echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+          if [ "$STAGE" = finish ]; then echo "from_run=$(head -1 pipeline/segmentation/RUN | awk '{print $2}')" >> "$GITHUB_OUTPUT"; fi
           if [ "$STAGE" = smoke ]; then echo "limit=200" >> "$GITHUB_OUTPUT"; echo "minutes=4" >> "$GITHUB_OUTPUT";
           else echo "limit=0" >> "$GITHUB_OUTPUT"; echo "minutes=210" >> "$GITHUB_OUTPUT"; fi
 
@@ -124,11 +128,11 @@ jobs:
         with: { python-version: "3.12", cache: pip, cache-dependency-path: pipeline/segmentation/requirements.txt }
       - run: pip install -r pipeline/segmentation/requirements.txt
       - uses: actions/download-artifact@v4
-        with: { name: seg-data, path: .seg-work/data }
+        with: { name: seg-data, path: .seg-work/data, run-id: "${{ needs.setup.outputs.from_run || github.run_id }}", github-token: "${{ github.token }}" }
       - uses: actions/download-artifact@v4
-        with: { pattern: seg-ckpt-*, path: ckpts }
+        with: { pattern: seg-ckpt-*, path: ckpts, run-id: "${{ needs.setup.outputs.from_run || github.run_id }}", github-token: "${{ github.token }}" }
       - uses: actions/download-artifact@v4
-        with: { name: seg-prepare-report, path: pipeline/sources/ai4mars/ }
+        with: { name: seg-prepare-report, path: pipeline/sources/ai4mars/, run-id: "${{ needs.setup.outputs.from_run || github.run_id }}", github-token: "${{ github.token }}" }
       - name: Collect checkpoints and training logs
         run: |
           mkdir -p .seg-work/ckpt pipeline/sources/ai4mars/training
@@ -145,4 +149,7 @@ jobs:
         run: |
           git config user.name github-actions; git config user.email github-actions@github.com
           for p in pipeline/sources/ai4mars web/public/models web/public/sites/jezero/segmentation web/public/sites/gale/segmentation; do [ -e "$p" ] && git add -f "$p"; done
-          if git commit -m "data: Mars terrain segmentation (${{ needs.setup.outputs.stage }})"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi
+          # the branch may have moved since checkout (e.g. a smoke run's outputs): our outputs win on conflicts
+          if git commit -m "data: Mars terrain segmentation (${{ needs.setup.outputs.stage }})"; then
+            for i in 1 2 3; do git pull --rebase -X theirs && git push && break; git rebase --abort 2>/dev/null; sleep 5; done
+          fi
