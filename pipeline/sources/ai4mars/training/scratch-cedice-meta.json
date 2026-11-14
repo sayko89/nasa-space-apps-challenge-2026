@@ -1,0 +1,123 @@
+{
+ "tag": "scratch-cedice",
+ "init": "scratch",
+ "loss": "ce+dice",
+ "architecture": "LR-ASPP MobileNetV3-Large (torchvision)",
+ "params": 3218648,
+ "optimizer": "AdamW (weight decay 1e-4)",
+ "lr_head": 0.001,
+ "lr_encoder": 0.001,
+ "scheduler": "ReduceLROnPlateau on validation mIoU (factor 0.5, patience 1)",
+ "batch": 8,
+ "seed": 1234,
+ "class_weights": {
+  "soil": 0.001,
+  "bedrock": 1.444,
+  "sand": 1.444,
+  "big_rock": 1.11
+ },
+ "input": "grey, short side 256, random 256\u00d7256 crops",
+ "augmentation": "horizontal flip; contrast \u00d7(0.85\u20131.15); brightness \u00b112 grey levels",
+ "time_budget_min": 4.0,
+ "training_seconds": 11.8,
+ "epochs_run": 5,
+ "best_val_mIoU": 1.0,
+ "train_samples": {
+  "msl": 39,
+  "m2020": 0
+ },
+ "hardware": "x86_64, 4 CPU threads, no GPU",
+ "torch": "2.8.0+cpu",
+ "history": [
+  {
+   "epoch": 0,
+   "complete_epoch": true,
+   "train_loss": 1.8628,
+   "batches": 4,
+   "val_mIoU": 0.0,
+   "val": {
+    "msl": {
+     "mIoU": 0.0,
+     "pixel_accuracy": 0.0
+    }
+   },
+   "lr": [
+    0.001,
+    0.001
+   ],
+   "seconds": 2.4
+  },
+  {
+   "epoch": 1,
+   "complete_epoch": true,
+   "train_loss": 0.9788,
+   "batches": 4,
+   "val_mIoU": 1.0,
+   "val": {
+    "msl": {
+     "mIoU": 1.0,
+     "pixel_accuracy": 1.0
+    }
+   },
+   "lr": [
+    0.001,
+    0.001
+   ],
+   "seconds": 2.1
+  },
+  {
+   "epoch": 2,
+   "complete_epoch": true,
+   "train_loss": 0.6163,
+   "batches": 4,
+   "val_mIoU": 1.0,
+   "val": {
+    "msl": {
+     "mIoU": 1.0,
+     "pixel_accuracy": 1.0
+    }
+   },
+   "lr": [
+    0.001,
+    0.001
+   ],
+   "seconds": 2.1
+  },
+  {
+   "epoch": 3,
+   "complete_epoch": true,
+   "train_loss": 0.5541,
+   "batches": 4,
+   "val_mIoU": 1.0,
+   "val": {
+    "msl": {
+     "mIoU": 1.0,
+     "pixel_accuracy": 1.0
+    }
+   },
+   "lr": [
+    0.0005,
+    0.0005
+   ],
+   "seconds": 2.1
+  },
+  {
+   "epoch": 4,
+   "complete_epoch": true,
+   "train_loss": 0.543,
+   "batches": 4,
+   "val_mIoU": 1.0,
+   "val": {
+    "msl": {
+     "mIoU": 1.0,
+     "pixel_accuracy": 1.0
+    }
+   },
+   "lr": [
+    0.0005,
+    0.0005
+   ],
+   "seconds": 2.4
+  }
+ ]
+}

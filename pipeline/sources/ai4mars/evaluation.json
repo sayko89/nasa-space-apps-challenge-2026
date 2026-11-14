@@ -1,0 +1,790 @@
+{
+ "chosen": "scratch-cedice",
+ "models": {
+  "pretrained-ce": {
+   "val": {
+    "msl": {
+     "pixels": 243757,
+     "pixel_accuracy": 0.9728,
+     "mIoU": 0.9728,
+     "mean_dice": 0.9862,
+     "per_class": {
+      "soil": {
+       "iou": 0.9728,
+       "dice": 0.9862,
+       "precision": 1.0,
+       "recall": 0.9728,
+       "gt_pixels": 243757
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "sand": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       237116,
+       135,
+       5413,
+       1093
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "bedrock",
+      "sand",
+      "big_rock"
+     ]
+    }
+   },
+   "val_mIoU_mean": 0.9728,
+   "train": {
+    "init": "pretrained",
+    "loss": "ce",
+    "architecture": "LR-ASPP MobileNetV3-Large (torchvision)",
+    "params": 3218648,
+    "epochs_run": 72,
+    "training_seconds": 186.5,
+    "best_val_mIoU": 0.9728,
+    "hardware": "x86_64, 4 CPU threads, no GPU",
+    "train_samples": {
+     "msl": 39,
+     "m2020": 0
+    }
+   },
+   "test": {
+    "test-min1": {
+     "pixels": 160537,
+     "pixel_accuracy": 0.8599,
+     "mIoU": 0.43,
+     "mean_dice": 0.4623,
+     "per_class": {
+      "soil": {
+       "iou": 0.8599,
+       "dice": 0.9247,
+       "precision": 0.8604,
+       "recall": 0.9994,
+       "gt_pixels": 138140
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": null,
+       "recall": 0.0,
+       "gt_pixels": 22397
+      },
+      "sand": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       138052,
+       0,
+       80,
+       8
+      ],
+      [
+       22397,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "sand",
+      "big_rock"
+     ]
+    },
+    "test-min3": {
+     "pixels": 5648,
+     "pixel_accuracy": 0.4819,
+     "mIoU": 0.241,
+     "mean_dice": 0.3252,
+     "per_class": {
+      "soil": {
+       "iou": 0.4819,
+       "dice": 0.6504,
+       "precision": 0.4819,
+       "recall": 1.0,
+       "gt_pixels": 2722
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": null,
+       "recall": 0.0,
+       "gt_pixels": 2926
+      },
+      "sand": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       2722,
+       0,
+       0,
+       0
+      ],
+      [
+       2926,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "sand",
+      "big_rock"
+     ]
+    }
+   }
+  },
+  "pretrained-cedice": {
+   "val": {
+    "msl": {
+     "pixels": 243757,
+     "pixel_accuracy": 0.9779,
+     "mIoU": 0.9779,
+     "mean_dice": 0.9888,
+     "per_class": {
+      "soil": {
+       "iou": 0.9779,
+       "dice": 0.9888,
+       "precision": 1.0,
+       "recall": 0.9779,
+       "gt_pixels": 243757
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "sand": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       238372,
+       113,
+       4098,
+       1174
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "bedrock",
+      "sand",
+      "big_rock"
+     ]
+    }
+   },
+   "val_mIoU_mean": 0.9779,
+   "train": {
+    "init": "pretrained",
+    "loss": "ce+dice",
+    "architecture": "LR-ASPP MobileNetV3-Large (torchvision)",
+    "params": 3218648,
+    "epochs_run": 98,
+    "training_seconds": 238.2,
+    "best_val_mIoU": 0.9779,
+    "hardware": "x86_64, 4 CPU threads, no GPU",
+    "train_samples": {
+     "msl": 39,
+     "m2020": 0
+    }
+   },
+   "test": {
+    "test-min1": {
+     "pixels": 160537,
+     "pixel_accuracy": 0.8603,
+     "mIoU": 0.4301,
+     "mean_dice": 0.4624,
+     "per_class": {
+      "soil": {
+       "iou": 0.8603,
+       "dice": 0.9249,
+       "precision": 0.8605,
+       "recall": 0.9998,
+       "gt_pixels": 138140
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": null,
+       "recall": 0.0,
+       "gt_pixels": 22397
+      },
+      "sand": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": 0.0,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       138108,
+       0,
+       32,
+       0
+      ],
+      [
+       22397,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "sand",
+      "big_rock"
+     ]
+    },
+    "test-min3": {
+     "pixels": 5648,
+     "pixel_accuracy": 0.4819,
+     "mIoU": 0.241,
+     "mean_dice": 0.3252,
+     "per_class": {
+      "soil": {
+       "iou": 0.4819,
+       "dice": 0.6504,
+       "precision": 0.4819,
+       "recall": 1.0,
+       "gt_pixels": 2722
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": null,
+       "recall": 0.0,
+       "gt_pixels": 2926
+      },
+      "sand": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       2722,
+       0,
+       0,
+       0
+      ],
+      [
+       2926,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "sand",
+      "big_rock"
+     ]
+    }
+   }
+  },
+  "scratch-cedice": {
+   "val": {
+    "msl": {
+     "pixels": 243757,
+     "pixel_accuracy": 1.0,
+     "mIoU": 1.0,
+     "mean_dice": 1.0,
+     "per_class": {
+      "soil": {
+       "iou": 1.0,
+       "dice": 1.0,
+       "precision": 1.0,
+       "recall": 1.0,
+       "gt_pixels": 243757
+      },
+      "bedrock": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "sand": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       243757,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "bedrock",
+      "sand",
+      "big_rock"
+     ]
+    }
+   },
+   "val_mIoU_mean": 1.0,
+   "train": {
+    "init": "scratch",
+    "loss": "ce+dice",
+    "architecture": "LR-ASPP MobileNetV3-Large (torchvision)",
+    "params": 3218648,
+    "epochs_run": 5,
+    "training_seconds": 11.8,
+    "best_val_mIoU": 1.0,
+    "hardware": "x86_64, 4 CPU threads, no GPU",
+    "train_samples": {
+     "msl": 39,
+     "m2020": 0
+    }
+   },
+   "test": {
+    "test-min1": {
+     "pixels": 160537,
+     "pixel_accuracy": 0.8605,
+     "mIoU": 0.4302,
+     "mean_dice": 0.4625,
+     "per_class": {
+      "soil": {
+       "iou": 0.8605,
+       "dice": 0.925,
+       "precision": 0.8605,
+       "recall": 1.0,
+       "gt_pixels": 138140
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": null,
+       "recall": 0.0,
+       "gt_pixels": 22397
+      },
+      "sand": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       138140,
+       0,
+       0,
+       0
+      ],
+      [
+       22397,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "sand",
+      "big_rock"
+     ]
+    },
+    "test-min3": {
+     "pixels": 5648,
+     "pixel_accuracy": 0.4819,
+     "mIoU": 0.241,
+     "mean_dice": 0.3252,
+     "per_class": {
+      "soil": {
+       "iou": 0.4819,
+       "dice": 0.6504,
+       "precision": 0.4819,
+       "recall": 1.0,
+       "gt_pixels": 2722
+      },
+      "bedrock": {
+       "iou": 0.0,
+       "dice": 0.0,
+       "precision": null,
+       "recall": 0.0,
+       "gt_pixels": 2926
+      },
+      "sand": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      },
+      "big_rock": {
+       "iou": null,
+       "dice": null,
+       "precision": null,
+       "recall": null,
+       "gt_pixels": 0
+      }
+     },
+     "confusion_matrix": [
+      [
+       2722,
+       0,
+       0,
+       0
+      ],
+      [
+       2926,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       0
+      ]
+     ],
+     "classes_absent_from_ground_truth": [
+      "sand",
+      "big_rock"
+     ]
+    }
+   }
+  }
+ },
+ "calibration": {
+  "per_val_set": {
+   "msl": [
+    {
+     "from": 0.0,
+     "to": 0.4,
+     "pixels": 243757,
+     "accuracy": 1.0
+    },
+    {
+     "from": 0.4,
+     "to": 0.5,
+     "pixels": 0,
+     "accuracy": null
+    },
+    {
+     "from": 0.5,
+     "to": 0.6,
+     "pixels": 0,
+     "accuracy": null
+    },
+    {
+     "from": 0.6,
+     "to": 0.7,
+     "pixels": 0,
+     "accuracy": null
+    },
+    {
+     "from": 0.7,
+     "to": 0.8,
+     "pixels": 0,
+     "accuracy": null
+    },
+    {
+     "from": 0.8,
+     "to": 0.9,
+     "pixels": 0,
+     "accuracy": null
+    },
+    {
+     "from": 0.9,
+     "to": 1.0,
+     "pixels": 0,
+     "accuracy": null
+    }
+   ]
+  },
+  "low_confidence_threshold": 0.95,
+  "target_accuracy": 0.9,
+  "val_accuracy_above_threshold": NaN,
+  "val_pixels_above_threshold": 0.0,
+  "val_accuracy_below_threshold": 1.0
+ },
+ "model_card": {
+  "version": "mars-terrain-v1",
+  "file": "mars-terrain-v1.onnx",
+  "selected": "scratch-cedice",
+  "selected_on": "mean validation mIoU (MSL + M2020)",
+  "classes": [
+   "soil",
+   "bedrock",
+   "sand",
+   "big_rock"
+  ],
+  "class_values": {
+   "soil": 0,
+   "bedrock": 1,
+   "sand": 2,
+   "big_rock": 3
+  },
+  "unknown_value": 255,
+  "palette": {
+   "0": [
+    166,
+    124,
+    82
+   ],
+   "1": [
+    122,
+    74,
+    40
+   ],
+   "2": [
+    240,
+    178,
+    50
+   ],
+   "3": [
+    214,
+    48,
+    39
+   ],
+   "255": [
+    128,
+    128,
+    128
+   ]
+  },
+  "input": {
+   "channels": "grey repeated on 3 channels",
+   "short_side_px": 256,
+   "normalise": {
+    "mean": 0.449,
+    "std": 0.226
+   }
+  },
+  "output": "softmax probabilities per class",
+  "low_confidence_threshold": 0.95,
+  "dataset": {
+   "name": "AI4Mars merged v0.6",
+   "doi": "10.5281/zenodo.15995036",
+   "license": "CC BY 4.0",
+   "used": [
+    "MSL Navcam train (crowdsourced, merged)",
+    "M2020 NAV (crowdsourced, merged)"
+   ],
+   "test": [
+    "MSL Navcam expert labels (min1/2/3, 100 % agreement)",
+    "M2020 NAV sol-grouped hold-out (crowdsourced)"
+   ]
+  },
+  "lunar_model": "not available \u2014 transfer from a lunar model (approach A) was not run",
+  "created_utc": "2026-11-14T13:03:01+00:00"
+ },
+ "seconds": 2.2
+}

@@ -1,0 +1,51 @@
+{
+ "splits": {
+  "train-msl": {
+   "samples": 39,
+   "groups": 4,
+   "pixels": {
+    "soil": 1181292,
+    "bedrock": 0,
+    "sand": 0,
+    "big_rock": 2,
+    "unlabelled": 1374610
+   }
+  },
+  "val-msl": {
+   "samples": 7,
+   "groups": 2,
+   "pixels": {
+    "soil": 243757,
+    "bedrock": 0,
+    "sand": 0,
+    "big_rock": 0,
+    "unlabelled": 214995
+   }
+  },
+  "test-min1": {
+   "samples": 5,
+   "groups": 2,
+   "pixels": {
+    "soil": 138140,
+    "bedrock": 22397,
+    "sand": 0,
+    "big_rock": 0,
+    "unlabelled": 167143
+   }
+  },
+  "test-min3": {
+   "samples": 1,
+   "groups": 1,
+   "pixels": {
+    "soil": 2722,
+    "bedrock": 2926,
+    "sand": 0,
+    "big_rock": 0,
+    "unlabelled": 59888
+   }
+  }
+ },
+ "leaking_groups": {},
+ "seconds": 101.0
+}
+rejections: {'duplicate image (.jpg kept .jpeg)': 287, 'excluded set: geology taxonomy (M2020_GEO)': 2, 'excluded set: MSL Mastcam: undocumented label value 4': 1, 'excluded set: MER: range mask not applied': 1, 'label without image': 200, 'unreadable image (RemoteIOError)': 1094, 'unreadable label (RemoteIOError)': 11, 'empty label (no labelled pixel)': 2, 'exact duplicate image across splits (dropped)': 7}

@@ -1,0 +1,78 @@
+0.6%1.2%1.8%2.4%3.0%3.6%4.1%4.7%5.3%5.9%6.5%7.1%7.7%8.3%8.9%9.5%10.1%10.7%11.2%11.8%12.4%13.0%13.6%14.2%14.8%15.4%16.0%16.6%17.2%17.8%18.4%18.9%19.5%20.1%20.7%21.3%21.9%22.5%23.1%23.7%24.3%24.9%25.5%26.0%26.6%27.2%27.8%28.4%29.0%29.6%30.2%30.8%31.4%32.0%32.6%33.2%33.7%34.3%34.9%35.5%36.1%36.7%37.3%37.9%38.5%39.1%39.7%40.3%40.9%41.4%42.0%42.6%43.2%43.8%44.4%45.0%45.6%46.2%46.8%47.4%48.0%48.5%49.1%49.7%50.3%50.9%51.5%52.1%52.7%53.3%53.9%54.5%55.1%55.7%56.2%56.8%57.4%58.0%58.6%59.2%59.8%60.4%61.0%61.6%62.2%62.8%63.3%63.9%64.5%65.1%65.7%66.3%66.9%67.5%68.1%68.7%69.3%69.9%70.5%71.0%71.6%72.2%72.8%73.4%74.0%74.6%75.2%75.8%76.4%77.0%77.6%78.1%78.7%79.3%79.9%80.5%81.1%81.7%82.3%82.9%83.5%84.1%84.7%85.3%85.8%86.4%87.0%87.6%88.2%88.8%89.4%90.0%90.6%91.2%91.8%92.4%92.9%93.5%94.1%94.7%95.3%95.9%96.5%97.1%97.7%98.3%98.9%99.5%100.0%
+/home/runner/work/nasa-space-apps-challenge-2026/nasa-space-apps-challenge-2026/pipeline/segmentation/train.py:114: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:835.)
+  tl += float(loss); n += 1
+Downloading: "https://download.pytorch.org/models/mobilenet_v3_large-8738ca79.pth" to /home/runner/.cache/torch/hub/checkpoints/mobilenet_v3_large-8738ca79.pth
+{"epoch": 0, "complete_epoch": true, "train_loss": 1.706, "batches": 4, "val_mIoU": 0.0091, "val": {"msl": {"mIoU": 0.0091, "pixel_accuracy": 0.0091}}, "lr": [0.0001, 0.0], "seconds": 2.7}
+{"epoch": 1, "complete_epoch": true, "train_loss": 1.5515, "batches": 4, "val_mIoU": 0.0229, "val": {"msl": {"mIoU": 0.0229, "pixel_accuracy": 0.0229}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 2, "complete_epoch": true, "train_loss": 1.429, "batches": 4, "val_mIoU": 0.0734, "val": {"msl": {"mIoU": 0.0734, "pixel_accuracy": 0.0734}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 3, "complete_epoch": true, "train_loss": 1.3057, "batches": 4, "val_mIoU": 0.2113, "val": {"msl": {"mIoU": 0.2113, "pixel_accuracy": 0.2113}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 4, "complete_epoch": true, "train_loss": 1.1828, "batches": 4, "val_mIoU": 0.4502, "val": {"msl": {"mIoU": 0.4502, "pixel_accuracy": 0.4502}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 5, "complete_epoch": true, "train_loss": 1.0921, "batches": 4, "val_mIoU": 0.6925, "val": {"msl": {"mIoU": 0.6925, "pixel_accuracy": 0.6925}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 6, "complete_epoch": true, "train_loss": 1.0348, "batches": 4, "val_mIoU": 0.8186, "val": {"msl": {"mIoU": 0.8186, "pixel_accuracy": 0.8186}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 7, "complete_epoch": true, "train_loss": 0.898, "batches": 4, "val_mIoU": 0.8645, "val": {"msl": {"mIoU": 0.8645, "pixel_accuracy": 0.8645}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 8, "complete_epoch": true, "train_loss": 0.8525, "batches": 4, "val_mIoU": 0.8854, "val": {"msl": {"mIoU": 0.8854, "pixel_accuracy": 0.8854}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 9, "complete_epoch": true, "train_loss": 0.7487, "batches": 4, "val_mIoU": 0.8993, "val": {"msl": {"mIoU": 0.8993, "pixel_accuracy": 0.8993}}, "lr": [0.0001, 1e-05], "seconds": 2.6}
+{"epoch": 10, "complete_epoch": true, "train_loss": 0.7107, "batches": 4, "val_mIoU": 0.909, "val": {"msl": {"mIoU": 0.909, "pixel_accuracy": 0.909}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 11, "complete_epoch": true, "train_loss": 0.6271, "batches": 4, "val_mIoU": 0.9165, "val": {"msl": {"mIoU": 0.9165, "pixel_accuracy": 0.9165}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 12, "complete_epoch": true, "train_loss": 0.6063, "batches": 4, "val_mIoU": 0.9219, "val": {"msl": {"mIoU": 0.9219, "pixel_accuracy": 0.9219}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 13, "complete_epoch": true, "train_loss": 0.5916, "batches": 4, "val_mIoU": 0.9258, "val": {"msl": {"mIoU": 0.9258, "pixel_accuracy": 0.9258}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 14, "complete_epoch": true, "train_loss": 0.548, "batches": 4, "val_mIoU": 0.9284, "val": {"msl": {"mIoU": 0.9284, "pixel_accuracy": 0.9284}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 15, "complete_epoch": true, "train_loss": 0.4981, "batches": 4, "val_mIoU": 0.9308, "val": {"msl": {"mIoU": 0.9308, "pixel_accuracy": 0.9308}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 16, "complete_epoch": true, "train_loss": 0.4774, "batches": 4, "val_mIoU": 0.9338, "val": {"msl": {"mIoU": 0.9338, "pixel_accuracy": 0.9338}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 17, "complete_epoch": true, "train_loss": 0.4755, "batches": 4, "val_mIoU": 0.936, "val": {"msl": {"mIoU": 0.936, "pixel_accuracy": 0.936}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 18, "complete_epoch": true, "train_loss": 0.4013, "batches": 4, "val_mIoU": 0.9385, "val": {"msl": {"mIoU": 0.9385, "pixel_accuracy": 0.9385}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 19, "complete_epoch": true, "train_loss": 0.4436, "batches": 4, "val_mIoU": 0.9399, "val": {"msl": {"mIoU": 0.9399, "pixel_accuracy": 0.9399}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 20, "complete_epoch": true, "train_loss": 0.3858, "batches": 4, "val_mIoU": 0.942, "val": {"msl": {"mIoU": 0.942, "pixel_accuracy": 0.942}}, "lr": [0.0001, 1e-05], "seconds": 3.6}
+{"epoch": 21, "complete_epoch": true, "train_loss": 0.3375, "batches": 4, "val_mIoU": 0.9435, "val": {"msl": {"mIoU": 0.9435, "pixel_accuracy": 0.9435}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 22, "complete_epoch": true, "train_loss": 0.3403, "batches": 4, "val_mIoU": 0.9457, "val": {"msl": {"mIoU": 0.9457, "pixel_accuracy": 0.9457}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 23, "complete_epoch": true, "train_loss": 0.353, "batches": 4, "val_mIoU": 0.9469, "val": {"msl": {"mIoU": 0.9469, "pixel_accuracy": 0.9469}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 24, "complete_epoch": true, "train_loss": 0.3232, "batches": 4, "val_mIoU": 0.9482, "val": {"msl": {"mIoU": 0.9482, "pixel_accuracy": 0.9482}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 25, "complete_epoch": true, "train_loss": 0.3332, "batches": 4, "val_mIoU": 0.9492, "val": {"msl": {"mIoU": 0.9492, "pixel_accuracy": 0.9492}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 26, "complete_epoch": true, "train_loss": 0.313, "batches": 4, "val_mIoU": 0.9506, "val": {"msl": {"mIoU": 0.9506, "pixel_accuracy": 0.9506}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 27, "complete_epoch": true, "train_loss": 0.338, "batches": 4, "val_mIoU": 0.9515, "val": {"msl": {"mIoU": 0.9515, "pixel_accuracy": 0.9515}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 28, "complete_epoch": true, "train_loss": 0.2376, "batches": 4, "val_mIoU": 0.9527, "val": {"msl": {"mIoU": 0.9527, "pixel_accuracy": 0.9527}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 29, "complete_epoch": true, "train_loss": 0.2665, "batches": 4, "val_mIoU": 0.9532, "val": {"msl": {"mIoU": 0.9532, "pixel_accuracy": 0.9532}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 30, "complete_epoch": true, "train_loss": 0.2402, "batches": 4, "val_mIoU": 0.9539, "val": {"msl": {"mIoU": 0.9539, "pixel_accuracy": 0.9539}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 31, "complete_epoch": true, "train_loss": 0.2608, "batches": 4, "val_mIoU": 0.9544, "val": {"msl": {"mIoU": 0.9544, "pixel_accuracy": 0.9544}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 32, "complete_epoch": true, "train_loss": 0.2519, "batches": 4, "val_mIoU": 0.9551, "val": {"msl": {"mIoU": 0.9551, "pixel_accuracy": 0.9551}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 33, "complete_epoch": true, "train_loss": 0.2775, "batches": 4, "val_mIoU": 0.9553, "val": {"msl": {"mIoU": 0.9553, "pixel_accuracy": 0.9553}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 34, "complete_epoch": true, "train_loss": 0.2286, "batches": 4, "val_mIoU": 0.956, "val": {"msl": {"mIoU": 0.956, "pixel_accuracy": 0.956}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 35, "complete_epoch": true, "train_loss": 0.1951, "batches": 4, "val_mIoU": 0.957, "val": {"msl": {"mIoU": 0.957, "pixel_accuracy": 0.957}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 36, "complete_epoch": true, "train_loss": 0.2067, "batches": 4, "val_mIoU": 0.9573, "val": {"msl": {"mIoU": 0.9573, "pixel_accuracy": 0.9573}}, "lr": [0.0001, 1e-05], "seconds": 2.3}
+{"epoch": 37, "complete_epoch": true, "train_loss": 0.1992, "batches": 4, "val_mIoU": 0.9578, "val": {"msl": {"mIoU": 0.9578, "pixel_accuracy": 0.9578}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 38, "complete_epoch": true, "train_loss": 0.1978, "batches": 4, "val_mIoU": 0.9582, "val": {"msl": {"mIoU": 0.9582, "pixel_accuracy": 0.9582}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 39, "complete_epoch": true, "train_loss": 0.2402, "batches": 4, "val_mIoU": 0.9589, "val": {"msl": {"mIoU": 0.9589, "pixel_accuracy": 0.9589}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 40, "complete_epoch": true, "train_loss": 0.1832, "batches": 4, "val_mIoU": 0.9593, "val": {"msl": {"mIoU": 0.9593, "pixel_accuracy": 0.9593}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 41, "complete_epoch": true, "train_loss": 0.1963, "batches": 4, "val_mIoU": 0.9597, "val": {"msl": {"mIoU": 0.9597, "pixel_accuracy": 0.9597}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 42, "complete_epoch": true, "train_loss": 0.1854, "batches": 4, "val_mIoU": 0.9601, "val": {"msl": {"mIoU": 0.9601, "pixel_accuracy": 0.9601}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 43, "complete_epoch": true, "train_loss": 0.1567, "batches": 4, "val_mIoU": 0.9605, "val": {"msl": {"mIoU": 0.9605, "pixel_accuracy": 0.9605}}, "lr": [0.0001, 1e-05], "seconds": 3.7}
+{"epoch": 44, "complete_epoch": true, "train_loss": 0.1488, "batches": 4, "val_mIoU": 0.9614, "val": {"msl": {"mIoU": 0.9614, "pixel_accuracy": 0.9614}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 45, "complete_epoch": true, "train_loss": 0.1708, "batches": 4, "val_mIoU": 0.9618, "val": {"msl": {"mIoU": 0.9618, "pixel_accuracy": 0.9618}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 46, "complete_epoch": true, "train_loss": 0.2165, "batches": 4, "val_mIoU": 0.9624, "val": {"msl": {"mIoU": 0.9624, "pixel_accuracy": 0.9624}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 47, "complete_epoch": true, "train_loss": 0.1493, "batches": 4, "val_mIoU": 0.9629, "val": {"msl": {"mIoU": 0.9629, "pixel_accuracy": 0.9629}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 48, "complete_epoch": true, "train_loss": 0.159, "batches": 4, "val_mIoU": 0.9637, "val": {"msl": {"mIoU": 0.9637, "pixel_accuracy": 0.9637}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 49, "complete_epoch": true, "train_loss": 0.2081, "batches": 4, "val_mIoU": 0.9642, "val": {"msl": {"mIoU": 0.9642, "pixel_accuracy": 0.9642}}, "lr": [0.0001, 1e-05], "seconds": 2.6}
+{"epoch": 50, "complete_epoch": true, "train_loss": 0.1605, "batches": 4, "val_mIoU": 0.9652, "val": {"msl": {"mIoU": 0.9652, "pixel_accuracy": 0.9652}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 51, "complete_epoch": true, "train_loss": 0.155, "batches": 4, "val_mIoU": 0.9664, "val": {"msl": {"mIoU": 0.9664, "pixel_accuracy": 0.9664}}, "lr": [0.0001, 1e-05], "seconds": 2.6}
+{"epoch": 52, "complete_epoch": true, "train_loss": 0.1379, "batches": 4, "val_mIoU": 0.9673, "val": {"msl": {"mIoU": 0.9673, "pixel_accuracy": 0.9673}}, "lr": [0.0001, 1e-05], "seconds": 2.6}
+{"epoch": 53, "complete_epoch": true, "train_loss": 0.1356, "batches": 4, "val_mIoU": 0.9675, "val": {"msl": {"mIoU": 0.9675, "pixel_accuracy": 0.9675}}, "lr": [0.0001, 1e-05], "seconds": 2.6}
+{"epoch": 54, "complete_epoch": true, "train_loss": 0.1366, "batches": 4, "val_mIoU": 0.9675, "val": {"msl": {"mIoU": 0.9675, "pixel_accuracy": 0.9675}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 55, "complete_epoch": true, "train_loss": 0.1285, "batches": 4, "val_mIoU": 0.9678, "val": {"msl": {"mIoU": 0.9678, "pixel_accuracy": 0.9678}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 56, "complete_epoch": true, "train_loss": 0.1038, "batches": 4, "val_mIoU": 0.9683, "val": {"msl": {"mIoU": 0.9683, "pixel_accuracy": 0.9683}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 57, "complete_epoch": true, "train_loss": 0.0963, "batches": 4, "val_mIoU": 0.9689, "val": {"msl": {"mIoU": 0.9689, "pixel_accuracy": 0.9689}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 58, "complete_epoch": true, "train_loss": 0.1261, "batches": 4, "val_mIoU": 0.9691, "val": {"msl": {"mIoU": 0.9691, "pixel_accuracy": 0.9691}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 59, "complete_epoch": true, "train_loss": 0.0956, "batches": 4, "val_mIoU": 0.9698, "val": {"msl": {"mIoU": 0.9698, "pixel_accuracy": 0.9698}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 60, "complete_epoch": true, "train_loss": 0.1225, "batches": 4, "val_mIoU": 0.9702, "val": {"msl": {"mIoU": 0.9702, "pixel_accuracy": 0.9702}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 61, "complete_epoch": true, "train_loss": 0.1093, "batches": 4, "val_mIoU": 0.9702, "val": {"msl": {"mIoU": 0.9702, "pixel_accuracy": 0.9702}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 62, "complete_epoch": true, "train_loss": 0.0908, "batches": 4, "val_mIoU": 0.9707, "val": {"msl": {"mIoU": 0.9707, "pixel_accuracy": 0.9707}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 63, "complete_epoch": true, "train_loss": 0.169, "batches": 4, "val_mIoU": 0.9709, "val": {"msl": {"mIoU": 0.9709, "pixel_accuracy": 0.9709}}, "lr": [0.0001, 1e-05], "seconds": 2.4}
+{"epoch": 64, "complete_epoch": true, "train_loss": 0.1306, "batches": 4, "val_mIoU": 0.9711, "val": {"msl": {"mIoU": 0.9711, "pixel_accuracy": 0.9711}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 65, "complete_epoch": true, "train_loss": 0.1104, "batches": 4, "val_mIoU": 0.9717, "val": {"msl": {"mIoU": 0.9717, "pixel_accuracy": 0.9717}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 66, "complete_epoch": true, "train_loss": 0.0817, "batches": 4, "val_mIoU": 0.9722, "val": {"msl": {"mIoU": 0.9722, "pixel_accuracy": 0.9722}}, "lr": [0.0001, 1e-05], "seconds": 2.6}
+{"epoch": 67, "complete_epoch": true, "train_loss": 0.0997, "batches": 4, "val_mIoU": 0.9724, "val": {"msl": {"mIoU": 0.9724, "pixel_accuracy": 0.9724}}, "lr": [0.0001, 1e-05], "seconds": 3.7}
+{"epoch": 68, "complete_epoch": true, "train_loss": 0.0977, "batches": 4, "val_mIoU": 0.9728, "val": {"msl": {"mIoU": 0.9728, "pixel_accuracy": 0.9728}}, "lr": [0.0001, 1e-05], "seconds": 2.5}
+{"epoch": 69, "complete_epoch": true, "train_loss": 0.1264, "batches": 4, "val_mIoU": 0.9726, "val": {"msl": {"mIoU": 0.9726, "pixel_accuracy": 0.9726}}, "lr": [0.0001, 1e-05], "seconds": 2.6}
+{"epoch": 70, "complete_epoch": true, "train_loss": 0.099, "batches": 4, "val_mIoU": 0.9728, "val": {"msl": {"mIoU": 0.9728, "pixel_accuracy": 0.9728}}, "lr": [5e-05, 5e-06], "seconds": 2.5}
+{"epoch": 71, "complete_epoch": true, "train_loss": 0.1028, "batches": 4, "val_mIoU": 0.9727, "val": {"msl": {"mIoU": 0.9727, "pixel_accuracy": 0.9727}}, "lr": [5e-05, 5e-06], "seconds": 2.4}
+done pretrained-ce best val mIoU 0.9728 epochs 72 minutes 3.1

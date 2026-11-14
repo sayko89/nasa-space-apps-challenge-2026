@@ -1,0 +1,9 @@
+/home/runner/work/nasa-space-apps-challenge-2026/nasa-space-apps-challenge-2026/pipeline/segmentation/train.py:114: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:835.)
+  tl += float(loss); n += 1
+{"epoch": 0, "complete_epoch": true, "train_loss": 1.8628, "batches": 4, "val_mIoU": 0.0, "val": {"msl": {"mIoU": 0.0, "pixel_accuracy": 0.0}}, "lr": [0.001, 0.001], "seconds": 2.4}
+{"epoch": 1, "complete_epoch": true, "train_loss": 0.9788, "batches": 4, "val_mIoU": 1.0, "val": {"msl": {"mIoU": 1.0, "pixel_accuracy": 1.0}}, "lr": [0.001, 0.001], "seconds": 2.1}
+{"epoch": 2, "complete_epoch": true, "train_loss": 0.6163, "batches": 4, "val_mIoU": 1.0, "val": {"msl": {"mIoU": 1.0, "pixel_accuracy": 1.0}}, "lr": [0.001, 0.001], "seconds": 2.1}
+{"epoch": 3, "complete_epoch": true, "train_loss": 0.5541, "batches": 4, "val_mIoU": 1.0, "val": {"msl": {"mIoU": 1.0, "pixel_accuracy": 1.0}}, "lr": [0.0005, 0.0005], "seconds": 2.1}
+{"epoch": 4, "complete_epoch": true, "train_loss": 0.543, "batches": 4, "val_mIoU": 1.0, "val": {"msl": {"mIoU": 1.0, "pixel_accuracy": 1.0}}, "lr": [0.0005, 0.0005], "seconds": 2.4}
+done scratch-cedice best val mIoU 1.0 epochs 5 minutes 0.2
