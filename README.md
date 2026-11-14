@@ -17,7 +17,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 
 > **Why another Mars map?** Tools like JPL's Mars Trek and the USGS–NASA geologic maps layer data over the whole planet, at regional scale. An astronaut on a single Marswalk needs the opposite: one 2 km × 2 km area, every layer on the same **4 m grid**, rocks picked out at **1 m**, and a plan that says *where to walk, what to sample, and when to turn back*. Martian Map is built for that hyperlocal scale.
 
-![04 OPERATIONS at Jezero: EV1 kneels to sample stop 1 while EV2 documents; the EVA timeline runs across the top; the HUD shows the mission clock, walk-back margin, distance from the habitat, sun, air temperature, dose and the oxygen & mass panel; the side panel shows the site map, START / RESUME EVA, the camera angle and the helmet camera](docs/img/hero.jpg)
+![04 OPERATIONS at Jezero: EV1 kneels to sample stop 1 while EV2 documents; the EVA timeline runs across the top; the HUD shows the mission clock, walk-back margin, distance from the habitat, sun, air temperature, dose and the oxygen & mass panel; the side panel shows the site map, the dust devil drill, RESUME / ABORT EVA, the camera angle and the helmet camera](docs/img/hero.jpg)
 
 ## At a glance
 
@@ -86,7 +86,7 @@ The Mars sites open in four workspaces, one per stage of a mission. Switching ke
 | **01 EXPLORE** — look at the site and what each layer shows | data catalog | 3D terrain | inspector of the clicked point, site map, camera |
 | **02 ANALYZE** — check the data the plan rests on, and what is missing | data catalog | 3D terrain | inspector, terrain analysis (layers, legend, compare, drape), scientific data available and missing, helmet camera, **Mars AI terrain segmentation**, provenance table |
 | **03 PLAN MISSION** — set up the crew and plan the walk | — | 3D terrain + **EVA timeline** | **site map** → **waypoints** (mark points on the map) → **route modes** SAFE / ECO / FAST / AUTO → objective & science stops → route comparison → mission configuration |
-| **04 OPERATIONS** — decide and run the EVA | — | 3D terrain + **EVA timeline** | **site map** → **START EVA** (the route chosen in Plan, not asked again) → **camera angle** (free / follow EV1 / overview) → **helmet camera** (image processing: elevation / slope view) → **Martian EVA Cuff** → mission summary & GO / NO-GO → contingency, telemetry, export, log |
+| **04 OPERATIONS** — decide and run the EVA | — | 3D terrain + **EVA timeline** | **site map** → **dust devil drill** (SIMULATE DUST DEVIL, then click the map) → **START EVA** (the route chosen in Plan, not asked again) → **camera angle** (free / follow EV1 / overview) → **helmet camera** (image processing: elevation / slope view) → **Martian EVA Cuff** → mission summary & GO / NO-GO → telemetry, export, log |
 
 - **Data catalog** — built from what the site actually loaded, by category (imagery, topography, geology, mineralogy, thermal, AI terrain segmentation, hazards, atmospheric, radiation). Tick a layer to drape it on the 3D terrain; several layers can be draped at once, each with its opacity and draw order; ⓘ opens its description and source.
 - **Inspector** — one card for a map point (coordinates, elevation, slope, hazard, distance home, *add as waypoint*), a data layer, a science stop or a route, with tabs for overview, scientific evidence, data source, technical details and mission relevance.
@@ -102,9 +102,9 @@ The Mars sites open in four workspaces, one per stage of a mission. Switching ke
 <tr><td align="center"><b>01 EXPLORE</b> — catalog, drapes, point inspector</td><td align="center"><b>02 ANALYZE</b> — layer inspector, terrain analysis</td></tr>
 <tr>
 <td width="50%"><img src="docs/img/ws-plan.jpg" alt="03 PLAN MISSION at Jezero: the EVA timeline across the top, both astronauts full height in the 3D view, and on the right the site map with the planned route, the waypoint list with ADD / REMOVE / PLAN PATH and the SAFE / ECO / FAST / AUTO route modes"></td>
-<td width="50%"><img src="docs/img/hero.jpg" alt="04 OPERATIONS at Jezero during the EVA: site map, RESUME / ABORT EVA, camera angle and helmet camera on the right, the HUD over the 3D view"></td>
+<td width="50%"><img src="docs/img/hero.jpg" alt="04 OPERATIONS at Jezero during the EVA: site map, dust devil drill, RESUME / ABORT EVA and camera angle on the right, the HUD over the 3D view"></td>
 </tr>
-<tr><td align="center"><b>03 PLAN MISSION</b> — map → waypoints → route modes</td><td align="center"><b>04 OPERATIONS</b> — map → EVA → camera angle → helmet camera</td></tr>
+<tr><td align="center"><b>03 PLAN MISSION</b> — map → waypoints → route modes</td><td align="center"><b>04 OPERATIONS</b> — map → dust devil drill → EVA → camera angle → helmet camera</td></tr>
 </table>
 
 ## On a tablet or a phone
@@ -480,7 +480,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - The HUD shows mission elapsed time, the current activity, the **live walk-back margin**, distance from the habitat, the sun, the site's air temperature (MEDA or REMS) and the **radiation dose so far**.
 - The **camera angle** sits right under START EVA: *Follow EV1* keeps both astronauts in frame, *Overview* shows the whole route, *Free* lets you fly around. The **helmet camera** under it is EV1's processed view of the ground ahead (elevation contours or slope classes).
 - **ABORT EVA** sends the crew home on the fastest path.
-- **SIMULATE DUST DEVIL** places a dust devil; what the crew does when they see it is below.
+- **SIMULATE DUST DEVIL**, right under the site map, arms the drill: click the map to drop a dust devil; what the crew does when they see it is below.
 
 ### Dust devil on the route — a new SAFE route, not a run home
 
