@@ -45,5 +45,5 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add pipeline/sources/ai4mars web/public/models web/public/sites || true
+          for p in pipeline/sources/ai4mars web/public/models web/public/sites; do [ -e "$p" ] && git add -f "$p"; done
           if git commit -m "data: Mars segmentation outputs"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi
