@@ -3,7 +3,7 @@
  * Generates 2D canvas heatmaps for different terrain parameters.
  */
 
-import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS, SITE } from '../three/terrainGenerator.js';
+import { GRID_RES, buildHeightMap, buildSlopeMap, buildCraterMask, SITE } from '../three/terrainGenerator.js';
 import { buildIlluminationMap, hazardScore, getWallMap, peekHomeMaps } from './pathfinder.js';
 import { param, HAZARD_PARAMS } from '../config/marswalkProfile.js';
 import { hazardMap, HAZARD_CLASSES } from './hazards.js';

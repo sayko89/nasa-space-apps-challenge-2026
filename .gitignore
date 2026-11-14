@@ -58,3 +58,4 @@ pipeline/.cache/
 # Python virtual environments
 .venv/
 venv/
+e2e/out/

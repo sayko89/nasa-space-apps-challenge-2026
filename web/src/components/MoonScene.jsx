@@ -119,7 +119,7 @@ function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshK
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 4;
     return t;
-  }, [layer, sunAngleDeg, sunElevationDeg, refreshKey]);
+  }, [layer, sunAngleDeg, sunElevationDeg, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps -- refreshKey: rebuild after the data changes
   useEffect(() => () => tex?.dispose(), [tex]);
   if (!_geo || !tex) return null;
   return (
@@ -612,20 +612,22 @@ function DustCloudHazard({ hazard }) {
 
 // ---- Route Lines ----
 function RouteLine({ points, color, active }) {
-  if (!points || points.length < 2) return null;
-
   const tubeRadius = (active ? 0.18 : 0.09) * MARKER_SCALE;   // 1.5× thicker than old 0.12/0.06
   const lift       = (active ? 0.14 : 0.08) * MARKER_SCALE;
+  const ok = !!points && points.length >= 2;
 
+  // hooks run on every render (rules of hooks); an empty route just has no geometry
   const curve = useMemo(() => {
+    if (!ok) return null;
     const vecs = points.map(p => new THREE.Vector3(p[0], p[1] + lift, p[2]));
     return new THREE.CatmullRomCurve3(vecs);
-  }, [points, lift]);
+  }, [points, lift, ok]);
 
   const geo = useMemo(() =>
-    new THREE.TubeGeometry(curve, Math.min(points.length * 2, 800), tubeRadius, 6, false),
-    [curve, tubeRadius]
+    (curve ? new THREE.TubeGeometry(curve, Math.min(points.length * 2, 800), tubeRadius, 6, false) : null),
+    [curve, tubeRadius]   // eslint-disable-line react-hooks/exhaustive-deps
   );
+  if (!geo) return null;
 
   return (
     <mesh geometry={geo}>
@@ -634,23 +636,6 @@ function RouteLine({ points, color, active }) {
   );
 }
 
-function TrailLine({ points }) {
-  if (!points || points.length < 2) return null;
-  const positions = new Float32Array(points.length * 3);
-  for (let i = 0; i < points.length; i++) {
-    positions[i*3]   = points[i][0];
-    positions[i*3+1] = points[i][1] + 0.06;
-    positions[i*3+2] = points[i][2];
-  }
-  return (
-    <line>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" array={positions} count={points.length} itemSize={3} />
-      </bufferGeometry>
-      <lineBasicMaterial color="#ffffff" opacity={0.35} transparent />
-    </line>
-  );
-}
 
 // ---- Waypoint markers (numbered) ----
 const WP_COLORS = ['#22ff55','#ffcc22','#44ddff','#ff88ff','#ff4422','#aaffaa'];
@@ -870,7 +855,6 @@ export default function MoonScene({
   const roverRef = useRef();
   const orbitRef = useRef();
 
-  const trail = pathRef.current._roverTrail || [];
 
   return (
     <Canvas

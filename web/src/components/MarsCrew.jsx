@@ -293,7 +293,7 @@ function makeLabelTexture(text, { font, fg, bg, border, radius }) {
 export function LabelSprite({ position, text, style, heightPx = 16 }) {
   const { camera, size } = useThree();
   const { tex, aspect } = useMemo(() => makeLabelTexture(text, style),
-    [text, style.font, style.fg, style.bg, style.border, style.radius]);
+    [text, style.font, style.fg, style.bg, style.border, style.radius]); // eslint-disable-line react-hooks/exhaustive-deps -- style fields, not the object identity
   useEffect(() => () => tex.dispose(), [tex]);
   // With sizeAttenuation off, sprite scale is in view units at distance 1: pixels = scale · P11 / 2 · height.
   const p11 = camera.projectionMatrix.elements[5] || 1;

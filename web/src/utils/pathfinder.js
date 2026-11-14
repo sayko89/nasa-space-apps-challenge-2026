@@ -11,7 +11,7 @@ import {
 import { sunPosition, sunriseSunset } from './marsTime.js';
 import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
 import { evaWindowTemps } from './climate.js';
-import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getEvaProfile, getObstacleBufferM, planningKey, HAZARD_PARAMS } from '../config/marswalkProfile.js';
+import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getObstacleBufferM, planningKey, HAZARD_PARAMS } from '../config/marswalkProfile.js';
 import { dilate } from './hazards.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';

@@ -6,7 +6,6 @@ const limits = { maxSlopeDeg: 20, maxRadialM: 2000 };
 const clearWx = { advisory: 'clear', near: [], sep: [] };
 function stats(over = {}) {
   return {
-    checks: { budget: true, carry: true, radial: true, slope: true, daylight: true, ...(over.checks || {}) },
     minMarginS: 3 * 3600, ponrIdx: -1, maxSlopeDeg: 12, maxRadialM: 900,
     carry: { earthEqKg: 43.1, limitKg: 45 }, light: { homeBySunset: true }, radiation: { doseMSv: 0.1 },
     ...over, checks: { budget: true, carry: true, radial: true, slope: true, daylight: true, ...(over.checks || {}) },

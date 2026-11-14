@@ -6,7 +6,9 @@
 
 import { DEFAULT_MISSION, ROVER, SUITS, sciencePlanKey } from './config/mission';
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
-import RightPanel, { evaAssessments, useSpaceWeather } from './components/RightPanel';
+import RightPanel from './components/RightPanel';
+import { evaAssessments } from './utils/evaAssessments';
+import { useSpaceWeather } from './hooks/useSpaceWeather';
 import EvaHud from './components/EvaHud';
 import { clearPathCache, getHazardAtPoint, isWallAt, fastestReturnPath, toHomeTimeAt } from './utils/pathfinder';
 import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
@@ -774,7 +776,7 @@ export default function App() {
     interferenceTicksRef.current = 0;
     setRoutes(prev => {
       if (!prev) return prev;
-      // eslint-disable-next-line no-unused-vars
+       
       const { HOME_RETURN: _unused, ...rest } = prev;
       return Object.keys(rest).length ? rest : null;
     });

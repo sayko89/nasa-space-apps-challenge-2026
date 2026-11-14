@@ -1,0 +1,50 @@
+name: Browser tests
+
+# The production build in headless Chromium (software WebGL): Jezero plan → decision → EVA HUD →
+# one-page cuff card on desktop, phone and tablet; Gale objectives; Moon simulator unchanged.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4   # version comes from package.json "packageManager"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium for Playwright
+        run: pnpm --filter martian-map exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm --filter martian-map build
+
+      - name: Browser tests
+        run: pnpm --filter martian-map e2e
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: web/e2e/out
+          if-no-files-found: ignore
