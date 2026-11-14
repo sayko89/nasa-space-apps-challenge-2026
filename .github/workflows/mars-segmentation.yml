@@ -1,49 +1,143 @@
 name: Mars terrain segmentation (AI4Mars)
 
-# Runs where the data is reachable (Zenodo, mars.nasa.gov). Each stage commits its outputs back to the
-# branch it ran on. stage: inventory | train | sites
+# Runs where the data is reachable (Zenodo, mars.nasa.gov). Triggered by pushing pipeline/segmentation/RUN
+# on an ml/** branch; its first word is the stage:
+#   inventory  list AI4Mars v0.6 remotely, read its documentation, check label pixel values
+#   smoke      the whole pipeline on a small subset (≤ 200 labels per source, 4-min training) — plumbing check
+#   full       prepare → 3 trainings in parallel → evaluation, ONNX export, Jezero / Gale inference
+# The last job commits the outputs back to the branch.
 on:
-  workflow_dispatch:
-    inputs:
-      stage:
-        description: inventory | train | sites
-        default: inventory
   push:
     branches: ['ml/**']
     paths: ['pipeline/segmentation/RUN']
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
   group: mars-seg-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
+
+env:
+  SEG_WORK: ${{ github.workspace }}/.seg-work
 
 jobs:
-  run:
+  setup:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    outputs:
+      stage: ${{ steps.s.outputs.stage }}
+      limit: ${{ steps.s.outputs.limit }}
+      minutes: ${{ steps.s.outputs.minutes }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: s
+        run: |
+          STAGE=$(head -1 pipeline/segmentation/RUN | awk '{print $1}')
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+          if [ "$STAGE" = smoke ]; then echo "limit=200" >> "$GITHUB_OUTPUT"; echo "minutes=4" >> "$GITHUB_OUTPUT";
+          else echo "limit=0" >> "$GITHUB_OUTPUT"; echo "minutes=210" >> "$GITHUB_OUTPUT"; fi
+
+  inventory:
+    needs: setup
+    if: needs.setup.outputs.stage == 'inventory'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Stage
-        id: stage
-        run: echo "stage=${{ github.event.inputs.stage || '' }}" >> "$GITHUB_OUTPUT"
-      - name: Install
-        run: pip install -r pipeline/segmentation/requirements.txt
-      - name: Run
+        with: { python-version: "3.12" }
+      - run: pip install remotezip==0.12.3 numpy pillow
+      - run: mkdir -p pipeline/sources/ai4mars && bash pipeline/segmentation/run.sh inventory 2>&1 | tee pipeline/sources/ai4mars/inventory.log
+      - name: Commit
         run: |
-          STAGE="${{ steps.stage.outputs.stage }}"
-          [ -z "$STAGE" ] && STAGE=$(head -1 pipeline/segmentation/RUN | awk '{print $1}')
-          echo "stage: $STAGE"
-          mkdir -p pipeline/sources/ai4mars
-          bash pipeline/segmentation/run.sh "$STAGE" 2>&1 | tee pipeline/sources/ai4mars/$STAGE.log
+          git config user.name github-actions; git config user.email github-actions@github.com
+          git add -f pipeline/sources/ai4mars
+          if git commit -m "data: AI4Mars inventory"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi
+
+  prepare:
+    needs: setup
+    if: needs.setup.outputs.stage == 'smoke' || needs.setup.outputs.stage == 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: pipeline/segmentation/requirements.txt }
+      - run: pip install -r pipeline/segmentation/requirements.txt
+      - name: Unit tests (dataset helpers, metrics)
+        run: python -m unittest discover -s pipeline/segmentation/tests -v
+      - name: Prepare
+        env: { SEG_LIMIT: "${{ needs.setup.outputs.limit }}" }
+        run: mkdir -p pipeline/sources/ai4mars && bash pipeline/segmentation/run.sh prepare 2>&1 | tee pipeline/sources/ai4mars/prepare.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seg-data
+          path: .seg-work/data
+          retention-days: 3
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: seg-prepare-report, path: pipeline/sources/ai4mars/, retention-days: 7 }
+
+  train:
+    needs: [setup, prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { init: pretrained, loss: ce+dice }
+          - { init: scratch, loss: ce+dice }
+          - { init: pretrained, loss: ce }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: pipeline/segmentation/requirements.txt }
+      - run: pip install -r pipeline/segmentation/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: seg-data, path: .seg-work/data }
+      - name: Train ${{ matrix.init }} / ${{ matrix.loss }}
+        run: bash pipeline/segmentation/run.sh train ${{ matrix.init }} ${{ matrix.loss }} ${{ needs.setup.outputs.minutes }} 2>&1 | tee train.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seg-ckpt-${{ matrix.init }}-${{ matrix.loss == 'ce' && 'ce' || 'cedice' }}
+          path: |
+            .seg-work/ckpt/*-best.pt
+            .seg-work/ckpt/*-meta.json
+            train.log
+          retention-days: 7
+
+  finish:
+    needs: [setup, train]
+    if: always() && needs.setup.outputs.stage != 'inventory' && needs.setup.outputs.stage != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: pipeline/segmentation/requirements.txt }
+      - run: pip install -r pipeline/segmentation/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: seg-data, path: .seg-work/data }
+      - uses: actions/download-artifact@v4
+        with: { pattern: seg-ckpt-*, path: ckpts }
+      - uses: actions/download-artifact@v4
+        with: { name: seg-prepare-report, path: pipeline/sources/ai4mars/ }
+      - name: Collect checkpoints and training logs
+        run: |
+          mkdir -p .seg-work/ckpt pipeline/sources/ai4mars/training
+          find ckpts -name '*.pt' -exec cp {} .seg-work/ckpt/ \;
+          find ckpts -name '*-meta.json' -exec cp {} .seg-work/ckpt/ \; -exec cp {} pipeline/sources/ai4mars/training/ \;
+          for d in ckpts/*/; do [ -f "$d/train.log" ] && cp "$d/train.log" "pipeline/sources/ai4mars/training/$(basename $d).log"; done
+          ls -la .seg-work/ckpt
+      - name: Evaluate, select on validation, export ONNX
+        run: bash pipeline/segmentation/run.sh evaluate 2>&1 | tee pipeline/sources/ai4mars/evaluate.log
+      - name: Jezero and Gale image-level inference
+        run: bash pipeline/segmentation/run.sh sites 2>&1 | tee pipeline/sources/ai4mars/sites.log
       - name: Commit
         if: always()
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          for p in pipeline/sources/ai4mars web/public/models web/public/sites; do [ -e "$p" ] && git add -f "$p"; done
-          if git commit -m "data: Mars segmentation outputs"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi
+          git config user.name github-actions; git config user.email github-actions@github.com
+          for p in pipeline/sources/ai4mars web/public/models web/public/sites/jezero/segmentation web/public/sites/gale/segmentation; do [ -e "$p" ] && git add -f "$p"; done
+          if git commit -m "data: Mars terrain segmentation (${{ needs.setup.outputs.stage }})"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi
