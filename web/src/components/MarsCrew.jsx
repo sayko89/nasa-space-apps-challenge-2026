@@ -85,7 +85,7 @@ function Astronaut({ J, ev1 }) {
     </group>
   );
   return (
-    <group ref={reg('root')}>
+    <group ref={reg('root')} scale={CREW_SCALE}>
       <group ref={reg('body')}>
         <group ref={reg('pelvis')} position={[0, 0.95, 0]}>
           {/* brief / hip bearing */}
@@ -178,11 +178,15 @@ function applyPose(J, P) {
   J.elL.rotation.x = P.elL; J.elR.rotation.x = P.elR;
 }
 
+// Display scale of the crew figures. True size (~1.9 m with helmet) is a few pixels against 2 km of terrain
+// and the metre-scale relief; ×1.4 keeps them readable. Positions, routes, speeds and every number are unchanged.
+const CREW_SCALE = 1.4;
+
 const wrapAngle = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
 // Visual gait: one walk cycle (two steps) covers STRIDE_M; in time-lapse the
 // cadence is capped so the legs read as "walking fast" instead of flickering.
-const STRIDE_M = 0.9;
+const STRIDE_M = 0.9 * CREW_SCALE;   // legs scale with the figure: keep feet from sliding
 const MAX_CADENCE_HZ = 1.7;
 const STEP_M = 0.45;            // boot print spacing (one step)
 
@@ -340,7 +344,7 @@ export function MarsCrew({ playback, idlePos, leadRef, onPose, trailKey = 0, sun
   const crewRefs = useMemo(() => [leadRef, ev2Ref], [leadRef]);
   const anim = useRef({
     phase: 0, heading1: 0, heading2: 0, cur1: walkPose(0, 0), cur2: walkPose(0, 0),
-    side: new THREE.Vector2(1.3, 0), lastEmit: 0, time: 0,
+    side: new THREE.Vector2(1.3 * CREW_SCALE, 0), lastEmit: 0, time: 0,
   });
   const ringRef = useRef();
 
@@ -385,7 +389,7 @@ export function MarsCrew({ playback, idlePos, leadRef, onPose, trailKey = 0, sun
     if (p2) A.heading2 += wrapAngle(p2.heading - A.heading2) * (1 - Math.exp(-dt * 7));
     const atStop2 = !!p2 && p2.state === 'dwell' && !playback.aborted && playback.status !== 'done';
     // side offset: 1.3 m to EV1's right while walking, 1.8 m right + 0.9 m back while documenting
-    const wantSide = atStop2 ? 1.8 : 1.3, wantBack = atStop2 ? 0.9 : 0;
+    const wantSide = (atStop2 ? 1.8 : 1.3) * CREW_SCALE, wantBack = (atStop2 ? 0.9 : 0) * CREW_SCALE;
     A.side.x += (wantSide - A.side.x) * (1 - Math.exp(-dt * 4));
     A.side.y += (wantBack - A.side.y) * (1 - Math.exp(-dt * 4));
     const h2 = A.heading2;
