@@ -246,7 +246,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
 
         {/* elevation profile */}
         <div style={{ border: '0.4mm solid #111', padding: '0.6mm 1mm 0', marginTop: '-0.8mm' }}>
-          <ElevationProfile path={route.path} stats={route.stats} originM={SITE.heightOrigin || 0} print height={30} />
+          <ElevationProfile path={route.path} stats={route.stats} originM={SITE.heightOrigin || 0} print width={640} height={62} />
         </div>
 
         {/* station table */}

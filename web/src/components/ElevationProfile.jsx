@@ -6,10 +6,10 @@
 import { useMemo } from 'react';
 import { elevationProfile, profileGeometry } from '../utils/elevationProfile';
 
-export default function ElevationProfile({ path, stats, originM = 0, color = '#3dff6e', print = false, height = 62 }) {
+export default function ElevationProfile({ path, stats, originM = 0, color = '#3dff6e', print = false, width = 300, height = 62 }) {
   const profile = useMemo(() => elevationProfile(path, stats, originM), [path, stats, originM]);
   if (!profile) return null;
-  const W = 300, H = height;
+  const W = width, H = height;
   const pad = { l: 34, r: 6, t: 11, b: 12 };
   const g = profileGeometry(profile, W, H, pad);
   const ink = print ? '#111' : 'rgba(190,220,190,0.75)';

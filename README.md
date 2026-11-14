@@ -202,7 +202,7 @@ The challenge lists five NASA resources. This is what each one gave the project.
 | [NASA Worldview](https://worldview.earthdata.nasa.gov/) | Earth imagery browser (no Mars data) with a timeline and a **comparison mode** that swipes between two views | Inspiration for the interface only: **COMPARE LAYERS** swipes between any two layers of a site — say the HiRISE image against CRISM minerals or the slope map — and the date / time controls drive sun, temperature and space weather |
 | [Mars Perseverance Raw Images](https://mars.nasa.gov/mars2020/multimedia/raw-images/) | Every frame the rover has sent, with sol, camera and local time | All 947 Jezero ground-view frames come from this feed, each linked to its page in the gallery; Gale uses Curiosity's equivalent feed (2,868 frames) |
 
-![Layer comparison at Gale — the HiRISE image against the derived stratigraphic levels — with Curiosity's own route and the planned EVA's elevation profile](docs/img/resources.jpg)
+![Gale: Curiosity's own route as a pale line with the three labelled levels and the planned 6-stop EVA over it; the map swipes between the terrain-class layer and the HiRISE image; the SAFE route card (right) carries the route's elevation profile](docs/img/resources.jpg)
 
 ## Inspiration: Apollo cuff checklists
 
