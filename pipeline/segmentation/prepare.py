@@ -25,10 +25,18 @@ os.makedirs(OUT, exist_ok=True); os.makedirs(os.path.join(WORK, 'data'), exist_o
 log = collections.defaultdict(list)                     # reason -> [names]
 
 _local = threading.local()
+def open_zip():
+    """The downloaded archive (SEG_ZIP, one request — Zenodo limits anonymous clients to ~2,000 requests per hour,
+    so per-file range requests cannot fetch 20k samples), else remote range requests (inventory-sized jobs only)."""
+    local = os.environ.get('SEG_ZIP')
+    if local and os.path.exists(local):
+        import zipfile
+        return zipfile.ZipFile(local)
+    from remotezip import RemoteZip
+    return RemoteZip(ZIP_URL)
+
 def rz():
-    if not hasattr(_local, 'z'):
-        from remotezip import RemoteZip
-        _local.z = RemoteZip(ZIP_URL)
+    if not hasattr(_local, 'z'): _local.z = open_zip()   # one handle per thread (zip handles are not thread-safe)
     return _local.z
 
 def resize_pair(img, lab):
@@ -42,8 +50,9 @@ def read_retry(name, tries=6):
     """Range request with back-off (Zenodo throttles bursts); the last error is raised after `tries`."""
     for k in range(tries):
         try: return rz().read(name)
-        except Exception:
+        except Exception as e:
             if k == tries - 1: raise
+            print(f'retry {k + 1} {name}: {type(e).__name__}: {str(e)[:120]}', flush=True)
             if hasattr(_local, 'z') and not hasattr(_local.z, 'read_fake'):
                 try: del _local.z
                 except AttributeError: pass
@@ -55,7 +64,7 @@ def load(sample):
         raw = read_retry(sample['image'])
         img = Image.open(io.BytesIO(raw)); img.load()
     except Exception as e:
-        return None, f'unreadable image ({type(e).__name__})'
+        return None, f'unreadable image ({type(e).__name__}: {str(e)[:60]})'
     try:
         lab = Image.open(io.BytesIO(read_retry(sample['label']))); lab.load()
     except Exception as e:
@@ -90,9 +99,9 @@ def assign_splits(samples, test_groups, rng, log):
         for s in groups[k]: s['split'] = sp
 
 def main():
-    from remotezip import RemoteZip
     t0 = time.time()
-    z = RemoteZip(ZIP_URL)
+    z = open_zip()
+    print('archive:', os.environ.get('SEG_ZIP') or ZIP_URL, flush=True)
     names = [i.filename for i in z.infolist() if not i.is_dir()]
     by_dir = collections.defaultdict(list)
     for n in names: by_dir[os.path.dirname(n)[len(PREFIX):]].append(n)

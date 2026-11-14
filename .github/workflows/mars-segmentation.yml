@@ -58,7 +58,7 @@ jobs:
     needs: setup
     if: needs.setup.outputs.stage == 'smoke' || needs.setup.outputs.stage == 'full'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -66,8 +66,13 @@ jobs:
       - run: pip install -r pipeline/segmentation/requirements.txt
       - name: Unit tests (dataset helpers, metrics)
         run: python -m unittest discover -s pipeline/segmentation/tests -v
+      - name: Download AI4Mars v0.6 (one request, 16.5 GB, MD5 from Zenodo)
+        run: |
+          sudo mkdir -p /mnt/seg && sudo chown "$USER" /mnt/seg && df -h /mnt | tail -1
+          curl -fL --retry 5 --retry-delay 30 -o /mnt/seg/ai4mars.zip "https://zenodo.org/records/15995036/files/ai4mars-dataset-merged-0.6.zip?download=1"
+          echo "daf80a86021253292e6c425f97baa5c6  /mnt/seg/ai4mars.zip" | md5sum -c -
       - name: Prepare
-        env: { SEG_LIMIT: "${{ needs.setup.outputs.limit }}" }
+        env: { SEG_LIMIT: "${{ needs.setup.outputs.limit }}", SEG_ZIP: /mnt/seg/ai4mars.zip }
         run: mkdir -p pipeline/sources/ai4mars && bash pipeline/segmentation/run.sh prepare 2>&1 | tee pipeline/sources/ai4mars/prepare.log
       - uses: actions/upload-artifact@v4
         with:
