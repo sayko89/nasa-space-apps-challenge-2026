@@ -1,0 +1,626 @@
+{
+ "source": "https://zenodo.org/records/15995036/files/ai4mars-dataset-merged-0.6.zip?download=1",
+ "doi": "10.5281/zenodo.15995036",
+ "license": "CC BY 4.0",
+ "files": 146140,
+ "bytes": 16457250829,
+ "seconds": 148.4,
+ "dirs": {
+  "ai4mars-dataset-merged-0.6": {
+   "files": 4,
+   "bytes": 8446,
+   "ext": {
+    ".md": 3,
+    ".json": 1
+   },
+   "examples": [
+    "changelog.md",
+    "info.md",
+    "label_keys.json"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/images": {
+   "files": 1,
+   "bytes": 316,
+   "ext": {
+    ".txt": 1
+   },
+   "examples": [
+    "DATA_NOTES.txt"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/images/HAFIQ": {
+   "files": 2122,
+   "bytes": 283083288,
+   "ext": {
+    ".jpeg": 2122
+   },
+   "examples": [
+    "VgncRawLeft_0684693433-41490_rectified.jpeg",
+    "VgncRawLeft_0684693508-32241_rectified.jpeg",
+    "VgncRawLeft_0684693533-49468_rectified.jpeg"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/images/mcam": {
+   "files": 11369,
+   "bytes": 2274176273,
+   "ext": {
+    ".jpg": 11369
+   },
+   "examples": [
+    "ZL0_0011_0667930092_064EBY_N0030000ZCAM00015_0340LUJ.jpg",
+    "ZL0_0011_0667930158_064EBY_N0030000ZCAM00015_0340LUJ.jpg",
+    "ZL0_0011_0667930176_064EBY_N0030000ZCAM00015_0340LUJ.jpg"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/images/ncam": {
+   "files": 4573,
+   "bytes": 1118633640,
+   "ext": {
+    ".jpeg": 3311,
+    ".jpg": 1262
+   },
+   "examples": [
+    "NLF_0002_0667130166_842EBY_N0010052AUT_04096_00_0LLJ.jpeg",
+    "NLF_0002_0667130214_804EBY_N0010052AUT_04096_00_0LLJ.jpeg",
+    "NLF_0002_0667130259_241EBY_N0010052AUT_04096_00_0LLJ.jpeg"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/labels": {
+   "files": 1,
+   "bytes": 146,
+   "ext": {
+    ".txt": 1
+   },
+   "examples": [
+    "NAV_DATA_NOTE.txt"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/labels/M2020_GEO/mcam": {
+   "files": 6355,
+   "bytes": 68908699,
+   "ext": {
+    ".png": 6355
+   },
+   "examples": [
+    "ZL0_0011_0667930092_064EBY_N0030000ZCAM00015_0340LUJ_merged9.png",
+    "ZL0_0011_0667930298_064EBY_N0030000ZCAM00015_0340LUJ_merged9.png",
+    "ZL0_0011_0667930314_064EBY_N0030000ZCAM00015_0340LUJ_merged7.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/labels/M2020_GEO/ncam": {
+   "files": 2153,
+   "bytes": 23802005,
+   "ext": {
+    ".png": 2153
+   },
+   "examples": [
+    "NLF_0002_0667130166_842EBY_N0010052AUT_04096_00_merged4.png",
+    "NLF_0002_0667130214_804EBY_N0010052AUT_04096_00_merged3.png",
+    "NLF_0002_0667130259_241EBY_N0010052AUT_04096_00_merged5.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/m2020/labels/NAV": {
+   "files": 3827,
+   "bytes": 34749885,
+   "ext": {
+    ".png": 3827
+   },
+   "examples": [
+    "NLF_0009_0667755636_926ECM_N0030000NCAM05000_01_295J_merged60.png",
+    "NLF_0009_0667755959_167ECM_N0030000NCAM05000_01_295J_merged60.png",
+    "NLF_0009_0667756282_606ECM_N0030000NCAM05000_01_295J_merged52.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer": {
+   "files": 1,
+   "bytes": 57,
+   "ext": {
+    ".txt": 1
+   },
+   "examples": [
+    "NOTE.txt"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/images/eff": {
+   "files": 16300,
+   "bytes": 4536152760,
+   "ext": {
+    ".jpg": 16300
+   },
+   "examples": [
+    "1n128367857eff0200p1512l0m1.JPG",
+    "1n128367913eff0200p1512l0m1.JPG",
+    "1n128367965eff0200p1512l0m1.JPG"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/images/test": {
+   "files": 204,
+   "bytes": 60151066,
+   "ext": {
+    ".jpg": 204
+   },
+   "examples": [
+    "1n129697839eff0338p1931l0m1.JPG",
+    "1n129697952eff0338p1932l0m1.JPG",
+    "1n129698004eff0338p1932l0m1.JPG"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/masked-gold-min1-100agree": {
+   "files": 204,
+   "bytes": 1365687,
+   "ext": {
+    ".png": 204
+   },
+   "examples": [
+    "1n129697839eff0338p1931l0m1_16165_T0_merged.png",
+    "1n129697952eff0338p1932l0m1_16165_T0_merged.png",
+    "1n129698004eff0338p1932l0m1_16165_T0_merged.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/masked-gold-min2-100agree": {
+   "files": 204,
+   "bytes": 1235440,
+   "ext": {
+    ".png": 204
+   },
+   "examples": [
+    "1n129697839eff0338p1931l0m1_16165_T0_merged.png",
+    "1n129697952eff0338p1932l0m1_16165_T0_merged.png",
+    "1n129698004eff0338p1932l0m1_16165_T0_merged.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/masked-gold-min3-100agree": {
+   "files": 205,
+   "bytes": 1046885,
+   "ext": {
+    ".png": 204,
+    ".csv": 1
+   },
+   "examples": [
+    "1n129697839eff0338p1931l0m1_16165_T0_merged.png",
+    "1n129697952eff0338p1932l0m1_16165_T0_merged.png",
+    "1n129698004eff0338p1932l0m1_16165_T0_merged.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/raw_unmerged": {
+   "files": 559,
+   "bytes": 2512114,
+   "ext": {
+    ".png": 559
+   },
+   "examples": [
+    "1n129697839eff0338p1931l0m1_16165_T0_SOL17_2145455.png",
+    "1n129697839eff0338p1931l0m1_16165_T0_SOL17_2145457.png",
+    "1n129697839eff0338p1931l0m1_16165_T0_SOL17_2146379.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/train": {
+   "files": 1,
+   "bytes": 367,
+   "ext": {
+    ".txt": 1
+   },
+   "examples": [
+    "NOTE.txt"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/train/merged-unmasked": {
+   "files": 8507,
+   "bytes": 43537161,
+   "ext": {
+    ".png": 8507
+   },
+   "examples": [
+    "1n128367857eff0200p1512l0m1_merged6.png",
+    "1n128367913eff0200p1512l0m1_merged8.png",
+    "1n128367965eff0200p1512l0m1_merged4.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl": {
+   "files": 1,
+   "bytes": 189,
+   "ext": {
+    ".txt": 1
+   },
+   "examples": [
+    "NOTE.txt"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/mcam/images": {
+   "files": 9099,
+   "bytes": 1754891139,
+   "ext": {
+    ".jpg": 9099
+   },
+   "examples": [
+    "1150ML0052000010501746E01_XXXX.JPG",
+    "1150ML0052000020501747E01_XXXX.JPG",
+    "1150ML0052000030501748E01_XXXX.JPG"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/mcam/labels/train": {
+   "files": 9099,
+   "bytes": 49231781,
+   "ext": {
+    ".png": 9099
+   },
+   "examples": [
+    "1150ML0052000010501746E01_XXXX_15033_merged.png",
+    "1150ML0052000020501747E01_XXXX_15033_merged.png",
+    "1150ML0052000030501748E01_XXXX_15033_merged.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/images/edr": {
+   "files": 18127,
+   "bytes": 6010571270,
+   "ext": {
+    ".jpg": 18127
+   },
+   "examples": [
+    "NLA_397586928EDR_F0010008AUT_04096M1.JPG",
+    "NLA_397586934EDR_F0010008AUT_04096M1.JPG",
+    "NLA_397681339EDR_F0020000AUT_04096M1.JPG"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/images/mxy": {
+   "files": 18097,
+   "bytes": 59405902,
+   "ext": {
+    ".png": 18097
+   },
+   "examples": [
+    "NLA_397586928MXY_F0010008AUT_04096M1.png",
+    "NLA_397586934MXY_F0010008AUT_04096M1.png",
+    "NLA_397681339MXY_F0020000AUT_04096M1.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/images/rng-30m": {
+   "files": 18096,
+   "bytes": 23796818,
+   "ext": {
+    ".png": 18096
+   },
+   "examples": [
+    "NLA_397586928RNG_F0010008AUT_04096M1.png",
+    "NLA_397586934RNG_F0010008AUT_04096M1.png",
+    "NLA_397681339RNG_F0020000AUT_04096M1.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test": {
+   "files": 1,
+   "bytes": 213,
+   "ext": {
+    ".txt": 1
+   },
+   "examples": [
+    "NOTE.txt"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test/masked-gold-min1-100agree": {
+   "files": 322,
+   "bytes": 2631024,
+   "ext": {
+    ".png": 322
+   },
+   "examples": [
+    "NLA_409036068EDR_F0051606NCAM00348M1_merged.png",
+    "NLA_409036116EDR_F0051606NCAM00348M1_merged.png",
+    "NLA_409036860EDR_F0051662NCAM00346M1_merged.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test/masked-gold-min2-100agree": {
+   "files": 322,
+   "bytes": 2469806,
+   "ext": {
+    ".png": 322
+   },
+   "examples": [
+    "NLA_409036068EDR_F0051606NCAM00348M1_merged.png",
+    "NLA_409036116EDR_F0051606NCAM00348M1_merged.png",
+    "NLA_409036860EDR_F0051662NCAM00346M1_merged.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test/masked-gold-min3-100agree": {
+   "files": 322,
+   "bytes": 2190473,
+   "ext": {
+    ".png": 322
+   },
+   "examples": [
+    "NLA_409036068EDR_F0051606NCAM00348M1_merged.png",
+    "NLA_409036116EDR_F0051606NCAM00348M1_merged.png",
+    "NLA_409036860EDR_F0051662NCAM00346M1_merged.png"
+   ]
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/train": {
+   "files": 16064,
+   "bytes": 102697979,
+   "ext": {
+    ".png": 16064
+   },
+   "examples": [
+    "NLA_397586934EDR_F0010008AUT_04096M1.png",
+    "NLA_397681339EDR_F0020000AUT_04096M1.png",
+    "NLA_397681372EDR_F0020000AUT_04096M1.png"
+   ]
+  }
+ },
+ "label_pixel_values": {
+  "ai4mars-dataset-merged-0.6/m2020/labels/M2020_GEO/mcam": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(873, 1200)": 6,
+    "(946, 1300)": 5,
+    "(947, 1300)": 1
+   },
+   "pixel_values": {
+    "0": 857339,
+    "1": 156959,
+    "2": 91682,
+    "3": 14749,
+    "4": 538,
+    "5": 69948,
+    "6": 117347,
+    "10": 149047,
+    "11": 553,
+    "12": 118844,
+    "13": 155,
+    "14": 271,
+    "15": 553204,
+    "16": 136345,
+    "20": 58201,
+    "21": 885418,
+    "22": 755172,
+    "30": 2579886,
+    "50": 345574,
+    "255": 6774468
+   }
+  },
+  "ai4mars-dataset-merged-0.6/m2020/labels/M2020_GEO/ncam": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(976, 1296)": 3,
+    "(901, 1200)": 2,
+    "(960, 1280)": 4,
+    "(968, 1288)": 2,
+    "(976, 1288)": 1
+   },
+   "pixel_values": {
+    "0": 187310,
+    "1": 18432,
+    "2": 162995,
+    "3": 40663,
+    "4": 3146,
+    "6": 26304,
+    "10": 10023,
+    "11": 1946,
+    "14": 82793,
+    "15": 244721,
+    "16": 1464,
+    "20": 25809,
+    "21": 91349,
+    "22": 1446390,
+    "30": 4492077,
+    "50": 66083,
+    "255": 7721439
+   }
+  },
+  "ai4mars-dataset-merged-0.6/m2020/labels/NAV": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(968, 1288)": 6,
+    "(960, 1280)": 4,
+    "(240, 1280)": 2
+   },
+   "pixel_values": {
+    "0": 1874013,
+    "1": 2119598,
+    "2": 1549965,
+    "3": 135955,
+    "255": 7330773
+   }
+  },
+  "ai4mars-dataset-merged-0.6/m2020/labels": {
+   "sampled": 0,
+   "modes": {},
+   "shapes": {},
+   "pixel_values": {}
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/masked-gold-min1-100agree": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 4670270,
+    "1": 801532,
+    "2": 2123043,
+    "3": 6829,
+    "255": 4981238
+   }
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/masked-gold-min2-100agree": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 3378742,
+    "1": 1921550,
+    "2": 793279,
+    "255": 6489341
+   }
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/masked-gold-min3-100agree": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 1236600,
+    "1": 742934,
+    "2": 1545970,
+    "3": 1319,
+    "255": 9056089
+   }
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/test/raw_unmerged": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 4599801,
+    "1": 1952187,
+    "2": 1818893,
+    "3": 16999,
+    "255": 4195032
+   }
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/train/merged-unmasked": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 1344674,
+    "1": 3157928,
+    "2": 3155876,
+    "255": 4924434
+   }
+  },
+  "ai4mars-dataset-merged-0.6/mer/labels/train": {
+   "sampled": 0,
+   "modes": {},
+   "shapes": {},
+   "pixel_values": {}
+  },
+  "ai4mars-dataset-merged-0.6/msl/mcam/labels/train": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1184, 1328)": 6,
+    "(1200, 1200)": 2,
+    "(1200, 1600)": 1,
+    "(1200, 1344)": 2,
+    "(1200, 1408)": 1
+   },
+   "pixel_values": {
+    "0": 6274033,
+    "1": 2336823,
+    "2": 8666787,
+    "3": 1841431,
+    "4": 30238
+   }
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test/masked-gold-min1-100agree": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 3690857,
+    "1": 2827209,
+    "2": 1356962,
+    "3": 1265,
+    "255": 4706619
+   }
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test/masked-gold-min2-100agree": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 3167643,
+    "1": 903861,
+    "2": 1562892,
+    "3": 9711,
+    "255": 6938805
+   }
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test/masked-gold-min3-100agree": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 3102592,
+    "1": 788269,
+    "2": 698181,
+    "255": 7993870
+   }
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test": {
+   "sampled": 0,
+   "modes": {},
+   "shapes": {},
+   "pixel_values": {}
+  },
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/train": {
+   "sampled": 12,
+   "modes": {
+    "L": 12
+   },
+   "shapes": {
+    "(1024, 1024)": 12
+   },
+   "pixel_values": {
+    "0": 2938335,
+    "1": 2450580,
+    "2": 1986366,
+    "3": 8296,
+    "255": 5199335
+   }
+  }
+ },
+ "docs": {
+  "ai4mars-dataset-merged-0.6/changelog.md": "# AI4Mars Merged Dataset Changelog\r\n\r\n## Version 0.6\r\n\r\n- **Fix:** merged MER labels\r\n\r\n## Version 0.5\r\n\r\nCurrent data cleaning ranking: MSL NavCam > MER > MSL MastCam > M2020 NAV > M2020 Geology\r\n\r\n- **M2020 NavCam and MastCam images and labels added**\r\n  - M2020 data includes semantic labels intended to aid with geology\r\n  - Added `label_keys.json` to aid with label decoding\r\n  - Divided mastcam from navcam (mcam / ncam) data\r\n  - Added merged training labels\r\n  - **[NOTE]** there are no expert test sets available for M2020 at this time\r\n\r\n---\r\n\r\n## Version 0.4\r\n\r\n- **MSL MastCam images and labels added**\r\n  - **[NOTE]** Mast images do not have expert labeled test sets available at this time\r\n  - **[NOTE]** Mast images do not have rover or range masks as these data products are not available for this image type.\r\n\r\n---\r\n\r\n## Version 0.3\r\n\r\n- **MER Data Fixes:**\r\n  - Added missing images\r\n  - Removed training labels which overlap with test labels\r\n  - Added merged training labels\r\n    - Merges that resulted in empty labels removed\r\n    - **[NOTE]** Merges currently unmasked (range mask not applied)\r\n\r\n---\r\n\r\n## Version 0.2\r\n\r\n- **MER Data Added:**\r\n  - Includes image products\r\n  - **[NOTE]** 30-meter range and rover mask products not yet provided\r\n  - **[NOTE]** Includes some bad/useless images\r\n  - Includes unmasked+merged labels\r\n  - Includes raw (unmasked, not merged, some bad labels) labels\r\n  - Masked+merged+cleaned labels not yet provided\r\n\r\n---\r\n\r\n## Version 0.1\r\n\r\n- **Contains Curiosity (MSL) Data:**\r\n  - Includes 30-meter range, rover mask, and image products\r\n  - Includes masked+merged+cleaned (bad labels removed) labels\r\n- **WIP**: MER data has not yet been processed/packaged\r\n",
+  "ai4mars-dataset-merged-0.6/info.md": "# AI4Mars Merged Dataset\r\n\r\nThis dataset contains all the images and merged labels gathered by the [AI4Mars project by Zooniverse](https://www.zooniverse.org/projects/hiro-ono/ai4mars) as well as some expert labels gathered by NASA JPL used for creating test sets. Each image in the dataset was labeled by multiple labelers and then merged in post-processing, so while the dataset covers 60K+ images and 300K+ labels, you will only find 60K+ labels. An unmerged label dataset may be made available upon request.\r\n\r\n## Acronyms\r\n\r\n1. MSL - Mars Science Laboratory (Curiosity Rover)\r\n2. MER - Mars Exploration Rovers (Spirit and Opportunity Rovers)\r\n3. M2020 - Mars 2020 Rover (Perseverance)\r\n\r\n## Labels [.png]\r\n\r\nLabels are provided as grayscale `.png` images. Data is organized into train and test sets. Unless otherwise noted, distances further than 30 meters and the rover itself are masked; this is done to remove labeled pixels that don't make sense or are poor quality. \r\n\r\n> **NOTE:** Due to the closeness of pixel values, labels viewed as-is in a regular image viewer will look like black and white images. The pixel values for each class are shown below. Viewing labels as colored overlays requires using a library, such as the python library Pillow (PIL) to create a colored view based on this class key.\r\n\r\n### Navigation (NAV) pixel value key:\r\n\r\nMost labels provided divide terrain into these groups intended to differentiate areas of good or poor traversability/navigation. For more background on how these labels were defined, you can [lookup ai4mars on zooniverse](https://www.zooniverse.org/projects/hiro-ono/ai4mars), and look at the tutorials for labeling any of the non-geology images (attempt to label an image, then click on Tutorial).\r\n\r\n\r\n- `0` - soil\r\n- `1` - bedrock\r\n- `2` - sand\r\n- `3` - big rock\r\n- `255` - NULL (no label)\r\n\r\n### Train\r\n\r\n`train` contains a cleaned and merged version of crowdsourced labels with a minimum agreement of 3 labelers and 2/3 agreement for each pixel. If a pixel does not have meet these requirements, it is marked as NULL (unlabeled). A raw version of the dataset with raw labels (without masking or merging) can be made available upon request.\r\n\r\n### Test\r\n\r\n`test` contains a merged version of expert-gathered labels with 100% agreement required on each pixel. Three different versions of the merge are provided, which specify how many people must agree on each pixel for it to be included in the label. `min3` is the sparsest as it requires all 3 labelers to agree.\r\n\r\n------------------------------\r\n\r\n## Images\r\n\r\nNames of images match names of labels, except for the extension (JPG, PNG) and sometimes an obvious suffix (e.g. `_merged`). The acronyms provided below refer to the acronym included in the middle of the image name. MSL and M2020 MastCam images are in color.\r\n\r\n### EDR (MSL), ML (MSL), EFF (MER), Vgnc (M2020), NLF (M2020), ZL0 (M2020) [.JPG]\r\nThe actual images of Mars that labels are made for and for which training and inference are run on. As available in this dataset, EDR, EFF, Vgnc, NLF are for NavCams; ML and ZL0 is for the MastCam. Note that these acronyms in filenames do have meaning; more info can be found in the relevant PDS image document (e.g. for MSL, [see here](https://planetarydata.jpl.nasa.gov/img/data/msl/MSLNAV_1XXX/DOCUMENT/MSL_CAMERA_SIS.PDF)). *NOTE:* MastCam does not have rover or range masks applied (they do not exist).\r\n\r\n### MXY (MSL), MRL (MER) [.png]\r\nRover masks used to remove labels/inferences from the rover. Masked regions are set to 1 (binary image).\r\n\r\n### RNG-30M, RNL-30M [.png]\r\nRange masks used to mask out distances that are further than 30 meters. Masked regions are set to 1 (binary image). This product is generated from [planetary data system (PDS)](https://pds-imaging.jpl.nasa.gov/volumes/) range image products for many Mars images. Future versions of the dataset will include instructions on downloading and processing those range products.\r\n\r\n## M2020 Geology (M2020_GEO) Label Keys (Beta)\r\n\r\nbedrock, float rock, and sand each have their own subtypes in this dataset, so these semantic labels are organized by factors of 10, where label number = (10^(base_type) + subtype). For more background on how these labels were defined, it may be helpful to look at the tutorials [on Zooniverse](https://www.zooniverse.org/projects/hiro-ono/ai4mars) for Perseverance Geology (attempt to label an image, then click on Tutorial).\r\n\r\n- `0` - bedrock_massive\r\n- `1` - bedrock_layered (angled)\r\n- `2` - bedrock_layered (flat)\r\n- `3` - bedrock_layered (unsure)\r\n- `4` - bedrock_conglomerate\r\n- `5` - bedrock_holey\r\n- `6` - bedrock_unsure\r\n- `10` - float rock(s)_massive\r\n- `11` - float rock(s)_layered (angled)\r\n- `12` - float rock(s)_layered (flat)\r\n- `13` - float rock(s)_layered (unsure)\r\n- `14` - float rock(s)_conglomerate\r\n- `15` - float rock(s)_holey\r\n- `16` - float rock(s)_mixed\r\n- `17` - float rock(s)_unsure\r\n- `20` - sand_dune\r\n- `21` - sand_ripples\r\n- `22` - sand_sand\r\n- `30` - pebbles\r\n- `40` - vein (rare)\r\n- `50` - hill/peak\r\n- `255` - NULL (no label)",
+  "ai4mars-dataset-merged-0.6/label_keys.json": "{\r\n    \"NAV\": {\r\n        \"0\": \"soil\",\r\n        \"1\": \"bedrock\",\r\n        \"2\": \"sand\",\r\n        \"3\": \"big rock\",\r\n        \"255\": null\r\n    },\r\n    \"M2020_GEO\": {\r\n        \"0\": \"bedrock_massive\",\r\n        \"1\": \"bedrock_layered (angled)\",\r\n        \"2\": \"bedrock_layered (flat)\",\r\n        \"3\": \"bedrock_layered (unsure)\",\r\n        \"4\": \"bedrock_conglomerate\",\r\n        \"5\": \"bedrock_holey\",\r\n        \"6\": \"bedrock_unsure\",\r\n        \"10\": \"float rock(s)_massive\",\r\n        \"11\": \"float rock(s)_layered (angled)\",\r\n        \"12\": \"float rock(s)_layered (flat)\",\r\n        \"13\": \"float rock(s)_layered (unsure)\",\r\n        \"14\": \"float rock(s)_conglomerate\",\r\n        \"15\": \"float rock(s)_holey\",\r\n        \"16\": \"float rock(s)_mixed\",\r\n        \"17\": \"float rock(s)_unsure\",\r\n        \"20\": \"sand_dune\",\r\n        \"21\": \"sand_ripples\",\r\n        \"22\": \"sand_sand\",\r\n        \"30\": \"pebbles\",\r\n        \"40\": \"vein (rare)\",\r\n        \"50\": \"hill/peak\",\r\n        \"255\": null\r\n    }\r\n}",
+  "ai4mars-dataset-merged-0.6/m2020/images/DATA_NOTES.txt": "HAFIQ and ncam are both NavCam image sets, HAFIQ/Vgnc is an artifact from before the naming structure had been setup\n\nSome of the images in ncam are the same (same name, same picture), but the .jpeg version is higher quality than the .jpg version. You can find them doing:\n\nls | sed 's/\\.[^.]*$//' | sort | uniq -d\n\n",
+  "ai4mars-dataset-merged-0.6/m2020/labels/NAV_DATA_NOTE.txt": "The NAV labels only use NavCam data.\n\nNAV Vgnc Labels that have -1 -2 -3 -4 after the first two number sets are all referring to the same images.\n",
+  "ai4mars-dataset-merged-0.6/mer/labels/test/masked-gold-min3-100agree/test.csv": "1n129697839eff0338p1931l0m1,1n129697839eff0338p1931l0m1.JPG\r\n1n129697952eff0338p1932l0m1,1n129697952eff0338p1932l0m1.JPG\r\n1n129698004eff0338p1932l0m1,1n129698004eff0338p1932l0m1.JPG\r\n1n136619282eff2000p1985l0m1,1n136619282eff2000p1985l0m1.JPG\r\n1n136619354eff2000p1985l0m1,1n136619354eff2000p1985l0m1.JPG\r\n1n136619505eff2000p1985l0m1,1n136619505eff2000p1985l0m1.JPG\r\n1n138388241eff2700p1994l0m1,1n138388241eff2700p1994l0m1.JPG\r\n1n138388315eff2700p1994l0m1,1n138388315eff2700p1994l0m1.JPG\r\n1n138388440eff2700p1994l0m1,1n138388440eff2700p1994l0m1.JPG\r\n1n138404731eff2800p1986l0m1,1n138404731eff2800p1986l0m1.JPG\r\n1n138404818eff2800p1986l0m1,1n138404818eff2800p1986l0m1.JPG\r\n1n138404940eff2800p1986l0m1,1n138404940eff2800p1986l0m1.JPG\r\n1n145332766eff3500p1817l0m1,1n145332766eff3500p1817l0m1.JPG\r\n1n145332822eff3500p1817l0m1,1n145332822eff3500p1817l0m1.JPG\r\n1n154375621eff3800p1992l0m1,1n154375621eff3800p1992l0m1.JPG\r\n1n154375709eff3800p1992l0m1,1n154375709eff3800p1992l0m1.JPG\r\n1n154375833eff3800p1992l0m1,1n154375833eff3800p1992l0m1.JPG\r\n1n156861613eff4000p0605l0m1,1n156861613eff4000p0605l0m1.JPG\r\n1n156861737eff4000p0605l0m1,1n156861737eff4000p0605l0m1.JPG\r\n1n156861839eff4000p0605l0m1,1n156861839eff4000p0605l0m1.JPG\r\n1n167781601eff55dip0703l0m1,1n167781601eff55dip0703l0m1.JPG\r\n1n167781704eff55dip0703l0m1,1n167781704eff55dip0703l0m1.JPG\r\n1n167782036eff55dip1893l0m1,1n167782036eff55dip1893l0m1.JPG\r\n1n167782453eff55dip1893l0m1,1n167782453eff55dip1893l0m1.JPG\r\n1n167782661eff55dip1893l0m1,1n167782661eff55dip1893l0m1.JPG\r\n1n167782983eff55dip1893l0m1,1n167782983eff55dip1893l0m1.JPG\r\n1n167796453eff55dip1926l0m1,1n167796453eff55dip1926l0m1.JPG\r\n1n176576486eff5847p0693l0m1,1n176576486eff5847p0693l0m1.JPG\r\n1n176576588eff5847p0693l0m1,1n176576588eff5847p0693l0m1.JPG\r\n1n179677936eff6000p0705l0m1,1n179677936eff6000p0705l0m1.JPG\r\n1n179678039eff6000p0705l0m1,1n179678039eff6000p0705l0m1.JPG\r\n1n179678217eff6000p0705l0m1,1n179678217eff6000p0705l0m1.JPG\r\n1n179678560eff6000p1920l0m1,1n179678560eff6000p1920l0m1.JPG\r\n1n179678945eff6000p1920l0m1,1n179678945eff6000p1920l0m1.JPG\r\n1n179679147eff6000p1920l0m1,1n179679147eff6000p1920l0m1.JPG\r\n1n207287403eff74v1p1825l0m1,1n207287403eff74v1p1825l0m1.JPG\r\n1n207287541eff74v1p1825l0m1,1n207287541eff74v1p1825l0m1.JPG\r\n1n207287630eff74v1p1825l0m1,1n207287630eff74v1p1825l0m1.JPG\r\n1n207289064eff74v1p1824l0m1,1n207289064eff74v1p1824l0m1.JPG\r\n1n207289482eff74v1p1824l0m1,1n207289482eff74v1p1824l0m1.JPG\r\n1n207289693eff74v1p1824l0m1,1n207289693eff74v1p1824l0m1.JPG\r\n1n220424155eff77y2p1911l0m1,1n220424155eff77y2p1911l0m1.JPG\r\n1n220424228eff77y2p1911l0m1,1n220424228eff77y2p1911l0m1.JPG\r\n1n220424447eff77y2p1911l0m1,1n220424447eff77y2p1911l0m1.JPG\r\n1n220424868eff77y2p1911l0m1,1n220424868eff77y2p1911l0m1.JPG\r\n1n220425287eff77y2p1911l0m1,1n220425287eff77y2p1911l0m1.JPG\r\n1n220425501eff77y2p1911l0m1,1n220425501eff77y2p1911l0m1.JPG\r\n1n228234996eff8100p1962l0m1,1n228234996eff8100p1962l0m1.JPG\r\n1n228235084eff8100p1962l0m1,1n228235084eff8100p1962l0m1.JPG\r\n1n228235196eff8100p1963l0m1,1n228235196eff8100p1963l0m1.JPG\r\n1n228235621eff8100p1963l0m1,1n228235621eff8100p1963l0m1.JPG\r\n1n228236085eff8100p1963l0m1,1n228236085eff8100p1963l0m1.JPG\r\n1n265963696eff89bap0783l0m1,1n265963696eff89bap0783l0m1.JPG\r\n1n265963814eff89bap0783l0m1,1n265963814eff89bap0783l0m1.JPG\r\n1n271377429eff90dcp1935l0m1,1n271377429eff90dcp1935l0m1.JPG\r\n1n271377483eff90dcp1935l0m1,1n271377483eff90dcp1935l0m1.JPG\r\n1n271377574eff90dcp1935l0m1,1n271377574eff90dcp1935l0m1.JPG\r\n1n271377627eff90dcp1935l0m1,1n271377627eff90dcp1935l0m1.JPG\r\n1n271381875eff90dxp1981l0m1,1n271381875eff90dxp1981l0m1.JPG\r\n1n271381983eff90dxp0753l0m1,1n271381983eff90dxp0753l0m1.JPG\r\n1n271382036eff90dxp0753l0m1,1n271382036eff90dxp0753l0m1.JPG\r\n1n277867512eff9200p1981l0m1,1n277867512eff9200p1981l0m1.JPG\r\n1n277867565eff9200p1981l0m1,1n277867565eff9200p1981l0m1.JPG\r\n1n277867622eff9200p1994l0m1,1n277867622eff9200p1994l0m1.JPG\r\n1n277867874eff9200p0733l0m1,1n277867874eff9200p0733l0m1.JPG\r\n1n277868022eff9200p1635l0m1,1n277868022eff9200p1635l0m1.JPG\r\n1n277868308eff9200p1635l0m1,1n277868308eff9200p1635l0m1.JPG\r\n1n277868714eff9200p1635l0m1,1n277868714eff9200p1635l0m1.JPG\r\n1n277869052eff9200p1691l0m1,1n277869052eff9200p1691l0m1.JPG\r\n1n288519235eff98j5p1981l0m1,1n288519235eff98j5p1981l0m1.JPG\r\n1n288519342eff98j5p1994l0m1,1n288519342eff98j5p1994l0m1.JPG\r\n1n288519584eff98j5p1925l0m1,1n288519584eff98j5p1925l0m1.JPG\r\n1n288519837eff98j5p1925l0m1,1n288519837eff98j5p1925l0m1.JPG\r\n1n288520188eff98j5p1625l0m1,1n288520188eff98j5p1625l0m1.JPG\r\n1n288520413eff98j5p1625l0m1,1n288520413eff98j5p1625l0m1.JPG\r\n1n288520865eff98j5p1625l0m1,1n288520865eff98j5p1625l0m1.JPG\r\n1n396383395effbt00p1982l0m1,1n396383395effbt00p1982l0m1.JPG\r\n1n396383542effbt00p0703l0m1,1n396383542effbt00p0703l0m1.JPG\r\n1n396383646effbt00p1970l0m1,1n396383646effbt00p1970l0m1.JPG\r\n1n396383837effbt00p1970l0m1,1n396383837effbt00p1970l0m1.JPG\r\n1n396384168effbt00p1970l0m1,1n396384168effbt00p1970l0m1.JPG\r\n1n396384495effbt00p1970l0m1,1n396384495effbt00p1970l0m1.JPG\r\n1n422470843effbz00p1994l0m1,1n422470843effbz00p1994l0m1.JPG\r\n1n422477305effbzcup0723l0m1,1n422477305effbzcup0723l0m1.JPG\r\n1n422477356effbzcup0723l0m1,1n422477356effbzcup0723l0m1.JPG\r\n1n422477480effbzcup1627l0m1,1n422477480effbzcup1627l0m1.JPG\r\n1n422477583effbzcup1627l0m1,1n422477583effbzcup1627l0m1.JPG\r\n1n422477842effbzcup1627l0m1,1n422477842effbzcup1627l0m1.JPG\r\n1n422478247effbzcup1627l0m1,1n422478247effbzcup1627l0m1.JPG\r\n1n423364328effc0ijp1919l0m1,1n423364328effc0ijp1919l0m1.JPG\r\n1n423368871effc0nsp0712l0m1,1n423368871effc0nsp0712l0m1.JPG\r\n1n423368923effc0nsp0712l0m1,1n423368923effc0nsp0712l0m1.JPG\r\n1n428423189effc6e2p0762l0m1,1n428423189effc6e2p0762l0m1.JPG\r\n1n428423226effc6e2p0762l0m1,1n428423226effc6e2p0762l0m1.JPG\r\n1n430028131effc7cbp0693l0m1,1n430028131effc7cbp0693l0m1.JPG\r\n1n430028183effc7cbp0693l0m1,1n430028183effc7cbp0693l0m1.JPG\r\n1n430028234effc7cbp0693l0m1,1n430028234effc7cbp0693l0m1.JPG\r\n1n448847797effcbh9p0743l0m1,1n448847797effcbh9p0743l0m1.JPG\r\n1n448847900effcbh9p0743l0m1,1n448847900effcbh9p0743l0m1.JPG\r\n1n455242123effcdibp0723l0m1,1n455242123effcdibp0723l0m1.JPG\r\n1n455242261effcdibp1783l0m1,1n455242261effcdibp1783l0m1.JPG\r\n1n455242312effcdibp1783l0m1,1n455242312effcdibp1783l0m1.JPG\r\n1n455242424effcdibp1964l0m1,1n455242424effcdibp1964l0m1.JPG\r\n1n455242837effcdibp1964l0m1,1n455242837effcdibp1964l0m1.JPG\r\n1n455242973effcdibp1964l0m1,1n455242973effcdibp1964l0m1.JPG\r\n1n464200069effchqnp0735l0m1,1n464200069effchqnp0735l0m1.JPG\r\n1n464200283effchqnp0735l0m1,1n464200283effchqnp0735l0m1.JPG\r\n1n464200626effchqnp0735l0m1,1n464200626effchqnp0735l0m1.JPG\r\n1n464200910effchqnp1635l0m1,1n464200910effchqnp1635l0m1.JPG\r\n1n464201045effchqnp1635l0m1,1n464201045effchqnp1635l0m1.JPG\r\n1n464201329effchqnp1635l0m1,1n464201329effchqnp1635l0m1.JPG\r\n1n465089901effchvop0665l0m1,1n465089901effchvop0665l0m1.JPG\r\n1n465089973effchvop0665l0m1,1n465089973effchvop0665l0m1.JPG\r\n1n465090010effchvop0665l0m1,1n465090010effchvop0665l0m1.JPG\r\n1n465090061effchvop0665l0m1,1n465090061effchvop0665l0m1.JPG\r\n1n465090097effchvop0665l0m1,1n465090097effchvop0665l0m1.JPG\r\n1n480357822effcmizp1785l0m1,1n480357822effcmizp1785l0m1.JPG\r\n1n480358068effcmizp1785l0m1,1n480358068effcmizp1785l0m1.JPG\r\n1n480358341effcmizp1785l0m1,1n480358341effcmizp1785l0m1.JPG\r\n1n483822244effcn55p0745l0m1,1n483822244effcn55p0745l0m1.JPG\r\n1n483822332effcn55p0745l0m1,1n483822332effcn55p0745l0m1.JPG\r\n1n483822455effcn55p0745l0m1,1n483822455effcn55p0745l0m1.JPG\r\n1n483822542effcn55p1823l0m1,1n483822542effcn55p1823l0m1.JPG\r\n1n483822829effcn55p1823l0m1,1n483822829effcn55p1823l0m1.JPG\r\n1n507355050effcp70p1984l0m1,1n507355050effcp70p1984l0m1.JPG\r\n1n507355406effcp70p1984l0m1,1n507355406effcp70p1984l0m1.JPG\r\n1n507355568effcp70p1984l0m1,1n507355568effcp70p1984l0m1.JPG\r\n1n507355729effcp70p1984l0m1,1n507355729effcp70p1984l0m1.JPG\r\n1n533089636effctnup1984l0m1,1n533089636effctnup1984l0m1.JPG\r\n1n533089995effctnup1984l0m1,1n533089995effctnup1984l0m1.JPG\r\n1n533090157effctnup1980l0m1,1n533090157effctnup1980l0m1.JPG\r\n1n533090319effctnup1980l0m1,1n533090319effctnup1980l0m1.JPG\r\n1n533090464effctnup1980l0m1,1n533090464effctnup1980l0m1.JPG\r\n1n535578238effcub1p1826l0m1,1n535578238effcub1p1826l0m1.JPG\r\n1n535578384effcub1p1826l0m1,1n535578384effcub1p1826l0m1.JPG\r\n1n535578544effcub1p1826l0m1,1n535578544effcub1p1826l0m1.JPG\r\n1n535578691effcub1p1826l0m1,1n535578691effcub1p1826l0m1.JPG\r\n1n535578850effcub1p1826l0m1,1n535578850effcub1p1826l0m1.JPG\r\n1n535579047effcub1p1826l0m1,1n535579047effcub1p1826l0m1.JPG\r\n1n538599615effcvb1p1981l0m1,1n538599615effcvb1p1981l0m1.JPG\r\n1n538600066effcvb6p1975l0m1,1n538600066effcvb6p1975l0m1.JPG\r\n2n130887021eff10agp1863l0m1,2n130887021eff10agp1863l0m1.JPG\r\n2n130887058eff10agp1868l0m1,2n130887058eff10agp1868l0m1.JPG\r\n2n130887115eff10agp1878l0m1,2n130887115eff10agp1878l0m1.JPG\r\n2n130887208eff10agp1883l0m1,2n130887208eff10agp1883l0m1.JPG\r\n2n130887245eff10agp1888l0m1,2n130887245eff10agp1888l0m1.JPG\r\n2n130887332eff10agp1898l0m1,2n130887332eff10agp1898l0m1.JPG\r\n2n130896685eff10cep1933l0m1,2n130896685eff10cep1933l0m1.JPG\r\n2n130897724eff1100p1900l0m1,2n130897724eff1100p1900l0m1.JPG\r\n2n130897774eff1100p1900l0m1,2n130897774eff1100p1900l0m1.JPG\r\n2n130897824eff1100p1900l0m1,2n130897824eff1100p1900l0m1.JPG\r\n2n130899732eff1100p1901l0m1,2n130899732eff1100p1901l0m1.JPG\r\n2n130899782eff1100p1901l0m1,2n130899782eff1100p1901l0m1.JPG\r\n2n130900042eff1100p1901l0m1,2n130900042eff1100p1901l0m1.JPG\r\n2n130900156eff1100p1901l0m1,2n130900156eff1100p1901l0m1.JPG\r\n2n130900315eff1100p1901l0m1,2n130900315eff1100p1901l0m1.JPG\r\n2n132312350eff17b8p1944l0m1,2n132312350eff17b8p1944l0m1.JPG\r\n2n132319976eff1800p1816l0m1,2n132319976eff1800p1816l0m1.JPG\r\n2n132320012eff1800p1816l0m1,2n132320012eff1800p1816l0m1.JPG\r\n2n132320048eff1800p1816l0m1,2n132320048eff1800p1816l0m1.JPG\r\n2n132756216eff1957p1952l0m1,2n132756216eff1957p1952l0m1.JPG\r\n2n132759393eff2000p1951l0m1,2n132759393eff2000p1951l0m1.JPG\r\n2n132759430eff2000p1951l0m1,2n132759430eff2000p1951l0m1.JPG\r\n2n132759467eff2000p1951l0m1,2n132759467eff2000p1951l0m1.JPG\r\n2n132759504eff2000p1951l0m1,2n132759504eff2000p1951l0m1.JPG\r\n2n137019806eff40d0p1979l0m1,2n137019806eff40d0p1979l0m1.JPG\r\n2n137019842eff40d0p1979l0m1,2n137019842eff40d0p1979l0m1.JPG\r\n2n137019893eff40d0p1979l0m1,2n137019893eff40d0p1979l0m1.JPG\r\n2n137019929eff40d0p1979l0m1,2n137019929eff40d0p1979l0m1.JPG\r\n2n137019981eff40d0p1979l0m1,2n137019981eff40d0p1979l0m1.JPG\r\n2n137020031eff40d0p1979l0m1,2n137020031eff40d0p1979l0m1.JPG\r\n2n137020202eff40d0p1979l0m1,2n137020202eff40d0p1979l0m1.JPG\r\n2n137020341eff40d0p1979l0m1,2n137020341eff40d0p1979l0m1.JPG\r\n2n137020513eff40d0p1979l0m1,2n137020513eff40d0p1979l0m1.JPG\r\n2n137020663eff40d0p1979l0m1,2n137020663eff40d0p1979l0m1.JPG\r\n2n137027211eff40e6p1950l0m1,2n137027211eff40e6p1950l0m1.JPG\r\n2n137028119eff4100p1827l0m1,2n137028119eff4100p1827l0m1.JPG\r\n2n137028155eff4100p1827l0m1,2n137028155eff4100p1827l0m1.JPG\r\n2n137028206eff4100p1827l0m1,2n137028206eff4100p1827l0m1.JPG\r\n2n140212717eff6800p0665l0m1,2n140212717eff6800p0665l0m1.JPG\r\n2n140212820eff6800p0665l0m1,2n140212820eff6800p0665l0m1.JPG\r\n2n140212918eff6800p0665l0m1,2n140212918eff6800p0665l0m1.JPG\r\n2n140213049eff6800p0665l0m1,2n140213049eff6800p0665l0m1.JPG\r\n2n140219194eff6800p1665l0m1,2n140219194eff6800p1665l0m1.JPG\r\n2n140219323eff6800p1665l0m1,2n140219323eff6800p1665l0m1.JPG\r\n2n140219481eff6800p1665l0m1,2n140219481eff6800p1665l0m1.JPG\r\n2n140219807eff6800p1665l0m1,2n140219807eff6800p1665l0m1.JPG\r\n2n149535166eff8815p0603l0m1,2n149535166eff8815p0603l0m1.JPG\r\n2n149535202eff8815p0603l0m1,2n149535202eff8815p0603l0m1.JPG\r\n2n149535301eff8815p1902l0m1,2n149535301eff8815p1902l0m1.JPG\r\n2n153890893eff9100p0645l0m1,2n153890893eff9100p0645l0m1.JPG\r\n2n153891039eff9100p0645l0m1,2n153891039eff9100p0645l0m1.JPG\r\n2n153891497eff9100p0645l0m1,2n153891497eff9100p0645l0m1.JPG\r\n2n153891677eff9100p1745l0m1,2n153891677eff9100p1745l0m1.JPG\r\n2n153892090eff9100p1745l0m1,2n153892090eff9100p1745l0m1.JPG\r\n2n153892472eff9100p1745l0m1,2n153892472eff9100p1745l0m1.JPG\r\n2n189670247effalhqp0695l0m1,2n189670247effalhqp0695l0m1.JPG\r\n2n189670349effalhqp0695l0m1,2n189670349effalhqp0695l0m1.JPG\r\n2n189670436effalhqp0695l0m1,2n189670436effalhqp0695l0m1.JPG\r\n2n189670487effalhqp0695l0m1,2n189670487effalhqp0695l0m1.JPG\r\n2n190198890effamenp0705l0m1,2n190198890effamenp0705l0m1.JPG\r\n2n190199028effamenp0705l0m1,2n190199028effamenp0705l0m1.JPG\r\n2n190199079effamenp0705l0m1,2n190199079effamenp0705l0m1.JPG\r\n2n190199130effamenp0705l0m1,2n190199130effamenp0705l0m1.JPG\r\n",
+  "ai4mars-dataset-merged-0.6/mer/labels/train/NOTE.txt": "Each label is named <basename>_merged#.png, where <basename> corresponds to the image filename, and # corresponds to the number of labels the single merged label was sourced from using a 2/3 agreement metric and a minimum of 3 labelers per image. Pixels not meeting the 2/3 agreement metric are left as NULL, and images that do not have at least 3 labels are skipped.",
+  "ai4mars-dataset-merged-0.6/mer/NOTE.txt": "Opportunity filename prefix: 1\nSpirit filename prefix: 2\n",
+  "ai4mars-dataset-merged-0.6/msl/ncam/labels/test/NOTE.txt": "min1, min2, min3 agree refer to the algorithm used to merge test labels. For example, for min2-100agree, semantic labeled pixels are only included if at least 2 out of the 3 expert labelers agreed on those pixels.",
+  "ai4mars-dataset-merged-0.6/msl/NOTE.txt": "mcam: mastcam, color images; used for science and rover operator understanding. Generally does not include range data\r\nncam: navcam, grayscale images; stereo imagery the rover uses to drive",
+  "ai4mars-dataset-merged-0.6/TODO.md": "* Unify/organize all text files.\r\n* Remove empty labels\r\n* Remove images that are missing labels\r\n* Handle different quality duplicates in m2020 images (.jpeg vs .jpg)\r\n  * Some labels are for one or the other, and sometimes the resolutions are different\r\n* Unify suffixes for all image data (.JPG)\r\n* Merge M2020 HAFIQ and Navcam image datasets\r\n  * Rename all HAFIQ images and labels to proper names?\r\n  * Combine any HAFIQ duplicate labels: -1 -2 -3 -4, etc. \r\n* Add tools for decoding SCLK for each mission\r\n* Add tool to visualize/save viz masks\r\n* Link to all relevant CAMSIS documents\r\n* add mer masks, mer masked data, msl unmasked data, m2020 data, msl mastcam data"
+ }
+}
