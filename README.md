@@ -31,7 +31,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Safety checks** | walk-back margin and point of no return, slope, radius, carry weight, rover reach, sunset, dose, space weather |
 | **EVA limit sets** | Lunar ConOps (NASA) or **Mars conservative** (derived for Mars gravity) |
 | **Outputs** | 3D planning view, live EVA HUD, printable **cuff card** (A4 / PDF); works on desktop, tablet and phone |
-| **Tests** | 61 JavaScript + 5 Python, run on every push before deploy |
+| **Tests** | 64 JavaScript + 7 Python, run on every push before deploy |
 
 ## Try it
 
@@ -50,6 +50,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 5. **PRINT CUFF CARD** for the one-page wrist card.
 6. **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**).
 7. **Terrain mode** DEM / HiRISE / WIRE, and **Map Layers → DRAPE ON 3D TERRAIN** for minerals, thermal inertia, rocks, geology or slope.
+8. **COMPARE LAYERS** swipes between two layers on the map; **…'S ROUTE & PLACES** shows where the rover itself drove.
 
 ## On a tablet or a phone
 
@@ -189,6 +190,20 @@ At Gale, stops near rocks Curiosity analysed also have a **chemistry** card: the
 
 ![CRISM minerals draped on the Jezero terrain: olivine in red, olivine + smectite in pink, high-Ca pyroxene in brown; the route card lists radiation dose, ground type and minerals crossed](docs/img/minerals.jpg)
 
+## The challenge's NASA resources, one by one
+
+The challenge lists five NASA resources. This is what each one gave the project.
+
+| Resource | What it is | In Martian Map |
+|---|---|---|
+| [JPL Mars Trek](https://trek.nasa.gov/mars/) | Whole-planet portal: stack and blend layers, measure distances, **elevation plots**, slope and lighting analysis, 3D fly-overs | The same kinds of analysis at Marswalk scale: slope walls, sun and shadow for the EVA's own date and time, 3D view — and an **elevation profile** of every planned route (route card and cuff card), stops numbered |
+| [USGS–NASA Planetary Geologic Mapping Program](https://astrogeology-usgs.hub.arcgis.com/pages/interactive-maps-mars) | Standardized geologic maps: the global map at 1:20,000,000 (Tanaka et al. 2014, SIM 3292); for Jezero, Sun & Stack (2020), SIM 3464, at 1:75,000 on a CTX base | Jezero uses the same team's finer, HiRISE-scale photogeologic map (Stack et al. 2020): at 1:75,000 a 2 km site is under 3 cm of map sheet. For Gale no USGS map is published yet — the 1:60,000 map of western Aeolis Mons was finalized in 2023 but still awaited formal USGS review (Thomson et al. 2023) — so Gale's units are derived and labelled as such |
+| [Curiosity's proposed path up Mount Sharp](https://science.nasa.gov/resource/curiositys-proposed-path-up-mount-sharp/) (PIA23179) and its 2023 sequel (PIA26042) | Route maps: the rover's path as a pale line over the orbital image, with the regions it crosses labelled | **…'S ROUTE & PLACES**: the rover's own localized route through each site as a pale line on the map and in 3D (Curiosity: 137 positions, 3.2 km; Perseverance: 110 positions, 5.3 km), with entry / exit sols, Octavia E. Butler Landing at Jezero, and Gale's three stratigraphic levels as labelled regions. The planned Marswalk is drawn over it, so the crew sees where a rover has already been |
+| [NASA Worldview](https://worldview.earthdata.nasa.gov/) | Earth imagery browser (no Mars data) with a timeline and a **comparison mode** that swipes between two views | Inspiration for the interface only: **COMPARE LAYERS** swipes between any two layers of a site — say the HiRISE image against CRISM minerals or the slope map — and the date / time controls drive sun, temperature and space weather |
+| [Mars Perseverance Raw Images](https://mars.nasa.gov/mars2020/multimedia/raw-images/) | Every frame the rover has sent, with sol, camera and local time | All 947 Jezero ground-view frames come from this feed, each linked to its page in the gallery; Gale uses Curiosity's equivalent feed (2,868 frames) |
+
+![Layer comparison at Gale — the HiRISE image against the derived stratigraphic levels — with Curiosity's own route and the planned EVA's elevation profile](docs/img/resources.jpg)
+
 ## Inspiration: Apollo cuff checklists
 
 On the Moon, Apollo crews did not carry a screen. They wore a small spiral-bound checklist on the wrist, about 18 × 9 cm, its pages turnable in pressurised gloves, and travelled — on foot or by lunar rover — to stations planned on photo maps. The Apollo 17 traverse planning data gave, for every station, the time to spend there (Station 2: 0+50, Station 3: 0+45 …) and the walk back to the lunar module if the rover failed, with a 30-minute life-support reserve on top.
@@ -241,7 +256,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (61 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
+`node --test web/tests/*.test.mjs` (64 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
 
 | Area | What is checked |
 |---|---|
@@ -250,6 +265,8 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 | Data | `climate.json` and `geology.json` match independent recomputations from the original files; HiRISE images line up with the DTMs to ≤ 1 m (phase correlation) |
 | Planning & playback | the stop optimiser equals brute force on 40 random cases; mineral and chemistry stops are found and scored; the playback timeline equals the planner's round trip; the abort path time equals the Dijkstra return time; morning starts pass the daylight rule, evening and night starts are NO-GO |
 | Cuff card | arrival, stay, leg, bearing, BACK, LEAVE BY and margin rebuilt from a hand-made route |
+| Elevation profile | distance, absolute elevation, extremes and stops of a hand-made route; thinning keeps stops and extremes |
+| Rover track | waypoints come out in drive order and split where the rover leaves the site; every region label lies inside its own unit |
 | Share link | site, start, date, mission setup and route survive the link; bad links are ignored |
 | Safety numbers | GCR dose scaling, the SEP advisory window, the suit carry limit (Mars suit passes, xEMU fails), the rover drive estimate, the dose comparison, and both EVA limit sets (values, sources, walking-time scaling) |
 
@@ -280,6 +297,9 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - Stack, K. M., et al. (2020). *Photogeologic map of the Perseverance rover field site in Jezero crater.* Space Sci. Rev. 216, 127. [doi:10.1007/s11214-020-00739-x](https://doi.org/10.1007/s11214-020-00739-x) (CC BY 4.0)
 - Parente, M., Saranathan, A. M., Itoh, Y., Tarnas, J. D., Seelos, F. P., Mustard, J. F. (2021). *Map of the dominant mineralogy over and around the Mars2020 landing ellipse.* Zenodo. [doi:10.5281/zenodo.5575824](https://doi.org/10.5281/zenodo.5575824) (CC BY 4.0)
 - Edwards, C. S. & Buz, J. (2021). *THEMIS-derived Thermal Inertia of Jezero Crater, Mars.* Zenodo. [doi:10.5281/zenodo.4931348](https://doi.org/10.5281/zenodo.4931348) (CC BY 4.0)
+- Sun, V. Z. & Stack, K. M. (2020). *Geologic map of Jezero crater and the Nili Planum region, Mars.* USGS Scientific Investigations Map 3464, 1:75,000. [doi:10.3133/sim3464](https://doi.org/10.3133/sim3464) — regional context; not used as a layer.
+- Tanaka, K. L., et al. (2014). *Geologic map of Mars.* USGS Scientific Investigations Map 3292, 1:20,000,000. [doi:10.3133/sim3292](https://doi.org/10.3133/sim3292) — global context; not used as a layer.
+- Thomson, B., Ettenborough, I., Buczkowski, D., Seelos, K. D., Weitz, C. (2023). *Updated geologic map of the western portion of Aeolis Mons, Gale crater.* GSA Connects 2023, Paper 113-12. [abstract](https://gsa.confex.com/gsa/2023AM/webprogram/Paper394643.html) — the 1:60,000 map not yet published.
 - Wiens, R. C., Maurice, S., et al. *MSL ChemCam LIBS derived data (RDR), major-oxide compositions*, PDS Geosciences Node (Release 42, 2026); calibration: Clegg, S. M., et al. (2017), Spectrochim. Acta B 129, 64–85.
 
 **Atmosphere and radiation**
@@ -296,6 +316,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - Norcross, J., et al. (2009). *Feasibility of Performing a Suited 10-km Ambulation on the Moon.* NASA/TP-2009-214796. [lpi.usra.edu](https://www.lpi.usra.edu/lunar/artemis/NorcrossEtAl_NASA-TP-2009-214796_EVA%20Walkback%20Test.pdf)
 - Ogilvie, R., et al. (2026). *Mars Spacesuit Mass Requirements.* ICES-2026. [NASA NTRS 20260005410](https://ntrs.nasa.gov/citations/20260005410)
 - NASA Manned Spacecraft Center (1972). *Apollo 17 Traverse Planning Data*, 3rd ed.; Apollo Lunar Surface Journal. [nasa.gov](https://www.nasa.gov/wp-content/uploads/static/history/alsj/a17/A17TraversePlanningData.pdf) · Cuff checklist, EVA 2 & 3, Apollo 16, Smithsonian National Air and Space Museum. [Google Arts & Culture](https://artsandculture.google.com/asset/cuff-checklist-eva-2-3-apollo-16-young/0wHa5HswXSXP3Q)
+- NASA/JPL-Caltech/ESA/Univ. of Arizona/JHUAPL/MSSS/USGS Astrogeology Science Center. *Curiosity's Proposed Path up Mount Sharp* (PIA23179, 2019) and *Curiosity's Path to Gediz Vallis Ridge and Beyond* ([PIA26042](https://science.nasa.gov/photojournal/curiositys-path-to-gediz-vallis-ridge-and-beyond/), 2023) — the route-map style. NASA/JPL *Mars Trek* ([about](https://trek.nasa.gov/mars/jpl/config/textAbout.html)) — elevation plots. NASA *Worldview* ([comparison mode](https://www.earthdata.nasa.gov/news/blog/introducing-worldviews-comparison-feature)) — layer swipe.
 - Allison, M. & McEwen, M. (2000). Mars24 algorithm, NASA GISS. Tobler, W. (1993), NCGIA TR 93-1.
 
 ## Use of AI
@@ -307,16 +328,16 @@ Developed with AI assistance (Anthropic Claude) for code, data pipelines, tests 
 ```
 web/     the web app (React + Three.js / react-three-fiber, Vite)
   src/utils/              walkModel · pathfinder (A*) · walkback (Dijkstra) · science (stop optimiser)
-                          radiation · marsTime (Mars24) · shadows · climate · chemistry · cuffCard
+                          radiation · marsTime (Mars24) · shadows · climate · chemistry · cuffCard · elevationProfile
                           evaTimeline + evaPlayback · orthoImage
   src/config/             marswalkProfile (EVA limits, both sets) · mission (suit, equipment, rover)
   src/components/         MoonScene (3D) · MarsCrew · EvaHud · RightPanel · SiteSwitcher
-                          PovViewer (ground view) · ChemistryCard · CuffCard
-  public/sites/jezero/    grid.bin · ortho (HiRISE) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov
-  public/sites/gale/      grid.bin · ortho (HiRISE) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov
+                          PovViewer (ground view) · ChemistryCard · CuffCard · ElevationProfile
+  public/sites/jezero/    grid.bin · ortho (HiRISE) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov · track
+  public/sites/gale/      grid.bin · ortho (HiRISE) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov · track
   tests/                  node --test suites
 pipeline/                 fetch_sources · fetch_gale · fetch_chemistry · fetch_rems
-                          build_site · build_ortho · build_layers · build_space_weather · build_pov
+                          build_site · build_ortho · build_layers · build_space_weather · build_pov · build_track
                           build_climate · build_climate_rems · build_geology · build_gale_geology · build_chemistry
                           build_offline
 MartianMap/               ready-to-run offline package
@@ -344,6 +365,8 @@ pip install -r pipeline/requirements.txt
 python pipeline/build_layers.py         # THEMIS, CRISM, rock relief → layers.json
 python pipeline/build_layers.py --site gale && python pipeline/build_gale_geology.py
 python pipeline/build_chemistry.py      # ChemCam targets → sites/gale/chemistry.json
+python pipeline/build_track.py --site jezero --rover m20   # the rover's own route + places → track.json
+python pipeline/build_track.py --site gale --rover msl
 python pipeline/build_climate_rems.py   # REMS 5-min means → sites/gale/climate.json
 python pipeline/build_space_weather.py  # DONKI → space_weather.json
 python pipeline/build_offline.py        # refresh MartianMap/app

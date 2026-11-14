@@ -9,7 +9,7 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
-import { MarsCrew, DemRouteLine, StopBadges, DustDevil } from './MarsCrew';
+import { MarsCrew, DemRouteLine, StopBadges, DustDevil, RoverTrack } from './MarsCrew';
 import { sunPosition } from '../utils/marsTime';
 import { drawHeatmap } from '../utils/heatmaps';
 import * as THREE from 'three';
@@ -864,6 +864,7 @@ export default function MoonScene({
   returnPath = null,        // DEM: abort return path (dashed)
   sceneApiRef = null,       // optional: { camera, controls } for scripted captures
   overlay = null,           // DEM: { layer, opacity, refreshKey } map layer draped on the terrain
+  showTrack = false,        // DEM: the rover's own route + named places (sites/<site>/track.json)
   orthoOn = false,          // DEM: HiRISE orthomosaic on the terrain (sites/<site>/ortho.jpg)
 }) {
   const roverRef = useRef();
@@ -923,6 +924,7 @@ export default function MoonScene({
       {waypoints && waypoints.map((wp, i) => (
         <WaypointMarker key={i} pos={wp} idx={i} total={waypoints.length} />
       ))}
+      {IS_DEM && showTrack && SITE.track && <RoverTrack track={SITE.track} markerScale={MARKER_SCALE} />}
       {IS_DEM && <StopBadges waypoints={waypoints} markerScale={MARKER_SCALE}
         visited={playback?.loaded ? playback.nominal.stops
           .filter(st => st.departS <= playback.t && (!playback.aborted || st.departS <= playback.aborted.t0))
