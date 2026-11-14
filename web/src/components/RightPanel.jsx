@@ -806,14 +806,19 @@ export default function RightPanel({
       )}
 
       {ws && <style>{`
-        .ws-plan > [aria-label="Mission workflow"] { order: -10 }
-        .ws-plan > #wf-objective { order: -9 }
-        .ws-plan > #route-modes { order: -8 }
-        .ws-plan > #route-compare { order: -7 }
-        .ws-ops > [aria-label="Mission workflow"] { order: -12 }
-        .ws-ops > #eva-exec { order: -11 }
-        .ws-ops > #eva-cuff { order: -10 }
-        .ws-ops > #wf-decision { order: -9 }
+        .ws-plan > #site-map { order: -20 }
+        .ws-plan > #waypoints { order: -19 }
+        .ws-plan > #route-modes { order: -18 }
+        .ws-plan > #wf-objective { order: -17 }
+        .ws-plan > #route-compare { order: -16 }
+        .ws-plan > [aria-label="Mission workflow"] { order: -15 }
+        .ws-ops > #site-map { order: -20 }
+        .ws-ops > #eva-exec { order: -19 }
+        .ws-ops > #camera { order: -18 }
+        .ws-ops > #helmet-cam { order: -17 }
+        .ws-ops > #eva-cuff { order: -16 }
+        .ws-ops > #wf-decision { order: -15 }
+        .ws-ops > [aria-label="Mission workflow"] { order: -14 }
       `}</style>}
       <div className={ws ? `ws-${ws}` : undefined} style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
         {IS_DEM && show('plan', 'ops') && <WorkflowStrip steps={workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus })}
@@ -862,7 +867,7 @@ export default function RightPanel({
         </>}
 
         {/* ── Topographic Map — first thing the user sees ── */}
-        {show('explore', 'plan', 'ops') && <div>
+        {show('explore', 'plan', 'ops') && <div id="site-map">
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3}}>
             <Label>{ws ? 'SITE MAP (2D)' : 'TOPOGRAPHIC MAP'}</Label>
             <span style={{fontSize:fs(7),color: dustPickMode?'#ffcc88':'#4a884a'}}>
@@ -935,7 +940,7 @@ export default function RightPanel({
         </Sect>}
 
         {/* Waypoints */}
-        {show('plan') && <Sect label={`Waypoints (${waypoints.length})`}>
+        {show('plan') && <Sect id="waypoints" label={`Waypoints (${waypoints.length})`}>
           {/* Waypoint list */}
           {waypoints.length > 0 && (
             <div style={{marginBottom:5,maxHeight:Math.round(58*UI_SCALE),overflowY:'auto',fontSize:fs(8),fontFamily:'monospace',
@@ -998,7 +1003,7 @@ export default function RightPanel({
 
         {/* Route selector + start */}
         {show('plan', 'ops') && <Sect label={ws === 'plan' ? 'Route modes' : ws === 'ops' ? 'EVA execution' : IS_DEM ? 'Route & EVA' : 'Select Route'} id={ws === 'ops' ? 'eva-exec' : 'route-modes'}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,marginBottom:5}}>
+          {ws !== 'ops' && <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,marginBottom:5}}>
             {Object.entries(ROUTE_COLORS)
               .filter(([mode]) => mode !== 'HOME_RETURN')
               .map(([mode,color])=>(
@@ -1016,7 +1021,10 @@ export default function RightPanel({
                 {mode}
               </div>
             ))}
-          </div>
+          </div>}
+          {ws === 'ops' && <div style={{ fontSize: fs(7.5), color: T.muted, marginBottom: 5 }}>
+            Route: <b style={{ color: ROUTE_COLORS[activeRoute] }}>{activeRoute}</b> — choose another one in 03 PLAN MISSION.
+          </div>}
           {ws === 'plan' && <RouteModeNote mode={activeRoute} routes={routes} onInspect={onInspect} />}
           {IS_DEM ? show('ops') && (
             <>
@@ -1179,7 +1187,7 @@ export default function RightPanel({
         </Sect>}
 
         {/* Camera */}
-        {show('explore', 'ops') && <Sect label="Camera">
+        {show('explore', 'ops') && <Sect id="camera" label={ws === 'ops' ? 'Camera angle' : 'Camera'}>
           <Row>
             <Btn active={cameraMode==='free'}   onClick={()=>setCameraMode('free')}>FREE</Btn>
             <Btn active={cameraMode==='follow'} onClick={()=>setCameraMode('follow')}>{IS_DEM ? 'FOLLOW EV1' : 'FOLLOW'}</Btn>
@@ -1198,14 +1206,14 @@ export default function RightPanel({
         {ws && show('analyze') && <ScienceData catalog={catalog} onInspect={onInspect} onProvenance={onProvenance} />}
 
         {/* Image processing proof panel */}
-        {show('analyze', 'ops') && <ProcessingMapPreview
+        {show('analyze', 'ops') && <div id="helmet-cam"><ProcessingMapPreview
           slopeMap={slopeMap}
           craterMask={craterMask}
           hMap={hMap}
           roverPos={{ x, z, heading }}
           signalLost={cameraSignalLost}
           signalQuality={cameraSignalQuality}
-        />}
+        /></div>}
 
         {IS_DEM && show('analyze') && (
           <Sect label="Mars AI Terrain Segmentation" id="wf-ai-terrain">

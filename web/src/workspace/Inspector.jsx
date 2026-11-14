@@ -43,14 +43,14 @@ const USE = {
   walkModel: 'Walking time of every route and the walk-back margin.',
 };
 
-const H = ({ children }) => <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.muted, margin: '10px 0 4px' }}>{children}</div>;
+const H = ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: T.muted, margin: '10px 0 4px' }}>{children}</div>;
 const KV = ({ k, v, mono = true }) => (v == null || v === '' ? null : (
-  <div style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.45, padding: '2px 0' }}>
+  <div style={{ display: 'flex', gap: 8, fontSize: 14.5, lineHeight: 1.45, padding: '2px 0' }}>
     <span style={{ color: T.muted, width: 96, flexShrink: 0 }}>{k}</span>
     <span style={{ color: T.text, fontFamily: mono ? T.mono : T.sans, minWidth: 0, overflowWrap: 'anywhere' }}>{v}</span>
   </div>
 ));
-const P = ({ children, c }) => <p style={{ margin: '4px 0', fontSize: 13.5, lineHeight: 1.5, color: c || T.text }}>{children}</p>;
+const P = ({ children, c }) => <p style={{ margin: '4px 0', fontSize: 14.5, lineHeight: 1.5, color: c || T.text }}>{children}</p>;
 const LEVEL_C = { block: T.nogo, caution: T.cond, info: T.text };
 
 function Tabs({ tabs, tab, setTab }) {
@@ -59,7 +59,7 @@ function Tabs({ tabs, tab, setTab }) {
     <div role="tablist" style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${T.rule}`, marginTop: 6, overflowX: 'auto' }}>
       {tabs.map(([id, label]) => (
         <button key={id} role="tab" aria-selected={tab === id} type="button" onClick={() => setTab(id)}
-          style={{ all: 'unset', cursor: 'pointer', padding: '6px 8px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
+          style={{ all: 'unset', cursor: 'pointer', padding: '6px 8px', fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
             color: tab === id ? T.text : T.muted, borderBottom: `2px solid ${tab === id ? T.accent : 'transparent'}` }}>{label}</button>
       ))}
     </div>
@@ -71,7 +71,7 @@ function SourceBlock({ rec }) {
   const cat = CATEGORIES[rec.category];
   return (
     <>
-      {cat && <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: T.text, border: `1px solid ${cat.color}`, padding: '1px 6px', borderRadius: 2 }}>
+      {cat && <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: T.text, border: `1px solid ${cat.color}`, padding: '1px 6px', borderRadius: 2 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: cat.color }} />{cat.label}</div>}
       <KV k="Mission" v={rec.mission} mono={false} />
       <KV k="Instrument" v={rec.instrument} mono={false} />
@@ -141,7 +141,7 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
         <KV k="Slope" v={Number.isFinite(p.slopeDeg) ? `${p.slopeDeg.toFixed(1)}° (4 m cell; limit ${limits.maxSlopeDeg}°)` : null} />
         <KV k="Hazard" v={p.hazard ? p.hazard.name : 'none flagged'} mono={false} />
         <KV k="From home" v={Number.isFinite(p.homeDistM) ? `${p.homeDistM.toFixed(0)} m straight line` : null} />
-        {onAddWaypoint && <button type="button" onClick={() => onAddWaypoint({ x: p.x, z: p.z })} style={{ marginTop: 8, all: 'unset', cursor: 'pointer', fontSize: 11, color: T.text,
+        {onAddWaypoint && <button type="button" onClick={() => onAddWaypoint({ x: p.x, z: p.z })} style={{ marginTop: 8, all: 'unset', cursor: 'pointer', fontSize: 12, color: T.text,
           border: `1px solid ${T.ruleStrong}`, padding: '4px 8px', borderRadius: 2 }}>+ Add as waypoint</button>}
       </>
     );
@@ -153,15 +153,15 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
     if (p.roverObs) {
       ev.push(<KV key="ro" k="Rover images" v={p.roverObs.map(o => `sol ${o.sol} · ${o.distM.toFixed(0)} m · ${o.frames} frames`).join('; ')} />);
       if (nearestPanorama(p.x, p.z)) ev.push(<button key="gv" type="button" onClick={() => setPov({ stop: { x: p.x, z: p.z }, label: title })}
-        style={{ all: 'unset', cursor: 'pointer', fontSize: 11, color: T.info, textDecoration: 'underline', marginRight: 10 }}>open ground view</button>);
+        style={{ all: 'unset', cursor: 'pointer', fontSize: 12, color: T.info, textDecoration: 'underline', marginRight: 10 }}>open ground view</button>);
     }
     if (hasChemistry(p.x, p.z)) ev.push(<button key="ch" type="button" onClick={() => setChem({ stop: { x: p.x, z: p.z }, label: title })}
-      style={{ all: 'unset', cursor: 'pointer', fontSize: 11, color: T.info, textDecoration: 'underline' }}>ChemCam targets nearby</button>);
+      style={{ all: 'unset', cursor: 'pointer', fontSize: 12, color: T.info, textDecoration: 'underline' }}>ChemCam targets nearby</button>);
     if (ev.length) body.evidence = <>{ev}{SITE.geology?.source?.kind === 'derived' && p.geology && <P c={T.cond}>Units here are this project&apos;s derived interpretation, not a published geological map.</P>}</>;
     body.mission = <>{rel.map((l, i) => <P key={i} c={LEVEL_C[l.level]}>{l.level === 'block' ? '■ ' : l.level === 'caution' ? '▲ ' : '· '}{l.text}</P>)}</>;
     const used = ['terrain', p.geology && 'geology', p.mineral && 'minerals', p.thermal && 'thermal', Number.isFinite(p.rockReliefM) && 'rocks', p.roverObs && 'pov'].filter(Boolean);
     body.source = <>{used.map(k => provByKey[k]).filter(Boolean).map(r => (
-      <div key={r.key + r.name} style={{ fontSize: 12, padding: '2px 0', display: 'flex', gap: 6, alignItems: 'baseline' }}>
+      <div key={r.key + r.name} style={{ fontSize: 13, padding: '2px 0', display: 'flex', gap: 6, alignItems: 'baseline' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORIES[r.category]?.color, flexShrink: 0 }} />
         <span>{r.name}</span><span style={{ color: T.muted }}>— {r.instrument || r.mission}</span>
       </div>))}</>;
@@ -187,7 +187,7 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
         {card.uncertainty && <P c={T.cond}><b>Uncertainty:</b> {card.uncertainty}</P>}</>;
       body.mission = <><P c={card.risk.level === 'high' ? T.nogo : card.risk.level === 'moderate' ? T.cond : T.text}><b>Terrain risk:</b> {card.risk.level} — {card.risk.reason}</P>
         <P><b>Data confidence:</b> {card.confidence.level} — {card.confidence.reason}</P>
-        {onSelect && <button type="button" onClick={() => onSelect({ type: 'point', x: st.x, z: st.z })} style={{ all: 'unset', cursor: 'pointer', fontSize: 11, color: T.info, textDecoration: 'underline' }}>inspect the ground at this stop</button>}</>;
+        {onSelect && <button type="button" onClick={() => onSelect({ type: 'point', x: st.x, z: st.z })} style={{ all: 'unset', cursor: 'pointer', fontSize: 12, color: T.info, textDecoration: 'underline' }}>inspect the ground at this stop</button>}</>;
       body.source = <>{card.layers.map(k => provByKey[k]).filter(Boolean).map(r => <SourceLine key={r.key + r.name} r={r} />)}</>;
     }
   } else if (selection?.type === 'route' && routes?.[selection.mode]) {
@@ -199,19 +199,19 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
     title = `${selection.mode} — ${ex.goal}`;
     body.overview = (
       <>
-        {d && <div style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 2, fontWeight: 700, fontSize: 11, background: STATUS_COLOR[d.status], color: '#0d0f12' }}>{d.status}</div>}
+        {d && <div style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 2, fontWeight: 700, fontSize: 12, background: STATUS_COLOR[d.status], color: '#0d0f12' }}>{d.status}</div>}
         {d?.summary && <P>{d.summary}</P>}
         <KV k="Distance" v={`${(s.distance / 1000).toFixed(2)} km`} />
         <KV k="Walking" v={fmtHM(s.walkTimeS)} />
         <KV k="Round trip" v={Number.isFinite(s.roundTripS) ? `${fmtHM(s.roundTripS)} of ${fmtHM(s.budgetS)}` : null} />
         <KV k="Min. margin" v={Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : null} />
         <KV k="Max slope" v={Number.isFinite(s.maxSlopeDeg) ? `${s.maxSlopeDeg.toFixed(1)}°` : null} />
-        {setActiveRoute && selection.mode !== activeRoute && <button type="button" onClick={() => setActiveRoute(selection.mode)} style={{ marginTop: 6, all: 'unset', cursor: 'pointer', fontSize: 11,
+        {setActiveRoute && selection.mode !== activeRoute && <button type="button" onClick={() => setActiveRoute(selection.mode)} style={{ marginTop: 6, all: 'unset', cursor: 'pointer', fontSize: 12,
           border: `1px solid ${ROUTE_COLORS[selection.mode]}`, padding: '3px 8px', borderRadius: 2 }}>Make active</button>}
       </>
     );
     if (tl) body.evidence = (
-      <div style={{ fontSize: 11.5 }}>
+      <div style={{ fontSize: 12.5 }}>
         {tl.items.map((it, i) => (
           <div key={i} style={{ display: 'flex', gap: 8, padding: '2px 0', borderBottom: `1px solid ${T.rule}` }}>
             <span style={{ fontFamily: T.mono, color: T.muted, width: 92, flexShrink: 0 }}>{fmtHM(it.t0)}–{fmtHM(it.t1)}</span>
@@ -237,8 +237,8 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
       {pov && <PovViewer stop={pov.stop} label={pov.label} onClose={() => setPov(null)} />}
       {chem && <ChemistryCard stop={chem.stop} label={chem.label} onClose={() => setChem(null)} />}
       {!selection || !tabs.length ? (
-        <div style={{ fontSize: 13.5, color: '#c3c9d0', lineHeight: 1.55 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, marginBottom: 4, color: T.accent }}>INSPECTOR — NOTHING SELECTED YET</div>
+        <div style={{ fontSize: 14.5, color: '#c3c9d0', lineHeight: 1.55 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: 1, marginBottom: 4, color: T.accent }}>INSPECTOR — NOTHING SELECTED YET</div>
           <div style={{ display: 'flex', gap: 8, padding: '3px 0' }}><span style={{ color: T.accent, fontWeight: 700 }}>1</span><span><b>Click the 3D terrain</b> or the small site map below — you get the height, slope, rock type, hazards and nearby rover photos of that spot.</span></div>
           <div style={{ display: 'flex', gap: 8, padding: '3px 0' }}><span style={{ color: T.accent, fontWeight: 700 }}>2</span><span>Press <b style={{ color: T.info }}>ⓘ</b> next to any layer on the left to see what it shows and which spacecraft measured it.</span></div>
           <div style={{ display: 'flex', gap: 8, padding: '3px 0' }}><span style={{ color: T.accent, fontWeight: 700 }}>3</span><span>Ready to plan? Open <b>03 PLAN MISSION</b> in the top bar.</span></div>
@@ -247,10 +247,10 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
         <>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, color: T.accent }}>{kicker}</div>
-              <div style={{ fontSize: compact ? 14.5 : 16, fontWeight: 600, lineHeight: 1.3, marginTop: 1 }}>{title}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: 1, color: T.accent }}>{kicker}</div>
+              <div style={{ fontSize: compact ? 15.5 : 17, fontWeight: 600, lineHeight: 1.3, marginTop: 1 }}>{title}</div>
             </div>
-            {onClose && <button type="button" onClick={onClose} aria-label="Close inspector" style={{ all: 'unset', cursor: 'pointer', color: T.muted, fontSize: 14, padding: '0 3px' }}>✕</button>}
+            {onClose && <button type="button" onClick={onClose} aria-label="Close inspector" style={{ all: 'unset', cursor: 'pointer', color: T.muted, fontSize: 15, padding: '0 3px' }}>✕</button>}
           </div>
           <Tabs tabs={tabs} tab={cur} setTab={setTab} />
           <div role="tabpanel" style={{ paddingTop: 6 }}>{body[cur]}</div>
@@ -262,7 +262,7 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
 
 function SourceLine({ r }) {
   return (
-    <div style={{ fontSize: 12, padding: '2px 0', display: 'flex', gap: 6, alignItems: 'baseline' }}>
+    <div style={{ fontSize: 13, padding: '2px 0', display: 'flex', gap: 6, alignItems: 'baseline' }}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORIES[r.category]?.color, flexShrink: 0 }} />
       <span>{r.name}</span><span style={{ color: T.muted }}>— {r.instrument || r.mission}</span>
     </div>

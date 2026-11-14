@@ -10,8 +10,8 @@ import { filterCatalog } from '../config/catalog';
 import { geologyLegend, dataLayerLegend, hazardLegend, HAZARD_LAYER } from '../utils/heatmaps';
 import { RELIEF_SCALES } from '../utils/relief';
 
-const row = { display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 6px 10px', fontSize: 13.5 };
-const tiny = { all: 'unset', cursor: 'pointer', fontSize: 11.5, color: T.muted, padding: '1px 5px', border: `1px solid ${T.rule}`, borderRadius: 2, lineHeight: 1.3 };
+const row = { display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 6px 10px', fontSize: 14.5 };
+const tiny = { all: 'unset', cursor: 'pointer', fontSize: 12.5, color: T.muted, padding: '1px 5px', border: `1px solid ${T.rule}`, borderRadius: 2, lineHeight: 1.3 };
 
 function Legend({ layer }) {
   const g = geologyLegend(layer);
@@ -22,14 +22,14 @@ function Legend({ layer }) {
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 8px', padding: '2px 0 0' }}>
         {entries.slice(0, 10).map(e => (
-          <span key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: T.muted }} title={e.pct != null ? `${e.pct.toFixed(1)} % of the site` : undefined}>
+          <span key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: T.muted }} title={e.pct != null ? `${e.pct.toFixed(1)} % of the site` : undefined}>
             <span style={{ width: 8, height: 8, background: e.color, display: 'inline-block', flexShrink: 0 }} />{e.name}
           </span>
         ))}
       </div>
     );
   }
-  if (d?.kind === 'range') return <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono }}>{d.lo} – {d.hi} {d.unit}</div>;
+  if (d?.kind === 'range') return <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>{d.lo} – {d.hi} {d.unit}</div>;
   return null;
 }
 
@@ -67,13 +67,13 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
       fontFamily: T.sans, color: T.text, minHeight: 0, ...style }}>
       <div style={{ padding: '10px 10px 8px', borderBottom: `1px solid ${T.rule}` }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: 1.2, color: T.text }}>DATA CATALOG</span>
+          <span style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: 1.2, color: T.text }}>DATA CATALOG</span>
           {drapes.length > 0 && <button type="button" style={tiny} onClick={() => setDrapes([])} title="Hide every draped layer">clear {drapes.length}</button>}
         </div>
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search layers and datasets" aria-label="Search the data catalog"
           style={{ marginTop: 7, width: '100%', boxSizing: 'border-box', background: T.sunken, border: `1px solid ${T.ruleStrong}`, color: T.text,
-            borderRadius: 2, padding: '6px 8px', fontSize: 13.5, fontFamily: T.sans, outline: 'none' }} />
-        <div style={{ fontSize: 12, color: T.muted, marginTop: 6, lineHeight: 1.4 }}>Tick a layer to show it on the 3D terrain · ⓘ = what it is and where the data comes from</div>
+            borderRadius: 2, padding: '6px 8px', fontSize: 14.5, fontFamily: T.sans, outline: 'none' }} />
+        <div style={{ fontSize: 13, color: T.muted, marginTop: 6, lineHeight: 1.4 }}>Tick a layer to show it on the 3D terrain · ⓘ = what it is and where the data comes from</div>
       </div>
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {cats.map(c => {
@@ -82,7 +82,7 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
             <div key={c.id} style={{ borderBottom: `1px solid ${T.rule}` }}>
               <button type="button" onClick={() => setClosed(s => ({ ...s, [c.id]: !s[c.id] }))} aria-expanded={!isClosed}
                 style={{ all: 'unset', cursor: 'pointer', display: 'flex', width: '100%', boxSizing: 'border-box', padding: '7px 10px 5px',
-                  fontSize: 11.5, fontWeight: 700, letterSpacing: 1, color: T.muted }}>
+                  fontSize: 12.5, fontWeight: 700, letterSpacing: 1, color: T.muted }}>
                 <span style={{ width: 12 }}>{isClosed ? '▸' : '▾'}</span>{c.label.toUpperCase()}
                 <span style={{ marginLeft: 'auto', fontWeight: 400, fontFamily: T.mono }}>{c.items.length}</span>
               </button>
@@ -97,7 +97,7 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
                     <div style={row}>
                       {vis !== null ? (
                         <input type="checkbox" checked={!!vis} onChange={() => toggle(it)} aria-label={`Show ${it.name}`} style={{ margin: 0, accentColor: T.accent }} />
-                      ) : <span style={{ width: 13, textAlign: 'center', color: T.faint, fontSize: 10 }} title={it.always ? 'always shown' : 'dataset (not a map layer)'}>{it.always ? '■' : '·'}</span>}
+                      ) : <span style={{ width: 13, textAlign: 'center', color: T.faint, fontSize: 11 }} title={it.always ? 'always shown' : 'dataset (not a map layer)'}>{it.always ? '■' : '·'}</span>}
                       <button type="button" onClick={() => onInspect(it)} title="Inspect: description, source, metadata"
                         style={{ all: 'unset', cursor: 'pointer', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: T.text }}>
                         {it.name}
@@ -113,7 +113,7 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
                             style={{ ...tiny, color: reliefScale === k ? T.text : T.muted, borderColor: reliefScale === k ? T.accent : T.rule }}>
                             {k === 1 ? 'RELIEF ×1' : `×${k}`}</button>
                         ))}
-                        {reliefScale > 1 && <span style={{ fontSize: 10, color: T.cond }}>emphasised</span>}
+                        {reliefScale > 1 && <span style={{ fontSize: 11, color: T.cond }}>emphasised</span>}
                       </div>
                     )}
                     {it.id === 'base:dtm' && setWireframe && (
@@ -127,13 +127,13 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <input type="range" min={0.1} max={1} step={0.05} value={drapes[di].opacity} aria-label={`${it.name} opacity`}
                             onChange={e => setOpacity(it.layer, Number(e.target.value))} style={{ flex: 1, accentColor: T.accent }} />
-                          <span style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, width: 30 }}>{Math.round(drapes[di].opacity * 100)}%</span>
+                          <span style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, width: 30 }}>{Math.round(drapes[di].opacity * 100)}%</span>
                           {drapes.length > 1 && <>
                             <button type="button" style={tiny} onClick={() => move(it.layer, 1)} disabled={di === drapes.length - 1} title="Draw above the next layer">▲</button>
                             <button type="button" style={tiny} onClick={() => move(it.layer, -1)} disabled={di === 0} title="Draw below the previous layer">▼</button>
                           </>}
                         </div>
-                        {drapes.length > 1 && <div style={{ fontSize: 10, color: T.faint }}>order {di + 1} of {drapes.length} (higher draws on top)</div>}
+                        {drapes.length > 1 && <div style={{ fontSize: 11, color: T.faint }}>order {di + 1} of {drapes.length} (higher draws on top)</div>}
                         <Legend layer={it.layer} />
                       </div>
                     )}
@@ -143,11 +143,11 @@ export default function LayerCatalog({ catalog, provByKey = {}, selectedId = nul
             </div>
           );
         })}
-        {cats.length === 0 && <div style={{ padding: 12, fontSize: 12, color: T.muted }}>Nothing matches “{q}”.</div>}
+        {cats.length === 0 && <div style={{ padding: 12, fontSize: 13, color: T.muted }}>Nothing matches “{q}”.</div>}
       </div>
       <div style={{ padding: '6px 10px', borderTop: `1px solid ${T.rule}`, display: 'flex', flexWrap: 'wrap', gap: '2px 9px' }}>
         {Object.entries(CATEGORIES).map(([k, c]) => (
-          <span key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: T.muted }}>
+          <span key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: T.muted }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.color }} />{c.label}
           </span>
         ))}
