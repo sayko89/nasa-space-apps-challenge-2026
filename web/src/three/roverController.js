@@ -80,7 +80,6 @@ const keys = { forward: false, backward: false, left: false, right: false };
 export function useRoverController(roverRef, setRoverState, pathRef, activeRoute, learningModel) {
   const velRef      = useRef(0);
   const lastTRef    = useRef(null);
-  const wpIdxRef    = useRef(0);
   const stuckRef    = useRef({ t: 0, x: 0, z: 0 });
 
   useEffect(() => {

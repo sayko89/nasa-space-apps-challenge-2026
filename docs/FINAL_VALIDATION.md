@@ -171,12 +171,26 @@ Order: NO-GO before INSUFFICIENT DATA before CONDITIONAL before GO. A favourable
 
 ## 12. Remaining technical debt
 
-- `RightPanel.jsx` is ~2,000 lines. `evaAssessments()` and `useSpaceWeather()` live there and are imported by `App.jsx`; they belong in a utility module or a hook file.
-- Browser checks (three viewports, cuff-card PDF, offline package) were run with Playwright scripts outside the repository. They are not part of CI.
-- The README route figures are written by hand from the planner. A script that regenerates them would prevent drift.
-- The workflow completion rules have no unit test. Neither does the JSON export shape.
+Resolved after this report (follow-up pass):
+
+- `RightPanel.jsx` (≈ 2,000 lines) was split into `MiniMap`, `HeatmapViewer`, `HelmetCamPreview`, `MissionDecision`, `ui` and `panelConstants` (it is now ≈ 1,100 lines). `evaAssessments()` / `routeDecision()` / `missionExport()` moved to `utils/evaAssessments.js`, the 13 steps to `utils/workflow.js` and `useSpaceWeather()` to `hooks/`. The moves change no behaviour.
+- ESLint (`pnpm --filter martian-map lint`, in CI) checks undefined names, missing JSX components and the rules of hooks. It found:
+  - a conditional `useMemo` in the Moon route line, now fixed
+  - a duplicate fixture key in a test
+  - dead code, now removed
+- The browser checks are now `web/e2e/smoke.test.mjs` and run in `.github/workflows/e2e.yml`:
+  - desktop, phone and tablet layout
+  - the HUD
+  - the cuff card printed as a one-page PDF
+  - Gale, and Moon
+- The README route figures are generated: `pnpm --filter martian-map readme:figures` rewrites the 43 `<!--fig:…-->` values, and `readme:figures:check` fails the deploy on drift.
+- The workflow completion rules and the export shape have unit tests (`workflow.test.mjs`, `realExport.test.mjs`).
+
+Still open:
+
 - The HUD status line recomputes the assessments on every App render. This is cheap, but could be memoised.
 - The bundled DONKI archive still waits for the repository secret.
+- The browser tests use software WebGL and take several minutes; they run in their own workflow so they do not delay deploys.
 
 ## 13. Challenge requirement coverage
 

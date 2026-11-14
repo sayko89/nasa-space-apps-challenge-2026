@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { loadRealSite, planObjective } from './helpers/realSite.mjs';
 
 const ctx = await loadRealSite('jezero');
-const { O, SC, MS, P, PV, site } = ctx;
+const { O, SC, MS, PV, site } = ctx;
 const { msAtLtst } = await import('../src/utils/marsTime.js');
 const START = msAtLtst(Date.UTC(2026, 10, 14), 9, 77.45);   // 09:00 LTST at the site, as the app defaults
 const results = Object.fromEntries(O.objectivesFor('jezero').map(o => [o.id, planObjective(ctx, o.id, START)]));

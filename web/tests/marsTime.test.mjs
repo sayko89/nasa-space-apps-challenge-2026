@@ -25,7 +25,7 @@ test('TT−UTC artık saniyeleri (2015 ve 2017 dahil)', () => {
 });
 
 test('marstime referansıyla 60 rastgele anda birebir uyum', () => {
-  const { lat, lonE } = ref.site;
+  const { lonE } = ref.site;
   for (const r of ref.rows) {
     const j = r.j;
     assert.ok(angDiff(MT.solarLongitude(j), r.ls) < 1e-9, `Ls j=${j}`);

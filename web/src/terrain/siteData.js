@@ -54,7 +54,7 @@ function fail(name, reason) {
   site.mode = 'procedural';
   site.name = name;
   site.loadError = reason;
-  // eslint-disable-next-line no-console
+   
   console.warn(`[site] '${name}' could not be loaded, falling back to procedural terrain: ${reason}`);
   return site;
 }

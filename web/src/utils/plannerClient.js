@@ -44,7 +44,7 @@ function ensureWorker() {
       if (e.data.error) p.reject(new Error(e.data.error)); else p.resolve(e.data);
     };
     worker.onerror = (e) => {
-      // eslint-disable-next-line no-console
+       
       console.error('[planner] worker error:', e.message || e);
       disabled = true;
       rejectAll(`planner worker failed: ${e.message || 'unknown'}`);
@@ -55,7 +55,7 @@ function ensureWorker() {
       climate: SITE.climate, geology: SITE.geology, layers: SITE.layers, chemistry: SITE.chemistry,
     };
     const r = await call('init', { site: siteMsg });
-    // eslint-disable-next-line no-console
+     
     console.info(`[planner] worker ready in ${r.initMs.toFixed(0)} ms`);
   })();
   return readyPromise;
@@ -86,7 +86,7 @@ export async function planRoutes(waypoints, maps, sunAngleDeg, experienceMap, op
       if (r.homeMaps) setHomeMaps(r.homeMaps);
       return r.routes;
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.warn('[planner] falling back to main-thread planning:', err.message);
       disabled = true;
     }
@@ -105,7 +105,7 @@ export async function planScience(home, maps, opts = {}) {
       const r = await call('science', { home: { x: home.x, z: home.z }, opts });
       return r.result;
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.warn('[planner] science on main thread:', err.message);
       disabled = true;
     }

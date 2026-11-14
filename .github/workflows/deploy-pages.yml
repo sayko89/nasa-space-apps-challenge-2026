@@ -37,6 +37,12 @@ jobs:
       - name: Test the planner, sun model and EVA playback
         run: node --test web/tests/*.test.mjs
 
+      - name: Lint (undefined names, missing components, rules of hooks)
+        run: pnpm --filter martian-map lint
+
+      - name: README route figures match the planner
+        run: pnpm --filter martian-map readme:figures:check
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
