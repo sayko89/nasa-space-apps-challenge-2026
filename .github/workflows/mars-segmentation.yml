@@ -1,0 +1,49 @@
+name: Mars terrain segmentation (AI4Mars)
+
+# Runs where the data is reachable (Zenodo, mars.nasa.gov). Each stage commits its outputs back to the
+# branch it ran on. stage: inventory | train | sites
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: inventory | train | sites
+        default: inventory
+  push:
+    branches: ['ml/**']
+    paths: ['pipeline/segmentation/RUN']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mars-seg-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Stage
+        id: stage
+        run: echo "stage=${{ github.event.inputs.stage || '' }}" >> "$GITHUB_OUTPUT"
+      - name: Install
+        run: pip install -r pipeline/segmentation/requirements.txt
+      - name: Run
+        run: |
+          STAGE="${{ steps.stage.outputs.stage }}"
+          [ -z "$STAGE" ] && STAGE=$(head -1 pipeline/segmentation/RUN | tr -d '[:space:]')
+          echo "stage: $STAGE"
+          mkdir -p pipeline/sources/ai4mars
+          bash pipeline/segmentation/run.sh "$STAGE" 2>&1 | tee pipeline/sources/ai4mars/$STAGE.log
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add pipeline/sources/ai4mars web/public/models web/public/sites || true
+          if git commit -m "data: Mars segmentation outputs"; then for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done; fi
