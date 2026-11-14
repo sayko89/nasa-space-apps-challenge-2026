@@ -70,6 +70,8 @@ export function buildCuffCard(path, stats, env = {}) {
       arriveS, stayS: st.dwellS || 0, departS,
       legM: cum[i] - cum[prevIdx], bearingDeg: bearingDeg(px, pz, x, z),
       backS, leaveByS: budgetS - backS, marginS: marginS[i],
+      // emergency return: straight-line direction and distance to the habitat (the fastest path may bend)
+      homeBearingDeg: bearingDeg(x, z, path[0][0], path[0][2]), homeDistM: Math.hypot(path[0][0] - x, path[0][2] - z),
       ...at(arriveS),
     });
     prevIdx = i;

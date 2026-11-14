@@ -23,7 +23,9 @@
  * Pure: tested in Node (tests/missionStatus.test.mjs).
  */
 
-export const RESERVE_S = 30 * 60;   // Apollo 17 Traverse Planning Data: 30-min life-support reserve (see marswalkProfile MARS_CONSERVATIVE)
+import { APOLLO17_RESERVE } from '../config/marswalkProfile.js';
+
+export const RESERVE_S = APOLLO17_RESERVE.value * 60;   // Apollo 17 Traverse Planning Data: 30-min life-support reserve (see marswalkProfile MARS_CONSERVATIVE)
 
 const hm = (s) => {
   if (!Number.isFinite(s)) return '—';
@@ -89,7 +91,7 @@ export function missionDecision(s, ctx = {}) {
     add(environment, 'spaceWeather', 'Space weather', true, `no solar particle event within ±2 days (DONKI${ctx.wxLive ? ', live' : ''})`);
   }
   if (Number.isFinite(s.minMarginS) && s.minMarginS >= 0) {
-    add(environment, 'reserve', 'Tightest margin ≥ 30-min reserve', s.minMarginS >= RESERVE_S,
+    add(environment, 'reserve', `Tightest margin ≥ ${RESERVE_S / 60}-min reserve`, s.minMarginS >= RESERVE_S,
       `${hm(s.minMarginS)} (Apollo 17 kept 30 min in reserve)`);
   }
   if (o2 && o2.valid && o2.returnOk) {
@@ -121,7 +123,7 @@ export function missionDecision(s, ctx = {}) {
   const envProblems = environment.filter(e => e.ok !== true);
   // how an open environmental condition reads in the one-line summary
   const ISSUE = { spaceWeather: (e) => (e.ok === null ? 'space weather unknown' : 'solar particle event near the date'),
-    reserve: () => 'walk-back margin below the 30-min reserve', o2reserve: () => 'oxygen reserve not kept', terrain: () => 'route crosses depressions / obstacle edges' };
+    reserve: () => `walk-back margin below the ${RESERVE_S / 60}-min reserve`, o2reserve: () => 'oxygen reserve not kept', terrain: () => 'route crosses depressions / obstacle edges' };
   let status;
   if (failHard.length) status = 'NO-GO';
   else if (missing.length) status = 'INSUFFICIENT DATA';

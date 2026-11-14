@@ -4,9 +4,9 @@
  * toast notifications.
  */
 
-import { DEFAULT_MISSION, ROVER } from './config/mission';
+import { DEFAULT_MISSION, ROVER, SUITS, sciencePlanKey } from './config/mission';
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
-import RightPanel from './components/RightPanel';
+import RightPanel, { evaAssessments, useSpaceWeather } from './components/RightPanel';
 import EvaHud from './components/EvaHud';
 import { clearPathCache, getHazardAtPoint, isWallAt, fastestReturnPath, toHomeTimeAt } from './utils/pathfinder';
 import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
@@ -27,7 +27,6 @@ import { radiationIsLocal } from './utils/radiation';
 import SiteSwitcher from './components/SiteSwitcher';
 import { PANEL_W, SHEET_VH, useNarrow, useCompact, COMPACT_QUERY } from './ui/layout';
 import { decodePlan } from './utils/shareLink';
-import { SUITS } from './config/mission';
 import { findObjective } from './config/objectives';
 import ProvenancePanel from './components/ProvenancePanel';
 
@@ -445,6 +444,9 @@ export default function App() {
       return;
     }
     addLog(`Planning 4 routes through ${waypoints.length} waypoints${plannerUsesWorker() ? ' (background)' : ''}...`);
+    // A running / loaded EVA playback belongs to the old route: close it so no stale EVA is shown
+    if (playback.status !== 'idle') { playback.stop(); addLog('EVA playback closed — the plan changed.'); }
+    loadedRouteRef.current = null;
     setRoutes(null);
     setIsPlanning(true);
     const mySeq = ++planSeqRef.current;
@@ -481,7 +483,7 @@ export default function App() {
         if (mySeq === planSeqRef.current) setIsPlanning(false);
       }
     }, 30);
-  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel, evaStartMs, mission]);
+  }, [waypoints, getMaps, sunAngleDeg, showToast, addLog, learningModel, evaStartMs, mission, playback]);
 
   // Science waypoints committed → plan them (runs after the invalidation effect above)
   useEffect(() => {
@@ -507,7 +509,8 @@ export default function App() {
         ...(mission.rover ? { maxReturnS: ROVER.walkbackMin.value * 60 } : {}) });
       if (!res || res.stops.length === 0) {
         showToast(`No stop for "${objective.name}" fits the EVA budget from this start.`, 'warning');
-        addLog('Science EVA: no feasible stop.');
+        addLog('Science EVA: no feasible stop — the previous stops are cleared (they served another plan).');
+        setScience(null);   // never leave stops of an earlier objective / setting on screen
         return;
       }
       addLog(`Science EVA: ${res.stops.length}/${res.candidates.length} stops, score ${res.score}/${res.maxScore}, `
@@ -519,7 +522,7 @@ export default function App() {
         setRoverState(s => ({ ...s, x: home.x, y: getTerrainHeight(home.x, home.z) + 0.45, z: home.z }));
         setResetKey(k => k + 1);
       }
-      setScience(res);
+      setScience({ ...res, planKey: sciencePlanKey(mission, scienceDwellMin) });
       autoPlanRef.current = true;
       setWaypoints([homeWp, ...stopsWp, homeWp]);
     } catch (err) {
@@ -529,6 +532,13 @@ export default function App() {
       setIsPlanningScience(false);
     }
   }, [waypoints, getMaps, scienceDwellMin, addLog, showToast, mission, objectiveId]);
+
+  // Objective changed while a science plan exists → choose the stops again for the new objective
+  useEffect(() => {
+    if (!IS_DEM || !science || !objectiveId || science.objectiveId === objectiveId || isPlanningScience) return;
+    const id = setTimeout(() => handlePlanScience(), 250);
+    return () => clearTimeout(id);
+  }, [objectiveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shared link: rebuild the plan once on load (same start, same settings → same stops and routes)
   const sharedDoneRef = useRef(false);
@@ -833,6 +843,10 @@ export default function App() {
   }, [playback, evaTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const evaActive = IS_DEM && evaStatus !== 'idle';
+  // EVA HUD status line: the same decision / payload / dust / mobility / O₂ objects as the panel, for the loaded route
+  const hudWx = useSpaceWeather(IS_DEM ? evaStartMs : null);
+  const hudAssess = evaActive && routes?.[activeRoute] ? evaAssessments(routes[activeRoute], hudWx, { mission, startMs: evaStartMs }) : null;
+  const hudObjective = science?.objectiveId ? findObjective(SITE.name, science.objectiveId) : null;
   const roving = IS_DEM ? (evaStatus === 'playing' || evaStatus === 'paused') : isRoving;
 
   // Dev-only hook (Playwright reads state / drives the demo capture); stripped from prod builds
@@ -918,6 +932,7 @@ export default function App() {
 
       {evaActive && (
         <EvaHud playback={playback} right={narrow ? 6 : PANEL_W + 12} narrow={narrow} compact={compact} onAbort={handleAbortEva} onStop={handleStopRover}
+          assess={hudAssess} objective={hudObjective}
           o2Scenario={mission.o2?.scenario} onO2Scenario={(sc) => setMission(m => ({ ...m, o2: { ...m.o2, scenario: sc } }))} />
       )}
 

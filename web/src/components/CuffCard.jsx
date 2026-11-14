@@ -19,10 +19,11 @@ import { airTempAt, K_TO_C, climateInstrument } from '../utils/climate';
 import { fmtHourMin } from '../utils/format';
 import { param, getEvaProfile, EVA_PROFILES } from '../config/marswalkProfile';
 import { SUITS, ROVER } from '../config/mission';
+import { localToLatLon } from '../terrain/siteData';
 
 const HALF = TERRAIN_SIZE / 2;
 const MAP_W_MM = 190;
-const mapHeightMm = (nStops) => (nStops <= 6 ? 113 : nStops <= 8 ? 99 : 85);     // + 19 mm elevation profile   // fill the page, keep one page
+const mapHeightMm = (nStops) => (nStops <= 6 ? 96 : nStops <= 8 ? 84 : 72);     // + 19 mm elevation profile   // fill the page, keep one page
 const PX_PER_MM = 12;                          // ≈ 300 dpi
 const INK = '#111', ROUTE = '#e4572e';
 
@@ -171,7 +172,14 @@ const cell = { padding: '1.1mm 1.3mm', borderBottom: '0.2mm solid #999', vertica
 const head = { ...cell, borderBottom: '0.4mm solid #111', fontWeight: 'bold', textAlign: 'left', whiteSpace: 'nowrap' };
 const num = { ...cell, textAlign: 'right', whiteSpace: 'nowrap' };
 
-export default function CuffCard({ mode, route, startMs, mission, onClose, decision = null }) {
+/**
+ * @param assess    evaAssessments() of this route: { decision, payload, dust, mobility, oxygen } — the same
+ *                  objects the panel shows, so the card never carries older figures than the screen
+ * @param objective the mission objective the stops were chosen for (null for a hand-made route)
+ * @param hazards   routeHazards() of this route
+ */
+export default function CuffCard({ mode, route, startMs, mission, onClose, decision = null, assess = null, objective = null, hazards = null }) {
+  decision = assess?.decision || decision;
   const mapRef = useRef(null);
   const [grid, setGrid] = useState(null);
   const mapH = mapHeightMm(route.stats?.stops?.length || 0);
@@ -226,6 +234,8 @@ export default function CuffCard({ mode, route, startMs, mission, onClose, decis
             <div>{(SITE.meta?.label || SITE.name).toUpperCase()} · {SITE.pov?.rover || 'Perseverance'} site</div>
             <div>CREW EV1 + EV2 · {suit.label} · {mode} route{mission?.rover ? ' · pressurized rover as safe haven' : ''}</div>
             <div>EVA LIMITS: {EVA_PROFILES[getEvaProfile()].label} — walk {param('levelWalkSpeedKmh')} km/h · budget {param('evaDurationH')} h · ≤{param('maxRadialDistanceKm')} km</div>
+            <div>H = {(() => { const ll = localToLatLon(route.path[0][0], route.path[0][2]); return ll ? `${Math.abs(ll.lat).toFixed(4)}°${ll.lat < 0 ? 'S' : 'N'} ${ll.lon.toFixed(4)}°E` : '—'; })()}
+              {' '}· OBJECTIVE: {objective ? objective.name.toUpperCase() : 'none (hand-made route)'}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ display: 'inline-block', border: '0.6mm solid #111', padding: '0.8mm 2.5mm', fontSize: '4.5mm', fontWeight: 'bold',
@@ -256,7 +266,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose, decis
             <th style={head}>#</th><th style={head}>STATION / TASK</th>
             <th style={{ ...head, textAlign: 'right' }}>ARR</th><th style={{ ...head, textAlign: 'right' }}>STAY</th>
             <th style={{ ...head, textAlign: 'right' }}>LEG</th><th style={{ ...head, textAlign: 'right' }}>LTST</th>
-            <th style={{ ...head, textAlign: 'right' }}>AIR</th><th style={{ ...head, textAlign: 'right' }}>BACK</th>
+            <th style={{ ...head, textAlign: 'right' }}>AIR</th><th style={{ ...head, textAlign: 'right' }} title="fastest walk home · direction of H">BACK →H</th>
             <th style={{ ...head, textAlign: 'right' }}>LEAVE BY</th><th style={{ ...head, textAlign: 'right' }}>MARGIN</th>
           </tr></thead>
           <tbody>
@@ -276,7 +286,7 @@ export default function CuffCard({ mode, route, startMs, mission, onClose, decis
                 <td style={num}>{Math.round(r.legM)} m {compass(r.bearingDeg)}</td>
                 <td style={num}>{r.ltstH != null ? fmtHourMin(r.ltstH) : ''}</td>
                 <td style={num}>{fmtT(r.airK)}</td>
-                <td style={num}>{fmtMET(r.backS)}</td>
+                <td style={num}>{fmtMET(r.backS)} {compass(r.homeBearingDeg)}</td>
                 <td style={{ ...num, fontWeight: 'bold' }}>{fmtMET(r.leaveByS)}</td>
                 <td style={num}>{fmtMET(r.marginS)}</td>
               </tr>
@@ -311,9 +321,25 @@ export default function CuffCard({ mode, route, startMs, mission, onClose, decis
           </div>
         </div>
 
+        {assess && (
+          <div style={{ fontSize: '2.4mm', lineHeight: 1.35, border: '0.3mm solid #111', padding: '1mm 1.5mm' }}>
+            <div><b>STATUS {decision.status}:</b> {decision.summary}</div>
+            <div><b>HAZARDS ON ROUTE:</b> {hazards && hazards.length
+              ? hazards.filter(h => h.key !== 'unseen').map(h => `${h.name} ${Math.round(h.lengthM)} m`).join(' · ') || 'none flagged'
+              : 'none flagged'}{hazards?.some(h => h.key === 'unseen') ? ` · ${Math.round(hazards.find(h => h.key === 'unseen').lengthM)} m known only from orbit` : ''}</div>
+            <div><b>EQUIPMENT:</b> payload {assess.payload?.status ?? '—'}{assess.payload?.earthEqKg != null ? ` (${assess.payload.earthEqKg.toFixed(1)} / ${assess.payload.limitKg} kg Earth-eq.)` : ''}
+              {assess.oxygen?.valid ? ` · O₂ ${assess.oxygen.initialKg.toFixed(2)} kg at ${assess.oxygen.rateKgH} kg/h (${assess.oxygen.scenarioLabel}), lasts ${fmtMET(assess.oxygen.enduranceS)}` : ' · O₂ settings incomplete'}
+              {' '}· terrain & mobility {assess.mobility?.status ?? '—'}</div>
+            {assess.dust && <div><b>DUST:</b> {assess.dust.warnings.filter(w => w.level !== 'info').map(w => w.text.replace(/\.$/, '')).slice(0, 3).join('; ') || 'no protection warning'}
+              {assess.dust.missing.some(m => m.key.startsWith('cfg-')) ? '; protection settings not specified' : ''}. Not quantified; does not change the status.</div>}
+            <div><b>DATA LIMITS:</b> {[...decision.notes.filter(n => n.key === 'radiation' || n.key === 'unseen').map(n => n.detail.split(' — ')[1] || n.detail).filter(Boolean),
+              '1 m DTM: rocks under ~2 m are not mapped', 'air = climatology, not a forecast'].join(' · ')}</div>
+          </div>
+        )}
+
         <div style={{ marginTop: 'auto', borderTop: '0.3mm solid #999', paddingTop: '1mm', fontSize: '2.15mm', color: '#444', lineHeight: 1.35 }}>
           ARR / STAY / BACK / LEAVE BY / MARGIN: mission elapsed time h+mm, as on the Apollo 15–17 cuff checklists. BACK = fastest walk home from the station
-          (walking model on the 4 m terrain); LEAVE BY = {param('evaDurationH')} h budget − BACK; MARGIN = LEAVE BY − planned departure. LTST = local true solar time;
+          (walking model on the 4 m terrain), →H = compass direction of the habitat for an emergency return; LEAVE BY = {param('evaDurationH')} h budget − BACK; MARGIN = LEAVE BY − planned departure. LTST = local true solar time;
           AIR = {SITE.climate ? `${climateInstrument(SITE.climate)} median for the season and hour` : 'no climatology'}. Planning aid, not flight-certified.
           Martian Map · NASA Space Apps Challenge 2026 · Team PERIAPSIS
         </div>

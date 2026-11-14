@@ -35,7 +35,7 @@ export function PayloadSetup({ mission, setMission }) {
     ? setMission({ ...mission, payload: null })
     : setMission({ ...mission, payload: { instruments: 0, comms: 0, sampling: 0, emergency: 0, other: mission.equipmentKg || 0 } }));
   return (
-    <div style={{ margin: '2px 0 5px', fontSize: fs(7), color: C.body }}>
+    <div id="wf-payload" style={{ margin: '2px 0 5px', fontSize: fs(7), color: C.body, scrollMarginTop: 6 }}>
       <button type="button" onClick={toggle} style={{ width: '100%', background: 'transparent', color: '#9fd0ff', border: '1px solid rgba(136,204,255,0.4)',
         borderRadius: 3, padding: '2px 0', fontFamily: 'monospace', fontSize: fs(7), cursor: 'pointer' }}>
         {itemised ? '✓ PAYLOAD ITEMISED — USE ONE FIGURE' : 'ITEMISE THE PAYLOAD'}
@@ -65,7 +65,7 @@ export function PayloadSetup({ mission, setMission }) {
 export function DustSetup({ mission, setMission }) {
   const d = mission.dust || {};
   return (
-    <div style={{ margin: '4px 0', fontSize: fs(7), color: C.body }}>
+    <div id="wf-dust" style={{ margin: '4px 0', fontSize: fs(7), color: C.body, scrollMarginTop: 6 }}>
       <div style={{ color: '#8fbf8f', marginBottom: 2 }}>DUST PROTECTION (qualitative)</div>
       {Object.entries(DUST_OPTIONS).map(([k, o]) => (
         <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>

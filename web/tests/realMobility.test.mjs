@@ -38,3 +38,8 @@ test('jezero: oxygen in planning and on the played-back route (BVAD scenarios)',
   const { oxygenScenario } = await import('./helpers/oxygenScenario.mjs');
   await oxygenScenario(ctx, 'mineral-diversity', 77.45);
 });
+
+test('jezero: every objective — stops reachable, on the route, timed; margin after each stop; route and decision agree', async () => {
+  const { routeConsistency } = await import('./helpers/routeConsistency.mjs');
+  await routeConsistency(ctx, 77.45);
+});

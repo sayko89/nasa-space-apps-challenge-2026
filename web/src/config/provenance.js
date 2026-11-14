@@ -239,6 +239,32 @@ export function provenanceFor(siteName, site) {
     uncertainty: 'the slope shape for a suited walker is an assumption', limitations: 'Not validated for Mars suits',
   });
   add({
+    key: 'suitMass', name: 'Suit mass and carry limit', category: 'modelled',
+    mission: 'NASA Mars suit sizing study', instrument: 'Ogilvie et al., ICES 2026',
+    source: { title: 'Mars Spacesuit Mass Requirements (NTRS 20260005410)', url: 'https://ntrs.nasa.gov/citations/20260005410' },
+    observed: '—', resolution: '—', coverage: 'crew', dataType: 'engineering',
+    processing: 'suit + payload weight on Mars as Earth-equivalent kg vs 23 kg lift limit + 22 kg pressure offset (utils/payload.js)', status: 'sourced',
+    uncertainty: 'a design study, not a flown suit', limitations: 'Payload does not change walking speed (no validated load–speed model at Mars gravity)',
+  });
+  add({
+    key: 'oxygen', name: 'Oxygen consumption', category: 'modelled',
+    mission: 'NASA life-support baselines', instrument: 'BVAD, NASA/TP-2015-218570 Rev 2, §4.6.2',
+    source: { title: 'Life Support Baseline Values and Assumptions Document (2022)', url: 'https://ntrs.nasa.gov/citations/20210024855' },
+    observed: '—', resolution: 'per EVA second', coverage: 'crew', dataType: 'model',
+    processing: 'architecture reference rate (0.076 / 0.15 / 1.0 kg/h) × simulated mission time (utils/oxygen.js)', status: 'sourced',
+    uncertainty: 'architecture references, not a Mars-suit specification; constant per scenario',
+    limitations: 'Not measured; no activity dependence; initial oxygen sized for 8 h when not entered (assumption)',
+  });
+  add({
+    key: 'dust', name: 'Dust exposure & equipment reliability', category: 'derived',
+    mission: 'Apollo, Artemis suit materials, Mars 2020, MRO, Mars Odyssey', instrument: 'literature (config/dust.js)',
+    source: { title: 'Gaier 2005; Jones et al. 2025; NASA EVA gap list 2020; JPL 2025 (SHERLOC); Kass et al. 2016', url: 'https://ntrs.nasa.gov/citations/20050160460' },
+    observed: '—', resolution: '—', coverage: 'equipment', dataType: 'qualitative',
+    processing: 'vulnerability classes and warnings from documented failure mechanisms; each source labelled Mars / lunar analogy / analog', status: 'derived',
+    uncertainty: 'qualitative; mostly lunar evidence used as an analogy',
+    limitations: 'No failure probabilities or degradation rates (none validated for Martian dust); never changes the decision',
+  });
+  add({
     key: 'evaSimulation', name: 'EVA playback, astronauts, dust devil', category: 'simulated',
     mission: '—', instrument: 'this app', source: { title: 'utils/evaPlayback.js, components/MarsCrew.jsx', url: null },
     observed: '—', resolution: '—', coverage: '—', dataType: 'simulation',

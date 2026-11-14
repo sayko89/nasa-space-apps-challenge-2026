@@ -10,8 +10,9 @@
  * Pure (no React / Three): tested in Node (tests/stopCards.test.mjs).
  */
 import { tagWeight } from './science.js';
+import { HAZARD_PARAMS } from '../config/marswalkProfile.js';
 
-export const STEEP_DEG = 15;           // same "steep ground" mark as the route card (computeDemStats)
+// 'steep' / 'rough' below use the same marks as the hazard map and the route card (HAZARD_PARAMS)
 
 const LAYER_OF = {
   B: 'geology', S: 'geology', C: 'geology', M: 'minerals', X: 'chemistry', T: 'chemistry',
@@ -22,15 +23,16 @@ export function terrainRisk(terrain, limits) {
   const slope = terrain?.slopeDeg, rock = terrain?.rockReliefM;
   if (slope == null && rock == null) return { level: 'unknown', reason: 'no terrain data at this cell' };
   const notes = [];
+  const steep = HAZARD_PARAMS.steepFraction.value * limits.maxSlopeDeg, rough = HAZARD_PARAMS.roughFraction.value * limits.maxRockReliefM;
   let level = 'low';
   if (slope != null) {
     if (slope > limits.maxSlopeDeg) { level = 'high'; notes.push(`slope ${slope.toFixed(1)}° over the ${limits.maxSlopeDeg}° limit`); }
-    else if (slope > STEEP_DEG) { level = 'moderate'; notes.push(`slope ${slope.toFixed(1)}° (steep: > ${STEEP_DEG}°)`); }
+    else if (slope > steep) { level = 'moderate'; notes.push(`slope ${slope.toFixed(1)}° (steep: > ${steep}°)`); }
     else notes.push(`slope ${slope.toFixed(1)}°`);
   }
   if (rock != null) {
     if (rock > limits.maxRockReliefM) { level = 'high'; notes.push(`rock relief ${rock.toFixed(2)} m over the ${limits.maxRockReliefM} m limit`); }
-    else if (rock > limits.maxRockReliefM / 2) { if (level === 'low') level = 'moderate'; notes.push(`rock relief ${rock.toFixed(2)} m (rough: > ${limits.maxRockReliefM / 2} m)`); }
+    else if (rock > rough) { if (level === 'low') level = 'moderate'; notes.push(`rock relief ${rock.toFixed(2)} m (rough: > ${rough} m)`); }
     else notes.push(`rock relief ${rock.toFixed(2)} m`);
   }
   return { level, reason: notes.join(' · ') };

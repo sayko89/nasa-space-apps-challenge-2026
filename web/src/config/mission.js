@@ -54,6 +54,15 @@ export function carryCheck(m) {
     maxEquipmentKg: Math.max(0, limitKg * EARTH_G / MARS_G - suit.massKg) };
 }
 
+/**
+ * What the science stop optimiser depends on besides the objective: EVA limit set (budget, radius,
+ * speed), obstacle buffer (walls), rover walk-back and time per stop. A science plan made under a
+ * different key is flagged as made for other settings (the route and decision are re-planned anyway).
+ */
+export function sciencePlanKey(m, dwellMin) {
+  return `${m?.limits || 'lunar'}|${!!m?.obstacleBuffer}|${!!m?.rover}|${dwellMin}`;
+}
+
 /** Straight-line drive estimate from the habitat (site centre) to the rover parking point. */
 export function roverDrive(x, z) {
   const km = Math.hypot(x, z) / 1000;

@@ -150,6 +150,8 @@ export const MARS_CAVEAT = {
  */
 const APOLLO17 = 'NASA MSC (1972), Apollo 17 Traverse Planning Data, 3rd ed. — 30-minute PLSS consumables reserve';
 const APOLLO17_URL = 'https://www.nasa.gov/wp-content/uploads/static/history/alsj/a17/A17TraversePlanningData.pdf';
+/** The one 30-minute reserve used everywhere: Mars-conservative budget, decision reserve, default oxygen reserve. */
+export const APOLLO17_RESERVE = { value: 30, unit: 'min', status: 'sourced', source: APOLLO17, url: APOLLO17_URL };
 export const MARS_SUIT_COST_RATIO = { value: 27.6 / 16.7, status: 'sourced',
   source: `${'Norcross et al., NASA/TP-2009-214796'}, Table 5 (suited VO₂, stage 1: 27.6 vs 16.7 ml/min/kg)`,
   url: 'https://www.lpi.usra.edu/lunar/artemis/NorcrossEtAl_NASA-TP-2009-214796_EVA%20Walkback%20Test.pdf' };
@@ -163,7 +165,7 @@ export const MARS_CONSERVATIVE = {
         + 'Assumes metabolic cost grows in proportion to speed. Test suit: 120 kg MKIII.',
   },
   evaDurationH: {
-    value: 7.5, unit: 'h', status: 'sourced', label: 'EVA planning budget (8 h − 30 min reserve)',
+    value: MARSWALK_PROFILE.evaDurationH.value - APOLLO17_RESERVE.value / 60, unit: 'h', status: 'sourced', label: 'EVA planning budget (8 h − 30 min reserve)',
     source: APOLLO17, url: APOLLO17_URL,
     note: '8 h xEVA suit budget minus the Apollo 17 walk-back reserve of 30 minutes.',
   },

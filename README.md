@@ -37,7 +37,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Provenance** | every layer labelled direct measurement / orbital / derived / transferred reference / modelled / simulated |
 | **EVA limit sets** | Lunar ConOps (NASA) or **Mars conservative** (derived for Mars gravity) |
 | **Outputs** | 3D planning view, live EVA HUD, printable **cuff card** (A4 / PDF); works on desktop, tablet and phone |
-| **Tests** | 123 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 7 Python, on every push before deploy |
+| **Tests** | 138 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 7 Python, on every push before deploy |
 
 ## Try it
 
@@ -47,18 +47,21 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Offline** | **Code → Download ZIP** → unzip → `MartianMap/Start-Windows.bat` (Windows) or `MartianMap/start-mac-linux.sh` (macOS / Linux). Needs only Python 3. |
 | **From source** | `pnpm install`, then `pnpm dev` (tests: `pnpm test`) |
 
-**Quick tour** — the ten numbered buttons at the top of the panel walk through the same steps and show the next one:
+**Quick tour** — the 13 numbered buttons at the top of the panel walk through the same steps and show the next one. A step counts as done only when its inputs are complete and current; changing an upstream setting re-opens the steps that depend on it.
 
-1. **Mission objective** — choose one of the site's five; *PLAN SCIENCE EVA* stays locked until you do.
-2. **Exploration site** — **JEZERO** or **MOUNT SHARP BOXWORK** at the top left.
-3. **Crew & equipment** — suit, carried kg, **EVA limits** (Lunar ConOps / Mars conservative), pressurized rover as safe haven, *keep 4 m from obstacles*.
-4. **Data layers** — Map Layers (minerals, thermal inertia, geology, rocks, slope …), **COMPARE LAYERS** swipe, **DRAPE ON 3D TERRAIN**; *provenance table* in the data-sources box.
-5. **Hazard assessment** — the **Hazards** layer.
-6. **Science stops** — *PLAN SCIENCE EVA*; tap a stop for its card (why chosen, what to look at, evidence, risk, confidence), **ground view** or **chemistry**.
-7. **EVA route** — SAFE / ECO / FAST / AUTO, each with its elevation profile.
-8. **GO / NO-GO** — the mission summary and the reasons behind the decision.
-9. **EVA simulation** — **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**).
-10. **Mission export** — **PRINT CUFF CARD**, **EXPORT JSON** (objective, stop cards, decisions, provenance), **SHARE LINK**.
+1. **Mission objective** — choose one of the site's five; *PLAN SCIENCE EVA* stays locked until you do. Changing it later re-plans the stops.
+2. **Exploration site** — **JEZERO** or **MOUNT SHARP BOXWORK** at the top left (each site has its own objectives and layers).
+3. **Crew & equipment** — suit, **EVA limits** (Lunar ConOps / Mars conservative), pressurized rover as safe haven, *keep 4 m from obstacles*, **oxygen** scenario, initial O₂ and reserve.
+4. **Payload & mass** — one equipment figure or an itemised payload; total, limit and remaining capacity.
+5. **Dust & equipment reliability** — the four dust protection settings (done when none is left "not specified").
+6. **Data layers** — Map Layers (minerals, thermal inertia, geology, rocks, slope …), **COMPARE LAYERS** swipe, **DRAPE ON 3D TERRAIN**; *provenance table* in the data-sources box.
+7. **Hazard assessment** — the **Hazards** layer.
+8. **Science stops** — *PLAN SCIENCE EVA*; tap a stop for its card (why chosen, what to look at, evidence, risk, confidence), **ground view** or **chemistry**.
+9. **EVA route** — SAFE / ECO / FAST / AUTO, each with its elevation profile.
+10. **Terrain & mobility** — part C of the EVA assessment under the decision.
+11. **GO / NO-GO** — the mission summary, the decision with its reasons, and the three separate assessments.
+12. **EVA simulation** — **START EVA** (×1 … ×600, **ABORT EVA**, **SIMULATE DUST DEVIL**); the HUD shows the decision, payload, dust and mobility status and the O₂ & mass panel.
+13. **Mission export & cuff card** — **PRINT CUFF CARD** (objective, coordinates, stations with the direction home, hazards, equipment and dust warnings, data limits), **EXPORT JSON** (objective, stop cards, decisions, assessments, provenance), **SHARE LINK**.
 
 ## On a tablet or a phone
 
@@ -90,7 +93,7 @@ The same app adapts to the screen, so it can travel from the habitat display to 
 | How the site was chosen | around the landing site | from Curiosity's own track during the boxwork campaign (sols 4541–4844) |
 | Mission objectives (choose one) | lake & delta (partial: delta outside the site) · mineralogical diversity · bedrock & contacts · olivine & pyroxene · olivine–smectite alteration | boxwork ridges & hollows · geological contacts · chemical anomalies · water-related alteration · ChemCam target re-investigation |
 | Ground views | 947 Navcam / Mastcam-Z frames, 97 positions | 2,868 Navcam / Mastcam frames, 137 positions |
-| Example plan (SAFE, lunar limits, 09:00 LTST) | *Mineralogical Diversity*: 8 stops · 4.11 km · 4 h 45 min · tightest margin 3 h 15 min | *Geological Contact Exploration*: 5 stops · 1.56 km · 2 h 35 min · tightest margin 5 h 25 min |
+| Example plan (SAFE, lunar limits, 09:00 LTST) | *Mineralogical Diversity*: 8 stops · 4.14 km · 4 h 46 min · tightest margin 3 h 14 min | *Geological Contact Exploration*: 5 stops · 1.58 km · 2 h 36 min · tightest margin 5 h 24 min |
 
 The second site came out of the same pipeline as the first: pick a centre, cut the 1 m DTM and the orbital image, build the 4 m grid, rock relief, units, chemistry, climate and ground views. That is the challenge's "tool or system that generates maps of different locations".
 
@@ -120,21 +123,21 @@ A science EVA cannot be planned until an objective is chosen. The objective is n
 
 | Objective | What becomes a stop | Lunar ConOps | Mars conservative |
 |---|---|---|---|
-| Ancient Lake and Delta Investigation *(partial)* | crater-floor bedrock interiors, their contacts, olivine + smectite; **the delta lies ~2 km west, outside the site** | 3 stops · 1.03 km · 1 h 31 min · margin 6 h 28 min | 1 h 52 min · margin 5 h 38 min |
-| Mineralogical Diversity Exploration | one spot per CRISM class present, units and contacts for context | 8 stops · 4.11 km · 4 h 45 min · margin 3 h 15 min | 6 h 06 min · margin **1 h 23 min** |
-| Bedrock and Geological Contact Analysis | each bedrock unit's interior + the contact between them | 3 stops · 0.18 km · 1 h 05 min · margin 6 h 54 min | 1 h 09 min · margin 6 h 21 min |
-| Olivine and Pyroxene Investigation | CRISM olivine and high-Ca pyroxene (no low-Ca pyroxene in the site) | 3 stops · 1.45 km · 1 h 44 min · margin 6 h 16 min | 2 h 12 min · margin 5 h 18 min |
-| Olivine-Smectite Alteration Analysis | olivine + smectite next to plain olivine | 3 stops · 1.04 km · 1 h 32 min · margin 6 h 28 min | 1 h 52 min · margin 5 h 37 min |
+| Ancient Lake and Delta Investigation *(partial)* | crater-floor bedrock interiors, their contacts, olivine + smectite; **the delta lies ~2 km west, outside the site** | 3 stops · 1.05 km · 1 h 32 min · margin 6 h 28 min | 1 h 53 min · margin 5 h 37 min |
+| Mineralogical Diversity Exploration | one spot per CRISM class present, units and contacts for context | 8 stops · 4.14 km · 4 h 46 min · margin 3 h 14 min | 6 h 08 min · margin **1 h 21 min** |
+| Bedrock and Geological Contact Analysis | each bedrock unit's interior + the contact between them | 3 stops · 0.19 km · 1 h 06 min · margin 6 h 54 min | 1 h 10 min · margin 6 h 20 min |
+| Olivine and Pyroxene Investigation | CRISM olivine and high-Ca pyroxene (no low-Ca pyroxene in the site) | 3 stops · 1.47 km · 1 h 44 min · margin 6 h 16 min | 2 h 13 min · margin 5 h 17 min |
+| Olivine-Smectite Alteration Analysis | olivine + smectite next to plain olivine | 3 stops · 1.06 km · 1 h 32 min · margin 6 h 28 min | 1 h 53 min · margin 5 h 36 min |
 
 **Mount Sharp boxwork, Gale crater**
 
 | Objective | What becomes a stop | Lunar ConOps | Mars conservative |
 |---|---|---|---|
-| Boxwork Ridge and Hollow Investigation | a ridge and a hollow inside the boxwork-bearing layer | 2 stops · 2.86 km · 2 h 18 min · margin 5 h 41 min | 3 h 22 min · margin 4 h 07 min |
-| Geological Contact Exploration | the layer's lower and upper contacts + each level's interior | 5 stops · 1.56 km · 2 h 35 min · margin 5 h 25 min | 3 h 11 min · margin 4 h 19 min |
-| Chemical Anomaly Investigation | the nearest rock for each kind of ChemCam standout (one stop per rock) | 8 stops · 0.82 km · 3 h 09 min · margin 4 h 51 min | 3 h 28 min · margin 4 h 02 min |
-| Water-Related Alteration Evidence | the nearest "CaO high" rock (calcium-sulfate veins), boxwork ridge and hollow | 3 stops · 2.86 km · 2 h 38 min · margin 5 h 21 min | 3 h 42 min · margin 3 h 47 min |
-| ChemCam Target Re-investigation | the ten nearest measured targets (targets in one 4 m cell share a stop) | 10 stops · 0.62 km · 3 h 42 min · margin 4 h 18 min | 3 h 56 min · margin 3 h 34 min |
+| Boxwork Ridge and Hollow Investigation | a ridge and a hollow inside the boxwork-bearing layer | 2 stops · 2.87 km · 2 h 19 min · margin 5 h 41 min | 3 h 23 min · margin 4 h 06 min |
+| Geological Contact Exploration | the layer's lower and upper contacts + each level's interior | 5 stops · 1.58 km · 2 h 36 min · margin 5 h 24 min | 3 h 12 min · margin 4 h 18 min |
+| Chemical Anomaly Investigation | the nearest rock for each kind of ChemCam standout (one stop per rock) | 8 stops · 0.84 km · 3 h 10 min · margin 4 h 50 min | 3 h 29 min · margin 4 h 01 min |
+| Water-Related Alteration Evidence | the nearest "CaO high" rock (calcium-sulfate veins), boxwork ridge and hollow | 3 stops · 2.88 km · 2 h 39 min · margin 5 h 20 min | 3 h 44 min · margin 3 h 45 min |
+| ChemCam Target Re-investigation | the ten nearest measured targets (targets in one 4 m cell share a stop) | 10 stops · 0.64 km · 3 h 43 min · margin 4 h 17 min | 3 h 57 min · margin 3 h 33 min |
 
 Every plan above passes all hard constraints. With the space weather unknown (a future date) each one is **CONDITIONAL**, not GO — see [the decision](#the-decision-go--conditional--no-go--insufficient-data).
 
@@ -192,10 +195,10 @@ NASA's published EVA limits were written for the Moon. NASA's own suited walking
 | | Jezero, *Mineralogical Diversity* — Lunar | — Mars conservative | Gale, *Geological Contacts* — Lunar | — Mars conservative |
 |---|---|---|---|---|
 | Stops | 8 | 8 | 5 | 5 |
-| EVA time | 4 h 45 min | 6 h 06 min | 2 h 35 min | 3 h 11 min |
-| Share of budget | 59 % of 8 h | 81 % of 7.5 h | 32 % of 8 h | 42 % of 7.5 h |
-| Tightest walk-back margin | 3 h 15 min | **1 h 23 min** | 5 h 25 min | 4 h 19 min |
-| Farthest from habitat / limit | 1.08 / 2 km | 1.08 / 1.2 km | 0.71 / 2 km | 0.71 / 1.2 km |
+| EVA time | 4 h 46 min | 6 h 08 min | 2 h 36 min | 3 h 12 min |
+| Share of budget | 60 % of 8 h | 82 % of 7.5 h | 32 % of 8 h | 43 % of 7.5 h |
+| Tightest walk-back margin | 3 h 14 min | **1 h 21 min** | 5 h 24 min | 4 h 18 min |
+| Farthest from habitat / limit | 1.08 / 2 km | 1.08 / 1.2 km | 0.72 / 2 km | 0.72 / 1.2 km |
 | Hard constraints | all met | all met | all met | all met |
 
 On Jezero's longer loop the Mars-conservative set cuts the safety margin by almost two hours: the same plan is still GO, but with far less room for a late start or a long stop.
@@ -230,7 +233,7 @@ The **Hazards** layer (`web/src/utils/hazards.js`) classes every 4 m cell from d
 | Beyond rover walk-back | farther than a 30-min walk from the rover (rover mode) | sourced (Ogilvie et al. 2026) |
 | Known only from orbit | no rover ground-view position within 100 m | assumption |
 
-**Mission setup → KEEP 4 M FROM OBSTACLES** inflates the planner's walls by that buffer before routing. At Gale the chemical-anomaly SAFE route grows from 0.82 to 1.30 km and keeps 7 of its 8 stops.
+**Mission setup → KEEP 4 M FROM OBSTACLES** inflates the planner's walls by that buffer before routing. At Gale the chemical-anomaly SAFE route grows from 0.84 to 1.33 km and keeps 7 of its 8 stops.
 
 The 1 m DTM resolves rocks of a few metres: a cell with no flag is **not** certified rock-free. Smaller rocks are for the crew's eyes and the ground views.
 
@@ -412,7 +415,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (123 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
+`node --test web/tests/*.test.mjs` (138 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
 
 | Area | What is checked |
 |---|---|
@@ -429,6 +432,9 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 | Decision | any failed hard constraint → NO-GO; unevaluable → INSUFFICIENT DATA; unknown space weather → never GO; notes never change the status |
 | Payload | total = suit + items; suit parts never added twice; the existing 45 kg limit; remaining capacity; missing or invalid entries → INSUFFICIENT DATA |
 | Dust | seven components with different classes, each sourced; lunar / analog / Mars sources kept apart; protection never lowers a class; unknown settings, date and layer reported as missing; no probability, percentage or rate fields |
+| Site data consistency | for Jezero and Gale: every layer on the DTM grid (size, cell, row order), the orbital image covering exactly the DTM, centres as documented, 234 rover positions agreeing with their latitude / longitude through the app's projection (< 2 m), track and ChemCam targets inside the site |
+| Route & science consistency | for every objective on both sites: each stop reachable and on the route, one stop time per stop counted in the EVA time, the walk-back margin at each stop = budget − elapsed − walk home, tightest margin and point of no return agree, the route's checks agree with its decision |
+| Edge cases (real Jezero) | coordinates outside the site or not finite are rejected (never moved onto the edge); a Gale objective at Jezero is refused; nothing fits → empty stop list; a target in a wall → route ends on the nearest walkable cell; payload over the limit → NO-GO; missing dust settings → dust INSUFFICIENT DATA, decision unchanged; future date → space weather unknown, never GO; 7.5-h stay → negative margin, point of no return, NO-GO, oxygen NO-GO; excessive slope stays NO-GO whatever payload / dust / oxygen say; no start time → INSUFFICIENT DATA |
 | Oxygen & mass | BVAD values; depletion per scenario; zero boundary; pause and speed multipliers; walking, stops and abort consume; rate change mid-EVA not retroactive; reserve and depletion warnings; mass without double counting; NO-GO / CONDITIONAL / INSUFFICIENT DATA; real Jezero and Gale routes; Moon mode unaffected |
 | Mobility & integration | no payload or dust penalty (real Jezero route and walking times identical with 0 and 40 kg); the Mars speed factor applies outbound and on the return; dust never changes the decision; an over-limit payload is NO-GO through the existing rule |
 | Provenance | every record complete and categorised against the real files; Jezero RAD transferred; Gale geology derived; CRISM / THEMIS / SuperCam shown as unavailable with reasons |
@@ -490,7 +496,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - NASA/JPL-Caltech/ESA/Univ. of Arizona/JHUAPL/MSSS/USGS Astrogeology Science Center. *Curiosity's Proposed Path up Mount Sharp* (PIA23179, 2019) and *Curiosity's Path to Gediz Vallis Ridge and Beyond* ([PIA26042](https://science.nasa.gov/photojournal/curiositys-path-to-gediz-vallis-ridge-and-beyond/), 2023) — the route-map style. NASA/JPL *Mars Trek* ([about](https://trek.nasa.gov/mars/jpl/config/textAbout.html)) — elevation plots. NASA *Worldview* ([comparison mode](https://www.earthdata.nasa.gov/news/blog/introducing-worldviews-comparison-feature)) — layer swipe.
 - Allison, M. & McEwen, M. (2000). Mars24 algorithm, NASA GISS. Tobler, W. (1993), NCGIA TR 93-1.
 
-Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md). Payload, dust and mobility assessments: [docs/EVA_ASSESSMENT.md](docs/EVA_ASSESSMENT.md). Oxygen and carried mass: [docs/OXYGEN_AND_MASS.md](docs/OXYGEN_AND_MASS.md).
+Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md). Payload, dust and mobility assessments: [docs/EVA_ASSESSMENT.md](docs/EVA_ASSESSMENT.md). Oxygen and carried mass: [docs/OXYGEN_AND_MASS.md](docs/OXYGEN_AND_MASS.md). Final integration and acceptance report: [docs/FINAL_VALIDATION.md](docs/FINAL_VALIDATION.md).
 
 ## Use of AI
 
