@@ -1,35 +1,61 @@
-/** Small shared panel components. */
+/** Small shared panel components. Mars sites use the workspace design tokens (ui/theme.js); the Moon keeps its terminal look. */
+import { useState } from 'react';
 import { fs } from '../ui/layout';
+import { IS_DEM } from '../three/terrainGenerator';
+import { T } from '../ui/theme';
 
-// ---- Micro components ----
-export function Sect({ label, children, id }) {
+const MOON = { label: '#3a663a', rule: 'rgba(30,70,30,0.2)', v: '#99ff99', btnOn: 'rgba(60,180,60,0.7)', btnOff: 'rgba(35,70,35,0.4)',
+  btnBgOn: 'rgba(0,50,0,0.5)', btnBgOff: 'rgba(6,14,6,0.4)', btnTxtOn: '#77ff77', btnTxtOff: '#447744' };
+const MARS = { label: T.muted, rule: T.rule, v: T.text, btnOn: T.accent, btnOff: T.ruleStrong,
+  btnBgOn: T.accentSoft, btnBgOff: T.raised, btnTxtOn: '#f2c6a0', btnTxtOff: '#b9c0c8' };
+const C = IS_DEM ? MARS : MOON;
+
+/**
+ * Panel section. `collapsible` sections show `summary` (the key values) in the header while closed,
+ * so the panel can be read without opening every section.
+ */
+export function Sect({ label, children, id, collapsible = false, defaultOpen = true, summary = null, open: openProp, onToggle }) {
+  const [openState, setOpen] = useState(defaultOpen);
+  const open = openProp ?? openState;
+  const toggle = () => { onToggle ? onToggle(!open) : setOpen(o => !o); };
   return (
-    <div id={id} style={{ scrollMarginTop: 6 }}>
-      <Label>{label}</Label>
-      <div style={{marginTop:4}}>{children}</div>
-      <div style={{height:1,background:'rgba(30,70,30,0.2)',marginTop:8}}/>
-    </div>
+    <section id={id} style={{ scrollMarginTop: 6 }} aria-label={typeof label === 'string' ? label : undefined}>
+      {collapsible ? (
+        <button type="button" onClick={toggle} aria-expanded={open}
+          style={{ all: 'unset', cursor: 'pointer', display: 'flex', width: '100%', alignItems: 'baseline', gap: 6, boxSizing: 'border-box' }}>
+          <span style={{ color: C.label, fontSize: fs(7), width: 9, flexShrink: 0 }}>{open ? '▾' : '▸'}</span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <Label>{label}</Label>
+            {!open && summary && <span style={{ display: 'block', marginTop: 2, fontSize: fs(7.5), color: IS_DEM ? T.text : '#88aa88', fontFamily: IS_DEM ? T.mono : 'monospace',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{summary}</span>}
+          </span>
+        </button>
+      ) : <Label>{label}</Label>}
+      {(!collapsible || open) && <div style={{ marginTop: 5 }}>{children}</div>}
+      <div style={{ height: 1, background: C.rule, marginTop: 8 }} />
+    </section>
   );
 }
 export function Label({ children }) {
-  return <div style={{color:'#3a663a',fontSize:fs(7),textTransform:'uppercase',letterSpacing:1.2}}>{children}</div>;
+  return <div style={{ color: C.label, fontSize: fs(7), textTransform: 'uppercase', letterSpacing: IS_DEM ? 1 : 1.2,
+    fontWeight: IS_DEM ? 600 : 'normal', fontFamily: IS_DEM ? T.sans : undefined }}>{children}</div>;
 }
-export function Row({ children, style={} }) {
-  return <div style={{display:'flex',gap:3,...style}}>{children}</div>;
+export function Row({ children, style = {} }) {
+  return <div style={{ display: 'flex', gap: 3, ...style }}>{children}</div>;
 }
 export function V({ children, c }) {
-  return <span style={{color:c||'#99ff99'}}>{children}</span>;
+  return <span style={{ color: c || C.v, fontFamily: IS_DEM ? T.mono : undefined }}>{children}</span>;
 }
-export function Btn({ children, active, onClick, disabled, color, title, style={} }) {
+export function Btn({ children, active, onClick, disabled, color, title, style = {} }) {
   return (
-    <button type="button" title={title} disabled={!!disabled} onClick={disabled?undefined:onClick} style={{
-      flex:1,padding:'4px 4px',fontSize:fs(8),fontWeight:'bold',
-      cursor:disabled?'default':'pointer',borderRadius:3,
-      border:`1px solid ${active?(color||'rgba(60,180,60,0.7)'):'rgba(35,70,35,0.4)'}`,
-      background:active?'rgba(0,50,0,0.5)':'rgba(6,14,6,0.4)',
-      color:active?(color||'#77ff77'):'#447744',
-      opacity:disabled?0.4:1,transition:'all 0.12s',
-      fontFamily:'monospace',letterSpacing:0.4,
+    <button type="button" title={title} disabled={!!disabled} onClick={disabled ? undefined : onClick} aria-pressed={active ? true : undefined} style={{
+      flex: 1, padding: IS_DEM ? '4px 5px' : '4px 4px', fontSize: fs(8), fontWeight: IS_DEM ? 600 : 'bold',
+      cursor: disabled ? 'default' : 'pointer', borderRadius: IS_DEM ? 2 : 3,
+      border: `1px solid ${active ? (color || C.btnOn) : C.btnOff}`,
+      background: active ? C.btnBgOn : C.btnBgOff,
+      color: active ? (IS_DEM ? (color ? color : C.btnTxtOn) : (color || C.btnTxtOn)) : C.btnTxtOff,
+      opacity: disabled ? 0.4 : 1, transition: 'background 0.12s, border-color 0.12s',
+      fontFamily: IS_DEM ? T.sans : 'monospace', letterSpacing: IS_DEM ? 0.3 : 0.4,
       ...style,
     }}>
       {children}

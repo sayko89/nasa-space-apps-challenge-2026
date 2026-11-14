@@ -10,22 +10,23 @@ import { param } from '../config/marswalkProfile';
 import { SITE } from '../three/terrainGenerator';
 import { useSpaceWeather } from '../hooks/useSpaceWeather';
 import { evaAssessments, cellIdx } from '../utils/evaAssessments';
+import { T } from '../ui/theme';
 
 export function WorkflowStrip({ steps, onStep }) {
   const next = steps.find(s => !s.done);
   return (
-    <div aria-label="Mission workflow" style={{ border:'1px solid rgba(80,140,80,0.35)', borderRadius:4, padding:'4px 5px', background:'rgba(0,20,0,0.5)' }}>
+    <div aria-label="Mission workflow" style={{ border:`1px solid ${T.rule}`, borderRadius:2, padding:'5px 6px', background:T.sunken }}>
       <div style={{ display:'flex', gap:2 }}>
         {steps.map(st => (
           <button key={st.n} type="button" onClick={() => onStep(st)} title={`${st.n}. ${st.label}${st.done ? ' ✓' : ''}`}
             style={{ flex:1, minWidth:0, padding:'2px 0', borderRadius:2, cursor:'pointer', fontFamily:'monospace', fontSize:fs(7), fontWeight:'bold',
-              border:`1px solid ${st === next ? '#ffb347' : st.done ? 'rgba(80,200,90,0.6)' : 'rgba(80,100,80,0.4)'}`,
-              background: st.done ? 'rgba(30,90,40,0.6)' : st === next ? 'rgba(90,55,0,0.55)' : 'transparent',
-              color: st.done ? '#9fffa8' : st === next ? '#ffd9a0' : '#5a7a5a' }}>{st.done ? '✓' : st.n}</button>
+              border:`1px solid ${st === next ? T.accent : st.done ? 'rgba(79,180,119,0.55)' : T.rule}`,
+              background: st.done ? 'rgba(79,180,119,0.16)' : st === next ? T.accentSoft : 'transparent',
+              color: st.done ? T.go : st === next ? '#f2c6a0' : T.faint }}>{st.done ? '✓' : st.n}</button>
         ))}
       </div>
-      <div style={{ fontSize:fs(7), color:'#8fbf8f', marginTop:3 }}>
-        {next ? <>Next: <b style={{ color:'#ffd9a0' }}>{next.n}. {next.label}</b> — tap to go there</> : `All ${steps.length} steps done.`}
+      <div style={{ fontSize:fs(7.5), color:T.muted, marginTop:4, fontFamily:T.sans }}>
+        {next ? <>Next: <b style={{ color:T.text }}>{next.n}. {next.label}</b> — opens the workspace that holds it</> : `All ${steps.length} steps done.`}
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ export const CATEGORIES = {
   'transferred-reference': { label: 'Transferred reference', color: '#ffa94d' },
   modelled: { label: 'Modelled', color: '#c8a8ff' },
   simulated: { label: 'Simulated', color: '#ff8fa3' },
+  'ai-predicted': { label: 'AI-predicted', color: '#e58fe0' },
 };
 
 const doi = (d) => (d && /^https?:/.test(d) ? d : d ? `https://doi.org/${d}` : null);

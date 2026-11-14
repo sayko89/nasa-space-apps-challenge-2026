@@ -26,11 +26,19 @@ import { EvaPlayback } from './utils/evaPlayback';
 import { oxygenConfig } from './utils/oxygen';
 import { fmtClock, fmtHM } from './utils/format';
 import { radiationIsLocal } from './utils/radiation';
-import SiteSwitcher from './components/SiteSwitcher';
 import { PANEL_W, SHEET_VH, useNarrow, useCompact, COMPACT_QUERY } from './ui/layout';
 import { decodePlan } from './utils/shareLink';
 import { findObjective } from './config/objectives';
 import ProvenancePanel from './components/ProvenancePanel';
+import TopBar, { topbarHeight } from './workspace/TopBar';
+import LayerCatalog from './workspace/LayerCatalog';
+import Inspector from './workspace/Inspector';
+import MissionTimeline from './workspace/MissionTimeline';
+import { T, CATALOG_W } from './ui/theme';
+import { buildCatalog } from './config/catalog';
+import { provenanceFor } from './config/provenance';
+import { HEATMAP_OPTIONS } from './components/panelConstants';
+import { useWide } from './ui/layout';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
@@ -77,9 +85,9 @@ function ToastContainer({ toasts, onDismiss }) {
 
 // ---- Data provenance / fallback badge (bottom-left, collapsible) ----
 const LINK = { color:'#ffb080' };
-function SiteBadge({ collapsed, onToggle, narrow = false, onProvenance = null }) {
+function SiteBadge({ collapsed, onToggle, narrow = false, onProvenance = null, left = 0 }) {
   const base = {
-    position:'absolute', left: narrow ? 6 : 12, bottom: narrow ? `calc(${SHEET_VH}vh + 6px)` : 10, zIndex:15,
+    position:'absolute', left: narrow ? 6 : left + 12, bottom: narrow ? `calc(${SHEET_VH}vh + 6px)` : 10, zIndex:15,
     maxWidth: narrow ? 'calc(100vw - 12px)' : 560, maxHeight: narrow ? `calc(${100 - SHEET_VH}vh - 80px)` : undefined, overflowY: narrow ? 'auto' : undefined,
     fontFamily:'monospace', fontSize:IS_DEM ? 10.5 : 9, lineHeight:1.5, padding:'6px 9px',
     borderRadius:4, pointerEvents:'auto',
@@ -215,13 +223,34 @@ export default function App() {
   setHazardRoverMode(!!mission.rover);
   const [isPlanningScience, setIsPlanningScience] = useState(false);
   const autoPlanRef = useRef(false);   // plan as soon as the science waypoints are committed
-  const [badgeCollapsed, setBadgeCollapsed] = useState(() => !!window.matchMedia?.(COMPACT_QUERY).matches);   // phones: start collapsed
+  const [badgeCollapsed, setBadgeCollapsed] = useState(() => IS_DEM || !!window.matchMedia?.(COMPACT_QUERY).matches);   // Mars: provenance lives in the catalog / inspector   // phones: start collapsed
   const narrow = useNarrow();
   const compact = useCompact();
   const [showProvenance, setShowProvenance] = useState(false);
-  // DEM: map layer draped on the 3D terrain (null = off)
-  const [drapeLayer, setDrapeLayer] = useState(null);
-  const [drapeOpacity, setDrapeOpacity] = useState(0.6);
+  // DEM: map layers draped on the 3D terrain, bottom → top: [{ layer, opacity, fromViewer? }] (data catalog)
+  const [drapes, setDrapes] = useState([]);
+  // The layer viewer (Analyze) drives the top drape; the catalog can stack several.
+  const drapeLayer = drapes.length ? drapes[drapes.length - 1].layer : null;
+  const drapeOpacity = drapes.length ? drapes[drapes.length - 1].opacity : 0.6;
+  const setDrapeLayer = useCallback((l) => setDrapes(ds => {
+    if (!l) return ds.slice(0, -1);
+    const top = ds[ds.length - 1];
+    if (ds.some(d => d.layer === l)) return [...ds.filter(d => d.layer !== l), ds.find(d => d.layer === l)];
+    if (top?.fromViewer) return [...ds.slice(0, -1), { ...top, layer: l }];
+    return [...ds, { layer: l, opacity: 0.6, fromViewer: true }];
+  }), []);
+  const setDrapeOpacity = useCallback((o) => setDrapes(ds => (ds.length ? [...ds.slice(0, -1), { ...ds[ds.length - 1], opacity: o }] : ds)), []);
+  // Workspaces (Mars sites): explore · analyze · plan · ops — layout only, every state above is shared
+  const wide = useWide();
+  const [workspace, setWorkspace] = useState(() => {
+    const w = new URLSearchParams(window.location.search).get('ws');
+    return ['explore', 'analyze', 'plan', 'ops'].includes(w) ? w : SHARED ? 'plan' : 'explore';
+  });
+  const [selection, setSelection] = useState(null);   // inspector: { type: 'point'|'layer'|'stop'|'route', … }
+  const [catalogOpen, setCatalogOpen] = useState(false); // tablet / phone: catalog drawer
+  const catalog = useMemo(() => (IS_DEM ? buildCatalog(SITE, { drapeLayers: HEATMAP_OPTIONS }) : []), []);
+  const provByKey = useMemo(() => (IS_DEM ? Object.fromEntries(provenanceFor(SITE.name, SITE).map(r => [r.key, r])) : {}), []);
+  const catalogItem = selection?.type === 'layer' ? catalog.flatMap(c => c.items).find(i => i.id === selection.id) || null : null;
   // DEM: the rover's own route and named places, on the map and in 3D
   const [showTrack, setShowTrack] = useState(true);
 
@@ -858,7 +887,7 @@ export default function App() {
       roverState, routes, activeRoute, isRoving: roving, playback, science, waypoints,
       sceneApi: sceneApiRef, setCameraMode, setActiveRoute, setBadgeCollapsed, setEvaStartMs, evaStartMs,
       planScience: handlePlanScience, startEva: handleStartRover, abortEva: handleAbortEva,
-      setDrapeLayer, setDrapeOpacity,
+      setDrapeLayer, setDrapeOpacity, setDrapes, setWorkspace, setSelection,
       placeDust: handleDustPlaced, clearDust: handleClearDustHazard,
     };
   }
@@ -871,20 +900,61 @@ export default function App() {
 
   const crewIdlePos = waypoints[0] || homeWaypointRef.current || DEFAULT_HOME;
 
+  // ---- Workspace layout (Mars sites). The Moon keeps its original full-screen layout.
+  const WS = IS_DEM;
+  const topH = WS ? topbarHeight(narrow) : 0;
+  const catalogDocked = WS && wide && (workspace === 'explore' || workspace === 'analyze');
+  const leftW = catalogDocked ? CATALOG_W : 0;
+  const showTimeline = WS && !narrow && (workspace === 'plan' || workspace === 'ops');
+  const activeR = routes?.[activeRoute] || null;
+  const activeAssess = WS && activeR ? evaAssessments(activeR, hudWx, { mission, startMs: evaStartMs }) : null;
+  const inspectFloating = WS && !narrow && (workspace === 'plan' || workspace === 'ops') && selection;
+  const inspect = (sel) => { setSelection(sel); if (narrow && sel) setCatalogOpen(false); };
+  const inspector = WS ? (
+    <Inspector selection={selection} onClose={selection ? () => setSelection(null) : null} provByKey={provByKey} catalogItem={catalogItem}
+      routes={routes} activeRoute={activeRoute} setActiveRoute={setActiveRoute} science={science} waypoints={waypoints} startMs={evaStartMs}
+      decisionFor={(r) => evaAssessments(r, hudWx, { mission, startMs: evaStartMs })?.decision}
+      oxygenFor={(r) => evaAssessments(r, hudWx, { mission, startMs: evaStartMs })?.oxygen}
+      onAddWaypoint={(pos) => (waypoints.length ? addWaypoint(pos) : setStartWaypoint(pos))} onSelect={inspect} compact={narrow} />
+  ) : null;
+  const catalogPanel = WS ? (
+    <LayerCatalog catalog={catalog} provByKey={provByKey} selectedId={selection?.type === 'layer' ? selection.id : null}
+      onInspect={(it) => inspect({ type: 'layer', id: it.id })}
+      orthoOn={orthoOn} setOrthoOn={setOrthoOn} wireframe={wireframe} setWireframe={setWireframe}
+      reliefScale={reliefScale} setReliefScale={setReliefScale} showTrack={showTrack} setShowTrack={setShowTrack}
+      drapes={drapes} setDrapes={setDrapes}
+      focus={workspace === 'analyze' ? ['topography', 'hazards', 'geology', 'mineralogy', 'chemistry', 'thermal', 'ai'] : null}
+      style={catalogDocked ? { position: 'absolute', top: topH, left: 0, bottom: 0, width: CATALOG_W, zIndex: 12 }
+        : { position: 'absolute', top: topH, left: 0, bottom: narrow ? `${SHEET_VH}vh` : 0, width: Math.min(CATALOG_W + 20, window.innerWidth - 40), zIndex: 30,
+          boxShadow: '8px 0 24px rgba(0,0,0,0.5)' }} />
+  ) : null;
+  const timeline = showTimeline || (WS && narrow && (workspace === 'plan' || workspace === 'ops')) ? (
+    <MissionTimeline route={activeR} mode={activeRoute} startMs={evaStartMs} oxygen={activeAssess?.oxygen}
+      nowS={evaActive && playback.loaded ? playback.t : null} onSelect={inspect} />
+  ) : null;
+
   return (
-    <div style={{ width:'100vw', height:'100vh', overflow:'hidden', position:'relative', background: IS_DEM ? '#2a1a12' : '#000008' }}>
+    <div style={{ width:'100vw', height:'100vh', overflow:'hidden', position:'relative', background: IS_DEM ? T.ground : '#000008' }}>
       <style>{`
         @keyframes slideDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
 
+      {WS && (
+        <TopBar workspace={workspace} setWorkspace={(w) => { setWorkspace(w); setCatalogOpen(false); }} compact={narrow} medium={!wide}
+          objective={findObjective(SITE.name, science?.objectiveId || objectiveId)} activeRoute={activeRoute}
+          decision={activeAssess?.decision || null} evaStatus={evaStatus} aborted={!!playback.aborted}
+          onMenu={!catalogDocked && (workspace === 'explore' || workspace === 'analyze') ? () => setCatalogOpen(o => !o) : null} />
+      )}
+      {WS && (catalogDocked || catalogOpen) && catalogPanel}
+
       {/* 3D Scene */}
       <div style={narrow
-        ? { position:'absolute', top:0, left:0, right:0, bottom:`${SHEET_VH}vh` }
-        : { position:'absolute', inset:0, right:PANEL_W }}>
+        ? { position:'absolute', top:topH, left:0, right:0, bottom:`${SHEET_VH}vh` }
+        : { position:'absolute', top:topH, left:leftW, bottom:0, right:PANEL_W }}>
         <Suspense fallback={
           <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',
-            color:'#44ff88',fontSize:13,fontFamily:'monospace',letterSpacing:'0.18em'}}>
-            {IS_DEM ? 'LOADING MARTIAN SURFACE...' : 'LOADING LUNAR SURFACE...'}
+            color: IS_DEM ? T.muted : '#44ff88',fontSize:13,fontFamily: IS_DEM ? T.sans : 'monospace',letterSpacing:'0.18em'}}>
+            {IS_DEM ? 'LOADING MARTIAN SURFACE…' : 'LOADING LUNAR SURFACE...'}
           </div>
         }>
           <MoonScene
@@ -911,27 +981,40 @@ export default function App() {
             returnPath={returnPath}
             sceneApiRef={sceneApiRef}
             showTrack={showTrack}
-            overlay={IS_DEM && drapeLayer ? { layer: drapeLayer, opacity: drapeOpacity, refreshKey: routes } : null}
+            overlay={IS_DEM && drapes.length ? { layer: drapeLayer, opacity: drapeOpacity, refreshKey: routes } : null}
+            overlays={IS_DEM ? drapes : null}
+            onTerrainClick={IS_DEM && dustMode !== DUST_STATES.PLACEMENT ? (pt) => inspect({ type: 'point', ...pt }) : null}
+            inspectPoint={IS_DEM && selection?.type === 'point' ? selection : null}
           />
         </Suspense>
       </div>
 
-      {/* HUD */}
+      {/* HUD (Moon: title + controls; Mars: the controls hint inside the map) */}
       <div style={{
-        position:'absolute', top: compact ? 6 : 10, left: compact ? 8 : 12, right: narrow ? 8 : (compact ? PANEL_W + 8 : undefined),
-        color: IS_DEM ? 'rgba(255,214,170,0.92)' : 'rgba(110,190,110,0.8)', fontFamily:'monospace',
+        position:'absolute', top: topH + (compact ? 6 : 10), left: leftW + (compact ? 8 : 12), right: narrow ? 8 : (compact ? PANEL_W + 8 : undefined),
+        color: IS_DEM ? 'rgba(232,226,218,0.85)' : 'rgba(110,190,110,0.8)', fontFamily: IS_DEM ? T.sans : 'monospace',
         fontSize: compact ? 10.5 : (IS_DEM ? 13 : 11),
-        letterSpacing: compact ? '0.08em' : '0.2em', zIndex:15, pointerEvents:'none',
-        textShadow: IS_DEM ? '0 0 8px rgba(0,0,0,0.7)' : '0 0 8px rgba(40,180,40,0.4)',
+        letterSpacing: IS_DEM ? '0.06em' : compact ? '0.08em' : '0.2em', zIndex:15, pointerEvents:'none',
+        textShadow: IS_DEM ? '0 1px 4px rgba(0,0,0,0.8)' : '0 0 8px rgba(40,180,40,0.4)',
+        display: showTimeline ? 'none' : undefined,
       }}>
-        {IS_DEM ? `MARTIAN MAP · ${(SITE.meta?.label || SITE.name).toUpperCase()}` : 'MOON ROVER SIMULATOR'}
-        {IS_DEM && <SiteSwitcher current={SITE.name} />}
-        <div style={{fontSize: IS_DEM ? 9.5 : 8, color: IS_DEM ? 'rgba(255,214,170,0.65)' : 'rgba(70,130,70,0.6)', marginTop:2}}>
-          {compact ? 'DRAG=ROTATE · TWO FINGERS=PAN / ZOOM'
-            : <>LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM{IS_DEM ? ' · SPACE=PLAY/PAUSE EVA' : ''}</>}
+        {!IS_DEM && 'MOON ROVER SIMULATOR'}
+        <div style={{fontSize: IS_DEM ? 10.5 : 8, color: IS_DEM ? 'rgba(232,226,218,0.75)' : 'rgba(70,130,70,0.6)', marginTop:2}}>
+          {compact ? (IS_DEM ? 'DRAG = ROTATE · TWO FINGERS = PAN / ZOOM · TAP = INSPECT' : 'DRAG=ROTATE · TWO FINGERS=PAN / ZOOM')
+            : IS_DEM ? <>Left drag pan · right drag rotate · scroll zoom · click the terrain to inspect · space play/pause EVA</>
+            : <>LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM</>}
         </div>
       </div>
-      <SiteBadge collapsed={badgeCollapsed} onToggle={() => setBadgeCollapsed(c => !c)} narrow={narrow} onProvenance={() => setShowProvenance(true)} />
+      {showTimeline && timeline && (
+        <div style={{ position: 'absolute', top: topH + 8, left: leftW + 10, right: PANEL_W + 10, zIndex: 15 }}>{timeline}</div>
+      )}
+      {inspectFloating && (
+        <div style={{ position: 'absolute', top: topH + 104, left: leftW + 10, width: 340, maxHeight: `calc(100vh - ${topH + 104 + 16}px)`, overflowY: 'auto', zIndex: 17,
+          background: T.panel, border: `1px solid ${T.ruleStrong}`, padding: '9px 11px', boxShadow: '0 6px 22px rgba(0,0,0,0.5)' }}>{inspector}</div>
+      )}
+      {(!WS || workspace === 'explore' || workspace === 'analyze') && (
+        <SiteBadge collapsed={badgeCollapsed} onToggle={() => setBadgeCollapsed(c => !c)} narrow={narrow} onProvenance={() => setShowProvenance(true)} left={leftW} />
+      )}
       {showProvenance && <ProvenancePanel onClose={() => setShowProvenance(false)} />}
 
       {evaActive && (
@@ -992,6 +1075,10 @@ export default function App() {
         onTriggerDustHazard={handleTriggerDustHazard}
         onDustPlaced={handleDustPlaced}
         onClearDustHazard={handleClearDustHazard}
+        workspace={WS ? workspace : null} setWorkspace={setWorkspace} topOffset={topH}
+        inspector={inspector} hasSelection={!!selection} timeline={narrow ? timeline : null}
+        onInspect={WS ? inspect : null} onProvenance={() => setShowProvenance(true)}
+        catalog={catalog}
       />
     </div>
   );
