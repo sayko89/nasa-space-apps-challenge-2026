@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { encodePlan, decodePlan, buildShareURL } from '../src/utils/shareLink.js';
 
-const mission = { suit: 'xemu', equipmentKg: 12, rover: true, limits: 'mars' };
+const mission = { suit: 'xemu', equipmentKg: 12, rover: true, limits: 'mars', obstacleBuffer: true };
 
 test('science plan: link keeps the start and the settings, not the stops', () => {
   const url = buildShareURL('https://x.io/app/?site=jezero#h', 'gale', {

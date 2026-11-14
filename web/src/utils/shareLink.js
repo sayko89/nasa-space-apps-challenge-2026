@@ -9,7 +9,7 @@
  *   sci true → re-run the science-stop planner from w[0] (the stops are deterministic)
  *   r  active route (SAFE / ECO / FAST / AUTO)
  *   t  EVA start, ms since 1970 (UTC) — drives sun, temperature, DONKI
- *   m  mission setup { suit, equipmentKg, rover, limits }
+ *   m  mission setup { suit, equipmentKg, rover, limits, buffer? }
  *   d  time per science stop, min
  *   o  mission objective id (config/objectives.js)
  *
@@ -41,7 +41,7 @@ export function encodePlan({ waypoints = [], science = false, route, startMs, mi
   if (science) st.sci = true;
   if (ROUTES.includes(route)) st.r = route;
   if (Number.isFinite(startMs)) st.t = Math.round(startMs);
-  if (mission) st.m = { suit: mission.suit, equipmentKg: mission.equipmentKg, rover: !!mission.rover, limits: mission.limits };
+  if (mission) st.m = { suit: mission.suit, equipmentKg: mission.equipmentKg, rover: !!mission.rover, limits: mission.limits, ...(mission.obstacleBuffer ? { buffer: true } : {}) };
   if (Number.isFinite(dwellMin)) st.d = dwellMin;
   if (typeof objectiveId === 'string' && objectiveId) st.o = objectiveId;
   return b64urlEncode(JSON.stringify(st));
@@ -85,6 +85,7 @@ export function decodePlan(search) {
       ...(typeof st.m.suit === 'string' ? { suit: st.m.suit } : {}),
       ...(num(st.m.equipmentKg) != null ? { equipmentKg: Math.min(100, Math.max(0, st.m.equipmentKg)) } : {}),
       rover: st.m.rover === true,
+      ...(st.m.buffer === true ? { obstacleBuffer: true } : {}),
       ...(st.m.limits === 'mars' || st.m.limits === 'lunar' ? { limits: st.m.limits } : {}),
     };
   }

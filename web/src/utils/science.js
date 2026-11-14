@@ -27,6 +27,8 @@
  *      minerals   null (all) | [CRISM class names]                          — mineral candidates / M: tags
  *      chemTags   null (all) | [ChemCam anomaly tags, e.g. 'CaO high']      — re-sample candidates
  *      targets    0 | k — up to k measured ChemCam targets (any chemistry) as candidates, tag T:<name>
+ *      contactOnlyTags  true — a contact stop counts only as the contact, not as a sample of each
+ *                 unit, so unit interiors (away from the boundary) are sampled separately
  *    Tags that are filtered out are not scored, so the objective steers the Held–Karp
  *    optimiser through the candidate set and the weights, not through a separate algorithm.
  *
@@ -138,24 +140,43 @@ export function candidateStops(geo, home, o) {
   }
   const list = [...best.values()].sort((a, b) => a.rt - b.rt).slice(0, maxC);
   const maxX = Math.min(f?.maxChem ?? o.maxChemCandidates ?? 2, MAX_EXACT_STOPS - list.length);
-  if (maxX > 0) list.push(...[...bestChem.values()].sort((a, b) => a.rt - b.rt).slice(0, maxX));
+  if (maxX > 0) {
+    // One stop per rock: anomalies of the same rock (same cell) become one candidate with all its tags
+    const byCell = new Map();
+    for (const c of [...bestChem.values()].sort((a, b) => a.rt - b.rt)) {
+      const cur = byCell.get(c.idx);
+      if (cur) cur.chemAll.push(c.chem); else byCell.set(c.idx, { ...c, chemAll: [c.chem] });
+    }
+    list.push(...[...byCell.values()].slice(0, maxX));
+  }
   const maxT = Math.min(f?.targets ?? 0, MAX_EXACT_STOPS - list.length);
-  if (maxT > 0) list.push(...[...bestTarget.values()].sort((a, b) => a.rt - b.rt).slice(0, maxT));
+  if (maxT > 0) {
+    // targets in the same cell (e.g. a rock shot twice under different names) → one stop
+    const byCell = new Map();
+    for (const c of [...bestTarget.values()].sort((a, b) => a.rt - b.rt)) {
+      const cur = byCell.get(c.idx);
+      if (cur) cur.targetAll.push(c.target); else byCell.set(c.idx, { ...c, targetAll: [c.target] });
+    }
+    list.push(...[...byCell.values()].slice(0, maxT));
+  }
   return list.map((c, j) => {
     const row = (c.idx / n) | 0, col = c.idx - row * n;
     let tags = cellTags(geo, c.idx, o.minerals, f), label;
     if (c.kind === 'contact') {
       const [a, b] = c.pair.map(k => geo.bedrockUnits[k]);
-      tags = ['B:' + a, 'B:' + b, `C:${a} | ${b}`];
+      tags = f?.contactOnlyTags ? [`C:${a} | ${b}`] : ['B:' + a, 'B:' + b, `C:${a} | ${b}`];
       label = `Contact: ${a} / ${b}`;
     } else if (c.kind === 'chemistry') {
-      const a = c.chem;
-      tags = [...tags, 'X:' + a.tag];
-      label = `Re-sample ${a.name} — ChemCam ${a.tag} (${a.diff > 0 ? '+' : ''}${a.diff.toFixed(1)} wt%, sol ${a.sol})`;
+      const all = c.chemAll || [c.chem], a = all[0];
+      tags = [...tags, ...all.map(x => 'X:' + x.tag)];
+      const fmt = (x) => `${x.tag} (${x.diff > 0 ? '+' : ''}${x.diff.toFixed(1)} wt%`;
+      label = all.length === 1 ? `Re-sample ${a.name} — ChemCam ${fmt(a)}, sol ${a.sol})`
+        : `Re-sample ${a.name} — ChemCam ${all.map(x => fmt(x) + ')').join(', ')}, sol ${a.sol}`;
     } else if (c.kind === 'target') {
-      const t = c.target;
-      tags = [...tags, 'T:' + t.name];
-      label = `Re-investigate ${t.name} — ChemCam target (sol ${t.sol})`;
+      const all = c.targetAll || [c.target], t = all[0];
+      tags = [...tags, ...all.map(x => 'T:' + x.name)];
+      label = all.length === 1 ? `Re-investigate ${t.name} — ChemCam target (sol ${t.sol})`
+        : `Re-investigate ${all.map(x => x.name).join(', ')} — ChemCam targets (sols ${[...new Set(all.map(x => x.sol))].join(', ')})`;
     } else if (c.kind === 'mineral') {
       const unit = tags.filter(t => t[0] === 'B' || t[0] === 'S').reverse().map(t => t.slice(2)).join(' on ');
       label = `${tags.find(t => t[0] === 'M').slice(2)} (CRISM)${unit ? ' — ' + unit : ''}`;
@@ -164,7 +185,9 @@ export function candidateStops(geo, home, o) {
     }
     const out = { id: j, idx: c.idx, row, col, kind: c.kind, tags, label, rtS: c.rt };
     if (c.chem) out.chem = c.chem;
+    if (c.chemAll?.length > 1) out.chemAll = c.chemAll;
     if (c.target) out.target = c.target;
+    if (c.targetAll?.length > 1) out.targetAll = c.targetAll;
     return out;
   });
 }

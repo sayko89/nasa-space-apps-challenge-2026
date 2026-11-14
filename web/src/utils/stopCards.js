@@ -54,7 +54,7 @@ function investigate(stop) {
   switch (stop.kind) {
     case 'contact': return 'Find the contact on the ground; photograph both sides and the boundary; sample each unit within a few metres of it; note which lies on top.';
     case 'mineral': return `Look for rock that matches the CRISM class (${stop.tags.find(t => t[0] === 'M')?.slice(2)}); sample the freshest exposure; note colour, grain size and any alteration rind.`;
-    case 'chemistry': return `Find ${stop.chem?.name}; sample the same spot ChemCam hit and the host rock next to it, so the standout (${stop.chem?.tag}) can be checked in the lab.`;
+    case 'chemistry': return `Find ${stop.chem?.name}; sample the same spot ChemCam hit and the host rock next to it, so the standout (${(stop.chemAll || [stop.chem]).map(c => c?.tag).join(', ')}) can be checked in the lab.`;
     case 'target': return `Find ${stop.target?.name} (ChemCam, sol ${stop.target?.sol}); photograph the laser pits if visible and sample the rock by hand for comparison.`;
     default: return 'Sample the unit away from loose cover; photograph the outcrop with scale; note texture and layering.';
   }
@@ -67,8 +67,10 @@ function evidence(stop) {
   const m = stop.tags.find(t => t[0] === 'M');
   if (m) out.push(`CRISM dominant mineral: ${m.slice(2)}`);
   if (stop.kind === 'contact') out.push(`Mapped contact: ${stop.tags.find(t => t[0] === 'C')?.slice(2)}`);
-  if (stop.chem) out.push(`ChemCam ${stop.chem.name}, sol ${stop.chem.sol}: ${stop.chem.tag} by ${stop.chem.diff > 0 ? '+' : ''}${stop.chem.diff.toFixed(1)} wt% against its level`);
-  if (stop.target) out.push(`ChemCam target ${stop.target.name}, sol ${stop.target.sol}${stop.target.points ? `, ${stop.target.points} laser points` : ''}`);
+  for (const c of stop.chemAll || (stop.chem ? [stop.chem] : [])) {
+    out.push(`ChemCam ${c.name}, sol ${c.sol}: ${c.tag} by ${c.diff > 0 ? '+' : ''}${c.diff.toFixed(1)} wt% against its level`);
+  }
+  for (const t of stop.targetAll || (stop.target ? [stop.target] : [])) out.push(`ChemCam target ${t.name}, sol ${t.sol}${t.points ? `, ${t.points} laser points` : ''}`);
   return out;
 }
 

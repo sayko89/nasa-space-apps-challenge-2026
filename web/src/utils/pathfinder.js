@@ -11,7 +11,8 @@ import {
 import { sunPosition, sunriseSunset } from './marsTime.js';
 import { shadowMask, isShadowedAt, heightMax } from './shadows.js';
 import { evaWindowTemps } from './climate.js';
-import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getEvaProfile } from '../config/marswalkProfile.js';
+import { param, MODE_WEIGHTS, SCIENCE_PARAMS, getEvaProfile, getObstacleBufferM, planningKey } from '../config/marswalkProfile.js';
+import { dilate } from './hazards.js';
 import { walkTimeS, maxSpeedMs, pathWalkStats } from './walkModel.js';
 import { homeTimeMaps, walkbackProfile, descendToHome } from './walkback.js';
 import { planScienceEva, tagScore } from './science.js';
@@ -119,9 +120,10 @@ export function buildIlluminationMap(sunAngleDeg, hMap, elevationDeg) {
 // Procedural: craters = walls, debris = obstacles.
 // DEM: cells steeper than the Marswalk slope limit (config/marswalkProfile.js).
 // Built once and reused. Cells with value 1 are completely blocked.
-let _wallMap = null;
+let _wallMap = null, _wallBufferM = -1;
 export function getWallMap() {
-  if (_wallMap) return _wallMap;
+  if (_wallMap && _wallBufferM === getObstacleBufferM()) return _wallMap;
+  _wallBufferM = getObstacleBufferM();
   _wallMap = new Uint8Array(GRID_RES * GRID_RES);
   if (IS_DEM) {
     const slope = buildSlopeMap(buildHeightMap());       // rise/run
@@ -133,6 +135,8 @@ export function getWallMap() {
       const lim = param('maxRockReliefM');
       for (let i = 0; i < rock.length; i++) if (rock[i] > lim) _wallMap[i] = 1;
     }
+    // Mission setup → "keep a buffer from obstacles": inflate every slope / rock wall
+    if (_wallBufferM > 0) _wallMap = dilate(_wallMap, GRID_RES, Math.round(_wallBufferM / CELL_SIZE));
     // buildSlopeMap leaves the 1-cell border at 0; block it so routes never
     // run along the unverifiable grid edge.
     for (let k = 0; k < GRID_RES; k++) {
@@ -454,8 +458,8 @@ export function getHomeMaps(homeX, homeZ, hMap) {
   const { col, row } = worldToGrid(homeX, homeZ);
   const homeIdx = row * GRID_RES + col;
   // walk-back times depend on the walking speed, i.e. on the active EVA limit profile
-  if (_homeMaps?.homeIdx === homeIdx && _homeMaps.profile === getEvaProfile()) return _homeMaps;
-  _homeMaps = { ...homeTimeMaps(homeIdx, hMap, getWallMap(), GRID_RES, CELL_SIZE), profile: getEvaProfile() };
+  if (_homeMaps?.homeIdx === homeIdx && _homeMaps.profile === planningKey()) return _homeMaps;
+  _homeMaps = { ...homeTimeMaps(homeIdx, hMap, getWallMap(), GRID_RES, CELL_SIZE), profile: planningKey() };
   return _homeMaps;
 }
 /** Last computed home maps (for the EVA Range heatmap), or null. */

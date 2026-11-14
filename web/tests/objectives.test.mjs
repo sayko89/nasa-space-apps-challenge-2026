@@ -143,3 +143,25 @@ test('stop card: reasons, risk classes and confidence from the planner\'s own da
   assert.equal(dataConfidence({ kind: 'unit', tags: [] }, { geologyDerived: true }).level, 'derived');
   assert.equal(dataConfidence({ kind: 'mineral', tags: [], terrain: { mineralConfidence: 'high' } }, {}).level, 'mapped (high)');
 });
+
+test('contactOnlyTags: a contact stop no longer stands in for both units', () => {
+  const { geo } = synth();
+  const c = S.candidateStops(geo, home, { ...base, filter: { contactOnlyTags: true, minerals: [], chemTags: [] } });
+  const contact = c.find(s => s.kind === 'contact');
+  assert.deepEqual(contact.tags, ['C:Floor A | Floor B']);
+  const plan = S.planScienceEva(geo, home, hm, P.getWallMap(), { ...base, budgetS: 3 * 3600,
+    filter: { contactOnlyTags: true, units: 'all', contacts: true, minerals: [], chemTags: [] },
+    weights: { bedrock: 3, surface: 0, contact: 4, mineral: 0, chemistry: 0 } });
+  const kinds = plan.stops.map(s => s.kind).sort();
+  assert.deepEqual(kinds, ['contact', 'unit', 'unit']);
+});
+
+test('two anomalies of one rock make one stop, not two', () => {
+  const { geo } = synth();
+  const chemCells = new Map([[55 * N + 52, [{ tag: 'Al2O3 low', name: 'Totora', sol: 4682, diff: -8.7 },
+    { tag: 'Na2O low', name: 'Totora', sol: 4682, diff: -1.9 }]]]);
+  const c = S.candidateStops(geo, home, { ...base, chemCells, filter: { units: 'none', contacts: false, minerals: [], chemTags: null, maxChem: 8 } });
+  assert.equal(c.length, 1);
+  assert.deepEqual(c[0].tags.filter(t => t[0] === 'X'), ['X:Al2O3 low', 'X:Na2O low']);
+  assert.match(c[0].label, /Al2O3 low \(-8\.7 wt%\), Na2O low \(-1\.9 wt%\)/);
+});

@@ -184,6 +184,25 @@ let _profile = 'lunar';
 export function setEvaProfile(name) { _profile = EVA_PROFILES[name] ? name : 'lunar'; }
 export function getEvaProfile() { return _profile; }
 
+/**
+ * Hazard-map thresholds (utils/hazards.js). Only the slope limit is sourced; the others are
+ * stated planning choices, shown with the map so nobody mistakes them for standards.
+ */
+export const HAZARD_PARAMS = {
+  steepFraction: { value: 0.75, status: 'design', note: 'steep = over 75 % of the slope limit (15° with a 20° limit) — the route card\'s own "steep ground" mark' },
+  roughFraction: { value: 0.5, status: 'design', note: 'rough = rock relief over half the obstacle limit (0.25 m with 0.5 m)' },
+  obstacleBufferM: { value: 4, status: 'assumption', note: 'one 4 m cell around every slope / rock obstacle: rocks under ~2 m are not in the 1 m DTM, so the ground next to a detected obstacle is the most likely to hide more' },
+  depressionM: { value: 1, status: 'assumption', note: 'closed depression (crater, pit) at least 1 m deep: found by filling the DTM\'s sinks; deeper than the knee-high relief a suited walker can step out of' },
+  unseenM: { value: 100, status: 'assumption', note: 'no rover ground-view position within 100 m: the ground is known only from orbit' },
+};
+
+let _bufferM = 0;
+/** Planner obstacle inflation [m] (0 = off). Set by Mission setup on the main thread and the worker. */
+export function setObstacleBufferM(m) { _bufferM = m > 0 ? m : 0; }
+export function getObstacleBufferM() { return _bufferM; }
+/** Everything the walking-time maps depend on besides the terrain: limit set + obstacle buffer. */
+export function planningKey() { return `${_profile}|${_bufferM}`; }
+
 /** The full entry (value, source, note) of a parameter in the active profile. */
 export function paramEntry(key) {
   return (_profile === 'mars' && MARS_CONSERVATIVE[key]) || MARSWALK_PROFILE[key];

@@ -9,22 +9,28 @@
 
 import { buildShareURL } from '../utils/shareLink';
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { TERRAIN_SIZE, CRATERS, IS_DEM } from '../three/terrainGenerator';
+import { TERRAIN_SIZE, CRATERS, IS_DEM, GRID_RES } from '../three/terrainGenerator';
 import { PANEL_W, MAP_S, fs, UI_SCALE, SHEET_VH, useNarrow } from '../ui/layout';
 import { fmtHM, fmtSignedHM, fmtHourMin } from '../utils/format';
 import { localToLatLon } from '../terrain/siteData';
 import { ROUTE_COLORS } from '../utils/constants';
 import { getTerrainCanvas } from '../utils/terrainRenderer';
 import { loadOrthoImage } from '../utils/orthoImage';
-import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive, DOSE_COMPARISON, daysEquivalent } from '../utils/radiation';
+import { spaceWeatherAt, RADIATION, fetchSpaceWeatherLive, DOSE_COMPARISON, daysEquivalent, radiationIsLocal } from '../utils/radiation';
 import { PovViewer, nearestPanorama } from './PovViewer';
 import { ChemistryCard, hasChemistry } from './ChemistryCard';
 import CuffCard from './CuffCard';
 import ElevationProfile from './ElevationProfile';
 import { objectivesFor, findObjective } from '../config/objectives';
 import { buildStopCard } from '../utils/stopCards';
+import { provenanceFor } from '../config/provenance';
 import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config/mission';
-import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend } from '../utils/heatmaps';
+import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend, HAZARD_LAYER, hazardLegend, getHazardMap } from '../utils/heatmaps';
+import { missionDecision, STATUS_STYLE } from '../utils/missionStatus';
+import { routeHazards } from '../utils/hazards';
+import { worldToGrid } from '../utils/pathfinder';
+const cellIdx = (x, z) => { const { col, row } = worldToGrid(x, z); return row * GRID_RES + col; };
+import { HAZARD_PARAMS } from '../config/marswalkProfile';
 import { DUST_STATES } from '../utils/dustHazardModel';
 import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS, param, EVA_PROFILES, MARS_SUIT_COST_RATIO } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
@@ -36,13 +42,13 @@ const PW   = PANEL_W;   // panel width (src/ui/layout.js)
 
 // DEM: Mars layers only (rover-specific layers stay in the Moon mode)
 const HEATMAP_OPTIONS = IS_DEM
-  ? ['Elevation','Slope Angle','No-Go','EVA Range', ...(SITE.geology ? GEOLOGY_LAYERS : []), ...dataLayerOptions(), 'Illumination','Roughness']
+  ? ['Hazards','Elevation','Slope Angle','No-Go','EVA Range', ...(SITE.geology ? GEOLOGY_LAYERS : []), ...dataLayerOptions(), 'Illumination','Roughness']
   : ['Elevation','Slope','Slope Angle','No-Go','EVA Range','Roughness','Slip Risk','Illumination','Hazard Score','Traversability','Experience'];
 const HEATMAP_DEFAULT = IS_DEM ? (GEOLOGY_LAYERS.includes('Geology: Surface') ? 'Geology: Surface' : GEOLOGY_LAYERS[0] || 'Slope Angle') : 'Hazard Score';
 const CANVAS_FONT = (px, bold = false) => `${bold ? 'bold ' : ''}${fs(px)}px monospace`;
 const HM_COLORS = {
   'Thermal Inertia (THEMIS)':'#ff9966','Minerals (CRISM)':'#66ffcc','Rock Relief (HiRISE)':'#ddbb88',
-  'Elevation':'#e8a878','No-Go':'#ff4466','EVA Range':'#66ddff',
+  'Hazards':'#ff7088','Elevation':'#e8a878','No-Go':'#ff4466','EVA Range':'#66ddff',
   'Slope':'#aaddaa','Slope Angle':'#88ccff','Roughness':'#ffcc88',
   'Slip Risk':'#ff8844','Illumination':'#ffffaa','Hazard Score':'#ff6655','Traversability':'#44ffaa',
   'Experience':'#cc66ff', 'Geology: Bedrock':'#d6a060', 'Geology: Surface':'#e8c070',
@@ -485,6 +491,17 @@ function MissionPanel({ mission, setMission, start, disabled }) {
           {drive && <> Drive from the habitat: {drive.km.toFixed(2)} km, ~{Math.round(drive.minutes)} min (straight line, {ROVER.driveSpeedKmh.value} km/h).</>}
         </div>
       )}
+      <div style={{ ...row, marginTop: 5 }}>
+        <Btn active={!!mission.obstacleBuffer} color="#ff9ab0" onClick={() => set('obstacleBuffer', !mission.obstacleBuffer)} style={{ flex: 1 }}
+          title="Inflate every slope / rock obstacle by one 4 m cell before routing">
+          {mission.obstacleBuffer ? `✓ KEEP ${HAZARD_PARAMS.obstacleBufferM.value} M FROM OBSTACLES` : `KEEP ${HAZARD_PARAMS.obstacleBufferM.value} M FROM OBSTACLES`}
+        </Btn>
+      </div>
+      {mission.obstacleBuffer && (
+        <div style={{ fontSize: fs(7), color: '#b8c8b0', lineHeight: 1.5 }}>
+          Routes stay at least {HAZARD_PARAMS.obstacleBufferM.value} m from every slope / rock obstacle (assumption: {HAZARD_PARAMS.obstacleBufferM.note}). Longer routes, fewer stops in reach.
+        </div>
+      )}
       <div style={{ fontSize: fs(6.5), color: '#6a7a6a', marginTop: 2 }}>Suit masses, carry limit, walkback: Ogilvie et al., ICES 2026 (NASA)</div>
     </div>
   );
@@ -520,19 +537,25 @@ function DoseComparison() {
 }
 
 // ---- Radiation / space weather (DONKI) for the EVA date ----
-function SpaceWeatherRow({ startMs }) {
+/** Space-weather events for the EVA date: bundled archive, else a live DONKI lookup (past dates only).
+ *  One lookup per date (fetchSpaceWeatherLive caches), shared by the sun panel and the route decision. */
+function useSpaceWeather(startMs) {
   const [live, setLive] = useState(null);
-  let wx = spaceWeatherAt(SITE.spaceWeather, startMs);
-  // Bundled snapshot doesn't cover this date (and it is in the past) → ask DONKI live
-  const needLive = wx.advisory === 'no-data' && startMs < Date.now();
+  let wx = Number.isFinite(startMs) ? spaceWeatherAt(SITE.spaceWeather, startMs) : null;
+  const needLive = !!wx && wx.advisory === 'no-data' && startMs < Date.now();
   useEffect(() => {
     setLive(null);
-    if (!needLive) return;
+    if (!needLive) return undefined;
     let on = true;
     fetchSpaceWeatherLive(startMs).then(r => { if (on) setLive(r); });
     return () => { on = false; };
-  }, [needLive, Math.floor(startMs / 86400e3)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [needLive, Math.floor((startMs || 0) / 86400e3)]); // eslint-disable-line react-hooks/exhaustive-deps
   if (needLive && live) wx = spaceWeatherAt(live, startMs);
+  return { wx, live: !!(needLive && live), future: Number.isFinite(startMs) && startMs > Date.now() };
+}
+
+function SpaceWeatherRow({ startMs }) {
+  const { wx, live } = useSpaceWeather(startMs);
   const row = { display: 'flex', justifyContent: 'space-between', fontSize: fs(7.5), color: 'rgba(160,200,160,0.8)', lineHeight: 1.6 };
   const tag = wx.advisory === 'postpone' ? { t: '⚠ SEP — POSTPONE EVA', c: '#ff6655' }
     : wx.advisory === 'clear' ? { t: 'NO SEP ±' + RADIATION.sepWindowDays.value + ' d', c: '#88dd99' }
@@ -540,8 +563,18 @@ function SpaceWeatherRow({ startMs }) {
   return (
     <div style={{ marginTop: 4, borderTop: '1px solid rgba(60,90,60,0.3)', paddingTop: 3 }}>
       <div style={row}><span>Radiation (GCR)</span><span style={{ color: '#e8e0c8' }}>{RADIATION.gcrDoseEquivalentMSvPerDay.value} mSv/day</span></div>
+      <div style={{ fontSize: fs(6.5), color: radiationIsLocal() ? '#7a9a7a' : '#e0a050', lineHeight: 1.4 }}>
+        Measured: Curiosity RAD in Gale crater, Aug 2012 – Jun 2013 (near solar maximum).
+        {radiationIsLocal() ? ' This crater.' : ' Used here as a reference — NOT measured at Jezero (≈ 3,750 km away, ~1.8 km higher: likely a little more dose).'}
+        {' '}Cosmic rays only; a solar particle event adds to it and is not modelled.
+      </div>
       <DoseComparison />
       <div style={row}><span>Space weather</span><span style={{ color: tag.c, fontWeight: 'bold' }}>{tag.t}</span></div>
+      <div style={{ fontSize: fs(6.5), color: '#7a8a9a', lineHeight: 1.4 }}>
+        DONKI lists events that happened (solar particle events seen near Earth / Mars, CME arrivals at Mars from model runs) —
+        {' '}{wx.coverage ? `archive ${wx.coverage[0]} – ${wx.coverage[1]}` : 'looked up live for past dates'}. It is not a forecast:
+        {' '}a future EVA date has no data, which is shown as unknown, never as clear.
+      </div>
       {wx.near.slice(0, 3).map((e, i) => (
         <div key={i} style={{ fontSize: fs(6.5), color: e.type === 'SEP' ? '#ff8877' : '#9aa8b8' }}>
           {e.type} · {e.time.slice(0, 16).replace('T', ' ')} UTC{e.class ? ` · ${e.class}` : ''}{e.speedKmS ? ` · ${Math.round(e.speedKmS)} km/s` : ''}{e.type === 'CME' ? ' · arrival at Mars (model)' : ''}
@@ -550,6 +583,91 @@ function SpaceWeatherRow({ startMs }) {
       <div style={{ color: '#4a6a4a', fontSize: fs(6.5) }}>Curiosity RAD, Hassler et al. 2014 · NASA CCMC DONKI{live ? ' (live)' : ''}</div>
     </div>
   );
+}
+
+// ---- Mission workflow (10 steps) and summary ----
+const WF = [
+  ['Mission objective', 'wf-objective'], ['Exploration site', 'top'], ['Crew & equipment', 'wf-crew'],
+  ['Data layers', 'wf-layers'], ['Hazard assessment', 'wf-layers', 'Hazards'], ['Science stops', 'wf-objective'],
+  ['EVA route', 'wf-decision'], ['GO / NO-GO', 'wf-decision'], ['EVA simulation', 'wf-decision'], ['Mission export', 'wf-export'],
+];
+function workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus }) {
+  const r = routes?.[activeRoute];
+  const done = [
+    !!objectiveId, true, !!mission, !!visited.layers, !!visited.hazards,
+    !!science?.stops?.length, !!r?.stats, !!r?.stats?.checks, evaStatus !== 'idle', !!visited.exported,
+  ];
+  return WF.map(([label, target, layer], i) => ({ n: i + 1, label, target, layer, done: done[i] }));
+}
+function WorkflowStrip({ steps, onStep }) {
+  const next = steps.find(s => !s.done);
+  return (
+    <div aria-label="Mission workflow" style={{ border:'1px solid rgba(80,140,80,0.35)', borderRadius:4, padding:'4px 5px', background:'rgba(0,20,0,0.5)' }}>
+      <div style={{ display:'flex', gap:2 }}>
+        {steps.map(st => (
+          <button key={st.n} type="button" onClick={() => onStep(st)} title={`${st.n}. ${st.label}${st.done ? ' ✓' : ''}`}
+            style={{ flex:1, minWidth:0, padding:'2px 0', borderRadius:2, cursor:'pointer', fontFamily:'monospace', fontSize:fs(7), fontWeight:'bold',
+              border:`1px solid ${st === next ? '#ffb347' : st.done ? 'rgba(80,200,90,0.6)' : 'rgba(80,100,80,0.4)'}`,
+              background: st.done ? 'rgba(30,90,40,0.6)' : st === next ? 'rgba(90,55,0,0.55)' : 'transparent',
+              color: st.done ? '#9fffa8' : st === next ? '#ffd9a0' : '#5a7a5a' }}>{st.done ? '✓' : st.n}</button>
+        ))}
+      </div>
+      <div style={{ fontSize:fs(7), color:'#8fbf8f', marginTop:3 }}>
+        {next ? <>Next: <b style={{ color:'#ffd9a0' }}>{next.n}. {next.label}</b> — tap to go there</> : 'All ten steps done.'}
+      </div>
+    </div>
+  );
+}
+
+/** Mission summary for the active route — every figure is one the planner already computed. */
+function MissionSummary({ routes, activeRoute, science, mission, startMs }) {
+  const wxState = useSpaceWeather(startMs);
+  const r = routes?.[activeRoute], s = r?.stats;
+  if (!s || s.walkTimeS === undefined) return null;
+  const d = routeDecision(r, wxState);
+  const hz = getHazardMap();
+  const hazards = hz && r.path ? routeHazards(r.path, hz.cls, cellIdx).filter(h => h.key !== 'unseen') : [];
+  const obj = findObjective(SITE.name, science?.objectiveId);
+  const row = (k, v, c) => (
+    <div style={{ display:'flex', justifyContent:'space-between', gap:6 }}><span style={{ color:'#7a9a7a' }}>{k}</span><span style={{ color: c || '#e8e0c8', textAlign:'right' }}>{v}</span></div>);
+  return (
+    <div style={{ marginBottom:6, padding:'4px 6px', border:`1px solid ${STATUS_STYLE[d.status].bg}`, borderRadius:4, fontSize:fs(7.5), lineHeight:1.55 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+        <b style={{ color:'#cfe8c8', letterSpacing:'0.08em' }}>MISSION SUMMARY · {activeRoute}</b><DecisionBadge d={d} />
+      </div>
+      {row('Objective', obj ? obj.name : 'none (hand-made route)')}
+      {row('Site', SITE.meta?.label || SITE.name)}
+      {row('Science stops', s.stopCount)}
+      {row('Walking distance', `${(s.distance / 1000).toFixed(2)} km`)}
+      {row('EVA duration', `${fmtHM(s.roundTripS)} of ${param('evaDurationH')} h`)}
+      {row('Tightest walk-back margin', Number.isFinite(s.minMarginS) ? fmtSignedHM(s.minMarginS) : 'no path home', s.checks.budget ? undefined : '#ff6655')}
+      {row('Max slope', `${s.maxSlopeDeg.toFixed(1)}° / ${param('maxWalkableSlopeDeg')}°`, s.checks.slope ? undefined : '#ff6655')}
+      {row('Major hazards on route', hazards.length ? hazards.slice(0, 3).map(h => `${h.name} ${Math.round(h.lengthM)} m`).join(' · ') : 'none flagged')}
+      {row('Radiation', `${s.radiation.doseMSv.toFixed(2)} mSv GCR${radiationIsLocal() ? '' : ' (Gale reference)'}`)}
+      {row('Space weather', wxState.wx?.advisory === 'clear' ? 'no SEP ±2 d' : wxState.wx?.advisory === 'postpone' ? 'SEP — postpone' : 'unknown', wxState.wx?.advisory === 'clear' ? undefined : '#ffc94d')}
+      <div style={{ color:'#9ab09a', marginTop:2 }}>{d.summary}</div>
+    </div>
+  );
+}
+
+/** Mission export (JSON): objective, stop cards, decision and provenance next to the routes. */
+function missionExport({ science, mission, routes, activeRoute, startMs }) {
+  const obj = findObjective(SITE.name, science?.objectiveId);
+  const cards = science ? science.stops.map((st, i) => buildStopCard(st, i + 1, {
+    objective: obj, weights: science.weights || SCIENCE_PARAMS.weights, dwellS: science.dwellS,
+    site: { geologyDerived: SITE.geology?.source?.kind === 'derived' },
+    limits: { maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRockReliefM: param('maxRockReliefM') }, latLon: localToLatLon,
+  })) : [];
+  const wx = Number.isFinite(startMs) ? spaceWeatherAt(SITE.spaceWeather, startMs) : null;
+  const decisions = routes ? Object.fromEntries(Object.entries(routes).filter(([, r]) => r?.stats?.checks)
+    .map(([m, r]) => [m, routeDecision(r, { wx, live: false, future: startMs > Date.now() })])) : null;
+  return {
+    objective: obj ? { id: obj.id, name: obj.name, purpose: obj.purpose, uncertainty: obj.uncertainty, availability: obj.availability } : null,
+    mission, evaStartUtc: Number.isFinite(startMs) ? new Date(startMs).toISOString() : null,
+    stopCards: cards, decisions, activeDecision: decisions?.[activeRoute] || null,
+    provenance: provenanceFor(SITE.name, SITE).map(({ key, name, category, available, instrument, source, observed, reason }) =>
+      ({ key, name, category, available, instrument, source, observed, ...(available ? {} : { reason }) })),
+  };
 }
 
 // ---- Route Analysis ----
@@ -561,7 +679,31 @@ const ROUTE_DESC = {
 };
 
 // ---- Marswalk (DEM) stats card body ----
-function MarswalkStats({ mode, s }) {
+function DecisionBadge({ d }) {
+  const st = STATUS_STYLE[d.status];
+  return <span title={d.summary} style={{ fontSize:fs(7.5), fontWeight:'bold', padding:'1px 5px', borderRadius:3, color: st.fg, background: st.bg }}>{d.status}</span>;
+}
+
+/** Why the route is GO / CONDITIONAL / NO-GO / INSUFFICIENT DATA (utils/missionStatus.js). */
+function DecisionDetail({ d }) {
+  const mark = (ok) => (ok === true ? ['✓', '#88dd99'] : ok === false ? ['✕', '#ff6655'] : ['?', '#ffc94d']);
+  const Row = ({ it }) => { const [m, c] = mark(it.ok); return (
+    <div><span style={{ color: c, fontWeight: 'bold' }}>{m}</span> {it.label} <span style={{ color: '#7a8a7a' }}>— {it.detail}</span></div>); };
+  return (
+    <div style={{ marginTop:4, padding:'3px 5px', border:'1px solid rgba(80,120,80,0.35)', borderRadius:3, fontSize:fs(7), lineHeight:1.5, color:'#b8c8b0' }}>
+      <div style={{ color: STATUS_STYLE[d.status].bg, fontWeight:'bold' }}>{d.status}: {d.summary}</div>
+      <div style={{ color:'#8fbf8f', marginTop:2 }}>HARD CONSTRAINTS</div>
+      {d.hard.map(it => <Row key={it.key} it={it} />)}
+      {d.missing.map(it => <Row key={it.key} it={{ ...it, ok: null }} />)}
+      <div style={{ color:'#8fbf8f', marginTop:2 }}>ENVIRONMENT (warnings — open ones make it CONDITIONAL)</div>
+      {d.environment.map(it => <Row key={it.key} it={it} />)}
+      {d.notes.length > 0 && <div style={{ color:'#8fbf8f', marginTop:2 }}>NOTES</div>}
+      {d.notes.map(it => <div key={it.key} style={{ color:'#9aa89a' }}>· {it.label}: {it.detail}</div>)}
+    </div>
+  );
+}
+
+function MarswalkStats({ mode, s, decision }) {
   const fail = (ok) => ok ? '#88dd99' : '#ff6655';
   return (
     <>
@@ -570,10 +712,10 @@ function MarswalkStats({ mode, s }) {
           Walk <b style={{color:'#e8e0c8'}}>{fmtHM(s.walkTimeS)}</b>
           {s.returnTimeS > 1 && <>{'  '}+ fastest return <b style={{color:fail(s.checks.budget)}}>{fmtHM(s.returnTimeS)}</b></>}
         </span>
-        <span style={{
+        {decision ? <DecisionBadge d={decision} /> : <span style={{
           fontSize:fs(7.5), fontWeight:'bold', padding:'1px 5px', borderRadius:3,
           color: s.go ? '#0a1a0a' : '#fff', background: s.go ? '#44dd66' : '#cc3322',
-        }}>{s.go ? 'GO' : 'NO-GO'}</span>
+        }}>{s.go ? 'GO' : 'NO-GO'}</span>}
       </div>
       <div style={{color:'rgba(160,200,160,0.7)',fontSize:fs(7),lineHeight:1.55}}>
         Total <span style={{color:fail(s.checks.budget)}}>{fmtHM(s.roundTripS)}</span> = {(s.budgetFrac*100).toFixed(0)}% of the {param('evaDurationH')} h budget
@@ -756,7 +898,21 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, 
   );
 }
 
-function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard }) {
+/** Decision for one route, from the planner's stats + the shared space-weather lookup. */
+export function routeDecision(r, wxState) {
+  const s = r?.stats;
+  if (!s || s.walkTimeS === undefined) return null;
+  const hz = getHazardMap();
+  return missionDecision(s, {
+    limits: { maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRadialM: param('maxRadialDistanceKm') * 1000 },
+    wx: wxState?.wx || null, wxLive: wxState?.live, startFuture: wxState?.future,
+    radiationLocal: radiationIsLocal(),
+    hazards: hz && r.path ? routeHazards(r.path, hz.cls, (x, z) => cellIdx(x, z)) : undefined,
+  });
+}
+
+function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs }) {
+  const wxState = useSpaceWeather(startMs);
   if (!routes) return (
     <div style={{fontSize:fs(8),color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
       Plan a path to see route analysis.
@@ -785,7 +941,8 @@ function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard }) {
               </div>
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:fs(8)}}>{s.distance.toFixed(1)}m</span>}
             </div>
-            {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} />}
+            {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} decision={IS_DEM ? routeDecision(r, wxState) : null} />}
+            {IS_DEM && s && s.walkTimeS !== undefined && active && <DecisionDetail d={routeDecision(r, wxState)} />}
             {s && s.walkTimeS !== undefined && active && r.path?.length > 1 && (
               <div style={{ marginTop:5, borderTop:'1px solid rgba(60,100,60,0.3)', paddingTop:3 }}
                 title="Elevation along the route (MOLA metres), stops numbered — as Mars Trek plots for a measured path">
@@ -819,9 +976,12 @@ function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard }) {
 
 // ---- Heatmap ----
 function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drape = null, onDrape = null,
-  drapeOpacity = 0.6, setDrapeOpacity = () => {} }) {
+  drapeOpacity = 0.6, setDrapeOpacity = () => {}, request = null, onLayerShown = null }) {
   const ref=useRef(null);
   const [sel,setSel]=useState(HEATMAP_DEFAULT);
+  // the mission workflow can ask for a layer (e.g. step 5 → Hazards)
+  useEffect(() => { if (request?.layer && HEATMAP_OPTIONS.includes(request.layer)) setSel(request.layer); }, [request]);
+  useEffect(() => { if (sel !== HEATMAP_DEFAULT || request) onLayerShown?.(sel); }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
   // keep the 3D drape on the selected layer
   useEffect(() => { if (drape && drape !== sel) onDrape?.(sel); }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
   const [open,setOpen]=useState(false);
@@ -923,7 +1083,22 @@ function HeatmapViewer({ sunAngle, sunElevation, learningModel, refreshKey, drap
           )}
         </div>
       )}
-      {dataLayerLegend(sel) ? (
+      {sel === HAZARD_LAYER ? (
+        <div style={{fontSize:fs(7),color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
+          {(hazardLegend() || []).map(e => (
+            <div key={e.name} style={{display:'flex',alignItems:'center',gap:4}}>
+              <span style={{width:7,height:7,background:e.color,display:'inline-block',flexShrink:0}}/>
+              <span style={{flex:1,color:e.hard?'#ff9a9a':undefined}}>{e.name}{e.hard ? ' — planner wall' : ''}</span><span>{e.pct.toFixed(1)}%</span>
+            </div>
+          ))}
+          <div style={{color:'#6a7a6a',marginTop:2}}>
+            From the HiRISE DTM and the rover's own positions. Slope limit {param('maxWalkableSlopeDeg')}° (NASA ConOps); steep &gt; {(HAZARD_PARAMS.steepFraction.value * param('maxWalkableSlopeDeg')).toFixed(0)}°,
+            {' '}rock obstacle &gt; {param('maxRockReliefM')} m, rough &gt; {(HAZARD_PARAMS.roughFraction.value * param('maxRockReliefM')).toFixed(2)} m,
+            {' '}buffer {HAZARD_PARAMS.obstacleBufferM.value} m, depression ≥ {HAZARD_PARAMS.depressionM.value} m deep, "known only from orbit" = no rover position within {HAZARD_PARAMS.unseenM.value} m
+            {' '}— all but the slope limit are planning assumptions. The 1 m DTM does not show rocks smaller than ~2 m: no cell is "rock-free" for certain.
+          </div>
+        </div>
+      ) : dataLayerLegend(sel) ? (
         <DataLayerLegend lg={dataLayerLegend(sel)} />
       ) : geologyLegend(sel) ? (
         <div style={{fontSize:fs(7),color:'#aab8a0',marginTop:3,lineHeight:1.5}}>
@@ -1219,9 +1394,10 @@ function exportPNG() {
   return true;
 }
 
-function exportJSON(waypoints, routes, activeRoute, sunAngleDeg) {
+function exportJSON(waypoints, routes, activeRoute, sunAngleDeg, extra = {}) {
   const payload = {
-    version: 1,
+    version: 2,
+    ...extra,
     app: IS_DEM ? 'Martian Map' : 'Moon Rover',
     site: IS_DEM ? { name: SITE.name, center: SITE.meta?.center } : null,
     timestamp: new Date().toISOString(),
@@ -1269,6 +1445,11 @@ export default function RightPanel({
   const narrow = useNarrow();   // phone: bottom sheet under the 3D view
   const [pickMode, setPickMode] = useState(false);
   const [cuffMode, setCuffMode] = useState(null);   // route mode whose cuff card is open
+  // Mission workflow (steps 4, 5, 10 are "done" once the crew has looked / exported)
+  const [visited, setVisited] = useState({});
+  const [layerRequest, setLayerRequest] = useState(null);
+  const cuffWx = useSpaceWeather(IS_DEM ? evaStartMs : null);
+  useEffect(() => { if (cuffMode) setVisited(v => ({ ...v, exported: true })); }, [cuffMode]);
   const [shareLabel, setShareLabel] = useState('SHARE LINK');
 
   const handlePick = useCallback(pos => {
@@ -1311,6 +1492,12 @@ export default function RightPanel({
       </div>
 
       <div style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
+        {IS_DEM && <WorkflowStrip steps={workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus })}
+          onStep={(st) => {
+            if (st.layer) setLayerRequest({ layer: st.layer, t: Date.now() });
+            if (st.target === 'top') { window.scrollTo?.(0, 0); return; }
+            document.getElementById(st.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }} />}
 
         {/* ── Topographic Map — first thing the user sees ── */}
         <div>
@@ -1405,13 +1592,13 @@ export default function RightPanel({
         </Sect>
 
         {IS_DEM && (
-        <Sect label="Mission setup">
+        <Sect label="Mission setup — crew & equipment" id="wf-crew">
           <MissionPanel mission={mission} setMission={setMission} start={waypoints?.[0]} disabled={isRoving} />
         </Sect>
         )}
 
         {hasGeology && (
-        <Sect label="Science EVA">
+        <Sect label="Science EVA — objective & stops" id="wf-objective">
           <SciencePanel science={science} onPlan={onPlanScience} busy={isPlanningScience || isPlanning}
             dwellMin={scienceDwellMin} setDwellMin={setScienceDwellMin} disabled={isRoving}
             objectiveId={objectiveId} setObjectiveId={setObjectiveId} />
@@ -1581,10 +1768,12 @@ export default function RightPanel({
         </Sect>
 
         {/* Route Analysis */}
-        <Sect label="Route Analysis">
-          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null}/>
+        <Sect label="Route Analysis — GO / NO-GO" id="wf-decision">
+          {IS_DEM && <MissionSummary routes={routes} activeRoute={activeRoute} science={science} mission={mission} startMs={evaStartMs} />}
+          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs}/>
           {cuffMode && routes?.[cuffMode]?.stats?.marginS && (
-            <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)} />
+            <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)}
+              decision={routeDecision(routes[cuffMode], cuffWx)} />
           )}
         </Sect>
 
@@ -1598,9 +1787,12 @@ export default function RightPanel({
         </Sect>
 
         {/* Heatmap */}
+        <div id="wf-layers" style={{ scrollMarginTop: 6 }}>
         <HeatmapViewer sunAngle={sunAngleDeg} sunElevation={sun?.elevationDeg} learningModel={learningModel}
           refreshKey={routes} drape={drapeLayer} onDrape={setDrapeLayer}
-          drapeOpacity={drapeOpacity} setDrapeOpacity={setDrapeOpacity}/>
+          drapeOpacity={drapeOpacity} setDrapeOpacity={setDrapeOpacity}
+          request={layerRequest} onLayerShown={(l) => setVisited(v => ({ ...v, layers: true, ...(l === HAZARD_LAYER ? { hazards: true } : {}) }))}/>
+        </div>
 
         {/* Image processing proof panel */}
         <ProcessingMapPreview
@@ -1636,7 +1828,7 @@ export default function RightPanel({
         </Sect>
 
         {/* Exports & Share */}
-        <Sect label="Export & Share">
+        <Sect label="Export & Share" id="wf-export">
           <div style={{display:'flex',flexDirection:'column',gap:4}}>
 
             {/* PNG */}
@@ -1658,7 +1850,8 @@ export default function RightPanel({
               if (!routes && waypoints.length < 2) {
                 showToast?.('Plan a route first to export JSON.', 'warning'); return;
               }
-              exportJSON(waypoints, routes, activeRoute, sunAngleDeg);
+              exportJSON(waypoints, routes, activeRoute, sunAngleDeg, IS_DEM ? missionExport({ science, mission, routes, activeRoute, startMs: evaStartMs }) : {});
+              setVisited(v => ({ ...v, exported: true }));
               showToast?.('JSON route file saved to Downloads.', 'info');
             }} style={{
               width:'100%', padding:'6px 0', fontSize:fs(9), fontFamily:'monospace',
@@ -1671,6 +1864,7 @@ export default function RightPanel({
 
             {/* Share link */}
             <button onClick={async () => {
+              setVisited(v => ({ ...v, exported: true }));
               if (waypoints.length < 1) {
                 showToast?.('Add at least one waypoint to share.', 'warning'); return;
               }
@@ -1717,9 +1911,9 @@ export default function RightPanel({
 }
 
 // ---- Micro components ----
-function Sect({ label, children }) {
+function Sect({ label, children, id }) {
   return (
-    <div>
+    <div id={id} style={{ scrollMarginTop: 6 }}>
       <Label>{label}</Label>
       <div style={{marginTop:4}}>{children}</div>
       <div style={{height:1,background:'rgba(30,70,30,0.2)',marginTop:8}}/>
@@ -1737,7 +1931,7 @@ function V({ children, c }) {
 }
 function Btn({ children, active, onClick, disabled, color, title, style={} }) {
   return (
-    <button title={title} onClick={disabled?undefined:onClick} style={{
+    <button type="button" title={title} disabled={!!disabled} onClick={disabled?undefined:onClick} style={{
       flex:1,padding:'4px 4px',fontSize:fs(8),fontWeight:'bold',
       cursor:disabled?'default':'pointer',borderRadius:3,
       border:`1px solid ${active?(color||'rgba(60,180,60,0.7)'):'rgba(35,70,35,0.4)'}`,

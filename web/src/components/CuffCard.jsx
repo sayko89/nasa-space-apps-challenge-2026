@@ -171,7 +171,7 @@ const cell = { padding: '1.1mm 1.3mm', borderBottom: '0.2mm solid #999', vertica
 const head = { ...cell, borderBottom: '0.4mm solid #111', fontWeight: 'bold', textAlign: 'left', whiteSpace: 'nowrap' };
 const num = { ...cell, textAlign: 'right', whiteSpace: 'nowrap' };
 
-export default function CuffCard({ mode, route, startMs, mission, onClose }) {
+export default function CuffCard({ mode, route, startMs, mission, onClose, decision = null }) {
   const mapRef = useRef(null);
   const [grid, setGrid] = useState(null);
   const mapH = mapHeightMm(route.stats?.stops?.length || 0);
@@ -229,7 +229,8 @@ export default function CuffCard({ mode, route, startMs, mission, onClose }) {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ display: 'inline-block', border: '0.6mm solid #111', padding: '0.8mm 2.5mm', fontSize: '4.5mm', fontWeight: 'bold',
-              background: t.go ? '#fff' : '#111', color: t.go ? '#111' : '#fff' }}>{t.go ? 'GO' : 'NO-GO'}</div>
+              background: (decision ? decision.status === 'GO' : t.go) ? '#fff' : '#111', color: (decision ? decision.status === 'GO' : t.go) ? '#111' : '#fff' }}
+              title={decision?.summary}>{decision ? decision.status : t.go ? 'GO' : 'NO-GO'}</div>
             <div style={{ marginTop: '1mm' }}>START {dateUtc} UTC</div>
             <div>{startLtst != null ? `${fmtHourMin(startLtst)} LTST` : ''}{sunsetLtst != null ? ` · SUNSET ${fmtHourMin(sunsetLtst)}` : ''}</div>
           </div>

@@ -37,6 +37,7 @@ self.onmessage = async (e) => {
       return;
     }
     if (CFG && e.data.profile) CFG.setEvaProfile(e.data.profile);
+    if (CFG && e.data.bufferM != null) CFG.setObstacleBufferM(e.data.bufferM);
     if (type === 'plan') {
       if (!P) throw new Error('planner worker not initialised');
       const t0 = performance.now();

@@ -63,7 +63,8 @@ function fail(name, reason) {
  * meta.json + grid.bin dosyalarını yükler ve doğrular. Her hata durumunda
  * prosedürel moda düşer (uygulama yine açılır, HUD nedeni gösterir).
  */
-export async function loadSite(name = DEFAULT_SITE) {
+/** `baseUrl` overrides where the site files are read from (tests read the real files from disk). */
+export async function loadSite(name = DEFAULT_SITE, baseUrl = null) {
   if (!name || name === 'moon' || name === 'procedural') {
     site.mode = 'procedural';
     site.name = 'moon';
@@ -71,7 +72,7 @@ export async function loadSite(name = DEFAULT_SITE) {
   }
   if (!/^[a-z0-9_-]+$/.test(name)) return fail(name, 'invalid site name');
 
-  const base = `${import.meta.env.BASE_URL}sites/${name}/`;
+  const base = baseUrl || `${import.meta.env.BASE_URL}sites/${name}/`;
   let meta;
   try {
     const r = await fetch(base + 'meta.json', { cache: 'no-cache' });

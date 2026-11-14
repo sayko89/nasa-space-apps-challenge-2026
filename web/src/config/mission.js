@@ -32,7 +32,7 @@ export const ROVER = {
 };
 
 /** Default mission settings (UI state). */
-export const DEFAULT_MISSION = { suit: 'mars', equipmentKg: 10, rover: false, limits: 'lunar' };
+export const DEFAULT_MISSION = { suit: 'mars', equipmentKg: 10, rover: false, limits: 'lunar', obstacleBuffer: false };
 
 /**
  * Carried-weight check: suit + equipment weight on Mars, as Earth-equivalent kg,
