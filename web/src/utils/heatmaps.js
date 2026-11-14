@@ -5,7 +5,42 @@
 
 import { GRID_RES, TERRAIN_SIZE, buildHeightMap, buildSlopeMap, buildCraterMask, CRATERS, SITE } from '../three/terrainGenerator.js';
 import { buildIlluminationMap, hazardScore, getWallMap, peekHomeMaps } from './pathfinder.js';
-import { param } from '../config/marswalkProfile.js';
+import { param, HAZARD_PARAMS } from '../config/marswalkProfile.js';
+import { hazardMap, HAZARD_CLASSES } from './hazards.js';
+import { ROVER } from '../config/mission.js';
+
+// ---- Hazard map (utils/hazards.js), cached per rover mode + home
+let _hazard = null, _hazardKey = '', _roverMode = false;
+/** Rover safe-haven mode adds the "beyond rover walk-back" class (App sets it from Mission setup). */
+export function setHazardRoverMode(on) { _roverMode = !!on; }
+export const HAZARD_LAYER = 'Hazards';
+/** The site's hazard classes per cell, or null (procedural Moon). */
+export function getHazardMap() {
+  if (!SITE.heights) return null;
+  ensureMaps();
+  const hm = peekHomeMaps();
+  const key = `${_roverMode && hm ? hm.homeIdx : '-'}|${param('maxWalkableSlopeDeg')}|${param('maxRockReliefM')}`;
+  if (_hazard && _hazardKey === key) return _hazard;
+  const n = GRID_RES, slopeDeg = new Float32Array(_slopeMap.length);
+  for (let i = 0; i < slopeDeg.length; i++) slopeDeg[i] = Math.atan(_slopeMap[i]) * 180 / Math.PI;
+  const P = Object.fromEntries(Object.entries(HAZARD_PARAMS).map(([k, v]) => [k, v.value]));
+  _hazard = hazardMap({
+    n, cellM: SITE.cellM, heights: _heightMap, slopeDeg, rock: SITE.layers?.rock?.values || null,
+    maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRockReliefM: param('maxRockReliefM'), params: P,
+    stations: SITE.pov?.stations || null,
+    toHome: _roverMode && hm ? hm.toHome : null, roverLimitS: _roverMode && hm ? ROVER.walkbackMin.value * 60 : null,
+  });
+  _hazardKey = key;
+  return _hazard;
+}
+/** Legend: [{ name, color, pct, hard }] for classes present in the site. */
+export function hazardLegend() {
+  const h = getHazardMap();
+  if (!h) return null;
+  const N = h.cls.length;
+  return HAZARD_CLASSES.filter(c => c.id > 0 && h.counts[c.id] > 0)
+    .map(c => ({ name: c.name, color: `rgb(${c.color.slice(0, 3).join(',')})`, pct: 100 * h.counts[c.id] / N, hard: c.hard }));
+}
 
 // Thermal color scale: blue→cyan→green→yellow→red
 function thermalColor(t) {
@@ -152,6 +187,18 @@ export function drawHeatmap(canvas, type, experienceMap, sunAngle = 45, sunEleva
         }
       }
       px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = a;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return;
+  }
+
+  if (type === HAZARD_LAYER) {
+    const h = getHazardMap();
+    for (let py = 0; py < H; py++) for (let px2 = 0; px2 < W; px2++) {
+      const k = Math.floor((py / H) * GRID_RES) * GRID_RES + Math.floor((px2 / W) * GRID_RES);
+      const c = HAZARD_CLASSES[h ? h.cls[k] : 0].color, i = (py * W + px2) * 4;
+      if (c[3]) { px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = c[3]; }
+      else { px[i] = 30; px[i + 1] = 40; px[i + 2] = 30; px[i + 3] = 60; }
     }
     ctx.putImageData(imgData, 0, 0);
     return;

@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { encodePlan, decodePlan, buildShareURL } from '../src/utils/shareLink.js';
 
-const mission = { suit: 'xemu', equipmentKg: 12, rover: true, limits: 'mars' };
+const mission = { suit: 'xemu', equipmentKg: 12, rover: true, limits: 'mars', obstacleBuffer: true };
 
 test('science plan: link keeps the start and the settings, not the stops', () => {
   const url = buildShareURL('https://x.io/app/?site=jezero#h', 'gale', {
     waypoints: [{ x: 1.04, z: -2.06 }, { x: 50, z: 50, dwellS: 1200 }, { x: 1.04, z: -2.06 }],
-    science: true, route: 'ECO', startMs: 1.8e12, mission, dwellMin: 25,
+    science: true, route: 'ECO', startMs: 1.8e12, mission, dwellMin: 25, objectiveId: 'water-alteration',
   });
   assert.match(url, /^https:\/\/x\.io\/app\/\?site=gale&plan=[A-Za-z0-9_-]+$/);
   const p = decodePlan(new URL(url).search);
@@ -17,6 +17,7 @@ test('science plan: link keeps the start and the settings, not the stops', () =>
   assert.equal(p.startMs, 1.8e12);
   assert.equal(p.dwellMin, 25);
   assert.deepEqual(p.mission, mission);
+  assert.equal(p.objectiveId, 'water-alteration');
 });
 
 test('hand-made route keeps every waypoint', () => {
@@ -25,6 +26,7 @@ test('hand-made route keeps every waypoint', () => {
   assert.equal(p.science, false);
   assert.deepEqual(p.waypoints.map(w => [w.x, w.z]), [[0, 0], [10, 20], [-5, 3]]);
   assert.equal(p.mission, null);
+  assert.equal(p.objectiveId, null);
 });
 
 test('bad or missing links are ignored, values are checked', () => {

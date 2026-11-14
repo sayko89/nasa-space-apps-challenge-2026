@@ -10,6 +10,8 @@ import RightPanel from './components/RightPanel';
 import EvaHud from './components/EvaHud';
 import { clearPathCache, getHazardAtPoint, isWallAt, fastestReturnPath, toHomeTimeAt } from './utils/pathfinder';
 import { getTerrainHeight, buildHeightMap, buildSlopeMap, buildCraterMask, IS_DEM, SITE } from './three/terrainGenerator';
+import { setObstacleBufferM, HAZARD_PARAMS } from './config/marswalkProfile';
+import { setHazardRoverMode } from './utils/heatmaps';
 import { param, placeholderParams, assumptionParams, MARSWALK_PROFILE, MARS_CAVEAT, SCIENCE_PARAMS, EVA_CREW, paramEntry, getEvaProfile, setEvaProfile, EVA_PROFILES, MARS_SUIT_COST_RATIO } from './config/marswalkProfile';
 import { LearningModel } from './utils/learningModel';
 import { DUST_STATES, DUST_HAZARD_CONFIG, DEFAULT_HOME, createDustHazard } from './utils/dustHazardModel';
@@ -25,6 +27,8 @@ import SiteSwitcher from './components/SiteSwitcher';
 import { PANEL_W, SHEET_VH, useNarrow, useCompact, COMPACT_QUERY } from './ui/layout';
 import { decodePlan } from './utils/shareLink';
 import { SUITS } from './config/mission';
+import { findObjective } from './config/objectives';
+import ProvenancePanel from './components/ProvenancePanel';
 
 const MoonScene = lazy(() => import('./components/MoonScene'));
 
@@ -71,7 +75,7 @@ function ToastContainer({ toasts, onDismiss }) {
 
 // ---- Data provenance / fallback badge (bottom-left, collapsible) ----
 const LINK = { color:'#ffb080' };
-function SiteBadge({ collapsed, onToggle, narrow = false }) {
+function SiteBadge({ collapsed, onToggle, narrow = false, onProvenance = null }) {
   const base = {
     position:'absolute', left: narrow ? 6 : 12, bottom: narrow ? `calc(${SHEET_VH}vh + 6px)` : 10, zIndex:15,
     maxWidth: narrow ? 'calc(100vw - 12px)' : 560, maxHeight: narrow ? `calc(${100 - SHEET_VH}vh - 80px)` : undefined, overflowY: narrow ? 'auto' : undefined,
@@ -93,6 +97,7 @@ function SiteBadge({ collapsed, onToggle, narrow = false }) {
       <div onClick={onToggle} title="Show data sources" style={{ ...base, cursor:'pointer',
         background:'rgba(20,10,6,0.82)', border:'1px solid rgba(232,168,120,0.35)', color:'#e8c4a8' }}>
         ⓘ DATA SOURCES & LIMITS ▸
+        {onProvenance && <span onClick={(e) => { e.stopPropagation(); onProvenance(); }} style={{ marginLeft:10, color:'#9fc7ff', textDecoration:'underline' }}>full provenance table</span>}
       </div>
     );
   }
@@ -103,6 +108,8 @@ function SiteBadge({ collapsed, onToggle, narrow = false }) {
   return (
     <div style={{ ...base, background:'rgba(20,10,6,0.85)', border:'1px solid rgba(232,168,120,0.35)', color:'#e8c4a8' }}>
       <span onClick={onToggle} title="Hide" style={{ float:'right', cursor:'pointer', marginLeft:8, color:'#ffb080' }}>▾ hide</span>
+      {onProvenance && <span onClick={onProvenance} title="Every layer: mission, instrument, date, resolution, kind of data, uncertainty"
+        style={{ float:'right', cursor:'pointer', marginLeft:8, color:'#9fc7ff', textDecoration:'underline' }}>provenance table</span>}
       TERRAIN: {m.source?.title || 'DTM'} · {m.grid.cell_m} m grid · {Math.round(m.grid.span_m)} m site{' '}
       {m.source?.doi && <a href={m.source.doi} target="_blank" rel="noreferrer" style={LINK}>DOI</a>}<br/>
       CENTER: {m.center.lat_deg.toFixed(4)}°N {m.center.lon_deg_east.toFixed(4)}°E ·
@@ -189,6 +196,8 @@ export default function App() {
   // Stage 6 — science EVA (geology stops). null = none planned
   const [science, setScience] = useState(null);
   const [scienceDwellMin, setScienceDwellMin] = useState(SHARED?.dwellMin ?? SCIENCE_PARAMS.dwellMin);
+  // Mission objective (config/objectives.js): must be chosen before a science EVA is planned
+  const [objectiveId, setObjectiveId] = useState(() => (SHARED?.objectiveId && findObjective(SITE.name, SHARED.objectiveId) ? SHARED.objectiveId : null));
   // Suit, equipment and rover safe haven (config/mission.js)
   const [mission, setMission] = useState(() => {
     const m = { ...DEFAULT_MISSION, ...(SHARED?.mission || {}) };
@@ -197,11 +206,14 @@ export default function App() {
   });
   // The active EVA limit set follows Mission setup; set before any planning in this render
   setEvaProfile(mission.limits || 'lunar');
+  setObstacleBufferM(mission.obstacleBuffer ? HAZARD_PARAMS.obstacleBufferM.value : 0);
+  setHazardRoverMode(!!mission.rover);
   const [isPlanningScience, setIsPlanningScience] = useState(false);
   const autoPlanRef = useRef(false);   // plan as soon as the science waypoints are committed
   const [badgeCollapsed, setBadgeCollapsed] = useState(() => !!window.matchMedia?.(COMPACT_QUERY).matches);   // phones: start collapsed
   const narrow = useNarrow();
-  const compact = useCompact();   // narrow, or a phone held sideways
+  const compact = useCompact();
+  const [showProvenance, setShowProvenance] = useState(false);
   // DEM: map layer draped on the 3D terrain (null = off)
   const [drapeLayer, setDrapeLayer] = useState(null);
   const [drapeOpacity, setDrapeOpacity] = useState(0.6);
@@ -475,15 +487,20 @@ export default function App() {
   // (worker), then turns them into waypoints home → stops → home with dwell.
   const handlePlanScience = useCallback(async () => {
     if (!IS_DEM || !SITE.geology) return;
+    const objective = findObjective(SITE.name, objectiveId);
+    if (!objective) {
+      showToast('Choose a mission objective first — it decides which stops the planner looks for.', 'warning');
+      return;
+    }
     const home = waypoints[0] || homeWaypointRef.current || { ...DEFAULT_HOME };
     setIsPlanningScience(true);
-    addLog(`Science EVA: choosing stops (dwell ${scienceDwellMin} min/stop)...`);
+    addLog(`Science EVA (${objective.name}): choosing stops (dwell ${scienceDwellMin} min/stop)...`);
     try {
       const t0 = performance.now();
-      const res = await planScience(home, getMaps(), { dwellMin: scienceDwellMin,
+      const res = await planScience(home, getMaps(), { dwellMin: scienceDwellMin, objectiveId: objective.id,
         ...(mission.rover ? { maxReturnS: ROVER.walkbackMin.value * 60 } : {}) });
       if (!res || res.stops.length === 0) {
-        showToast('No geology stop fits the EVA budget from this start.', 'warning');
+        showToast(`No stop for "${objective.name}" fits the EVA budget from this start.`, 'warning');
         addLog('Science EVA: no feasible stop.');
         return;
       }
@@ -505,7 +522,7 @@ export default function App() {
     } finally {
       setIsPlanningScience(false);
     }
-  }, [waypoints, getMaps, scienceDwellMin, addLog, showToast, mission]);
+  }, [waypoints, getMaps, scienceDwellMin, addLog, showToast, mission, objectiveId]);
 
   // Shared link: rebuild the plan once on load (same start, same settings → same stops and routes)
   const sharedDoneRef = useRef(false);
@@ -888,7 +905,8 @@ export default function App() {
             : <>LEFT DRAG=PAN · RIGHT DRAG=ROTATE · SCROLL=ZOOM{IS_DEM ? ' · SPACE=PLAY/PAUSE EVA' : ''}</>}
         </div>
       </div>
-      <SiteBadge collapsed={badgeCollapsed} onToggle={() => setBadgeCollapsed(c => !c)} narrow={narrow} />
+      <SiteBadge collapsed={badgeCollapsed} onToggle={() => setBadgeCollapsed(c => !c)} narrow={narrow} onProvenance={() => setShowProvenance(true)} />
+      {showProvenance && <ProvenancePanel onClose={() => setShowProvenance(false)} />}
 
       {evaActive && (
         <EvaHud playback={playback} right={narrow ? 6 : PANEL_W + 12} narrow={narrow} compact={compact} onAbort={handleAbortEva} onStop={handleStopRover} />
@@ -916,6 +934,7 @@ export default function App() {
         onPlanScience={handlePlanScience}
         isPlanningScience={isPlanningScience}
         scienceDwellMin={scienceDwellMin} setScienceDwellMin={setScienceDwellMin}
+        objectiveId={objectiveId} setObjectiveId={setObjectiveId}
         mission={mission} setMission={setMission}
         sunAngleDeg={sunAngleDeg}   setSunAngleDeg={setSunAngleDeg}
         sun={sun} evaStartMs={evaStartMs} setEvaStartMs={setEvaStartMs}

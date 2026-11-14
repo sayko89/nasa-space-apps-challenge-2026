@@ -20,6 +20,18 @@
  *    Tur eve döndüğü için toplam ≤ bütçe ⇒ her noktada walk-back marjı ≥ 0
  *    (kalan tur süresi ≥ en hızlı dönüş).
  *
+ * 4) Mission objective (o.filter, config/objectives.js): which candidates may exist and what
+ *    they are worth. With no filter the planner behaves exactly as before.
+ *      units      'all' | 'none' | { surface?: [names], bedrock?: [names] } — unit-pair candidates
+ *      contacts   true | false                                              — contact candidates
+ *      minerals   null (all) | [CRISM class names]                          — mineral candidates / M: tags
+ *      chemTags   null (all) | [ChemCam anomaly tags, e.g. 'CaO high']      — re-sample candidates
+ *      targets    0 | k — up to k measured ChemCam targets (any chemistry) as candidates, tag T:<name>
+ *      contactOnlyTags  true — a contact stop counts only as the contact, not as a sample of each
+ *                 unit, so unit interiors (away from the boundary) are sampled separately
+ *    Tags that are filtered out are not scored, so the objective steers the Held–Karp
+ *    optimiser through the candidate set and the weights, not through a separate algorithm.
+ *
  * Saf modül: grid dizileri parametre olarak gelir; Node'da test edilir.
  */
 
@@ -29,14 +41,24 @@ export const MAX_EXACT_STOPS = 14;
 
 export { decodeRle, decodeGeology } from '../terrain/geology.js';
 
+/** Does the objective filter let this CRISM class / unit pair / anomaly tag count? */
+const mineralAllowed = (f, name) => !f || f.minerals == null || f.minerals.includes(name);
+const chemAllowed = (f, tag) => !f || f.chemTags == null || f.chemTags.includes(tag);
+function unitAllowed(f, surfaceName, bedrockName) {
+  const u = f?.units ?? 'all';
+  if (u === 'all') return true;
+  if (u === 'none') return false;
+  return (!u.surface || u.surface.includes(surfaceName)) && (!u.bedrock || u.bedrock.includes(bedrockName));
+}
+
 /** Tags a stop at cell i samples: bedrock (B:), surface (S:) and, with a CRISM layer, mineral (M:). */
-function cellTags(geo, i, min) {
+function cellTags(geo, i, min, filter = null) {
   const t = [];
   const b = geo.bedrockUnits[geo.bedrock[i]], s = geo.surfaceUnits[geo.surface[i]];
   if (b) t.push('B:' + b);
   if (s) t.push('S:' + s);
   const m = min && min.code[i] ? min.classes[min.code[i]] : null;
-  if (m) t.push('M:' + m);
+  if (m && mineralAllowed(filter, m)) t.push('M:' + m);
   return t;
 }
 
@@ -74,6 +96,9 @@ function isInterior(geo, i, r) {
 export function candidateStops(geo, home, o) {
   const n = geo.n, N = n * n;
   const { cellM, wall, budgetS, dwellS, maxRadialM } = o;
+  const f = o.filter || null;
+  const wantContacts = f?.contacts ?? true;
+  const bestTarget = new Map();        // 'T:<name>' → nearest measured ChemCam target (re-investigation)
   const r = o.interiorR ?? 2, maxC = Math.min(o.maxCandidates ?? 12, MAX_EXACT_STOPS);
   const minHomeCells = (o.minHomeDistM ?? 0) / cellM;
   const hr = (home.homeIdx / n) | 0, hc = home.homeIdx - hr * n;
@@ -92,13 +117,19 @@ export function candidateStops(geo, home, o) {
     const dHome = Math.hypot(row - hr, col - hc);
     if (dHome * cellM > maxRadialM || dHome < minHomeCells) continue;
     if (geo.bedrock[i] || geo.surface[i]) {
-      if (isInterior(geo, i, r)) consider(`U:${geo.surface[i]}:${geo.bedrock[i]}`, i, rt, 'unit');
+      if (unitAllowed(f, geo.surfaceUnits[geo.surface[i]], geo.bedrockUnits[geo.bedrock[i]]) && isInterior(geo, i, r)) {
+        consider(`U:${geo.surface[i]}:${geo.bedrock[i]}`, i, rt, 'unit');
+      }
     }
-    if (o.minerals && isMineralInterior(o.minerals, n, i, 1)) consider(`M:${o.minerals.code[i]}`, i, rt, 'mineral');
+    if (o.minerals && isMineralInterior(o.minerals, n, i, 1) && mineralAllowed(f, o.minerals.classes[o.minerals.code[i]])) {
+      consider(`M:${o.minerals.code[i]}`, i, rt, 'mineral');
+    }
     const chem = o.chemCells?.get(i);
-    if (chem) for (const a of chem) consider(`X:${a.tag}`, i, rt, 'chemistry', { chem: a }, bestChem);
+    if (chem) for (const a of chem) if (chemAllowed(f, a.tag)) consider(`X:${a.tag}`, i, rt, 'chemistry', { chem: a }, bestChem);
+    const tgt = f?.targets ? o.targetCells?.get(i) : null;
+    if (tgt) for (const t of tgt) consider(`T:${t.name}`, i, rt, 'target', { target: t }, bestTarget);
     // Ana kaya kontağı: sağ veya alt komşu farklı (ikisi de haritalı) ana kaya birimi
-    const b = geo.bedrock[i];
+    const b = wantContacts ? geo.bedrock[i] : 0;
     if (b) for (const k of [col + 1 < n ? i + 1 : -1, row + 1 < n ? i + n : -1]) {
       const b2 = k >= 0 ? geo.bedrock[k] : 0;
       if (b2 && b2 !== b && !(wall && wall[k])) {
@@ -108,33 +139,67 @@ export function candidateStops(geo, home, o) {
     }
   }
   const list = [...best.values()].sort((a, b) => a.rt - b.rt).slice(0, maxC);
-  const maxX = Math.min(o.maxChemCandidates ?? 2, MAX_EXACT_STOPS - list.length);
-  if (maxX > 0) list.push(...[...bestChem.values()].sort((a, b) => a.rt - b.rt).slice(0, maxX));
+  const maxX = Math.min(f?.maxChem ?? o.maxChemCandidates ?? 2, MAX_EXACT_STOPS - list.length);
+  if (maxX > 0) {
+    // One stop per rock: anomalies of the same rock (same cell) become one candidate with all its tags
+    const byCell = new Map();
+    for (const c of [...bestChem.values()].sort((a, b) => a.rt - b.rt)) {
+      const cur = byCell.get(c.idx);
+      if (cur) cur.chemAll.push(c.chem); else byCell.set(c.idx, { ...c, chemAll: [c.chem] });
+    }
+    list.push(...[...byCell.values()].slice(0, maxX));
+  }
+  const maxT = Math.min(f?.targets ?? 0, MAX_EXACT_STOPS - list.length);
+  if (maxT > 0) {
+    // targets in the same cell (e.g. a rock shot twice under different names) → one stop
+    const byCell = new Map();
+    for (const c of [...bestTarget.values()].sort((a, b) => a.rt - b.rt)) {
+      const cur = byCell.get(c.idx);
+      if (cur) cur.targetAll.push(c.target); else byCell.set(c.idx, { ...c, targetAll: [c.target] });
+    }
+    list.push(...[...byCell.values()].slice(0, maxT));
+  }
   return list.map((c, j) => {
     const row = (c.idx / n) | 0, col = c.idx - row * n;
-    let tags = cellTags(geo, c.idx, o.minerals), label;
+    let tags = cellTags(geo, c.idx, o.minerals, f), label;
     if (c.kind === 'contact') {
       const [a, b] = c.pair.map(k => geo.bedrockUnits[k]);
-      tags = ['B:' + a, 'B:' + b, `C:${a} | ${b}`];
+      tags = f?.contactOnlyTags ? [`C:${a} | ${b}`] : ['B:' + a, 'B:' + b, `C:${a} | ${b}`];
       label = `Contact: ${a} / ${b}`;
     } else if (c.kind === 'chemistry') {
-      const a = c.chem;
-      tags = [...tags, 'X:' + a.tag];
-      label = `Re-sample ${a.name} — ChemCam ${a.tag} (${a.diff > 0 ? '+' : ''}${a.diff.toFixed(1)} wt%, sol ${a.sol})`;
+      const all = c.chemAll || [c.chem], a = all[0];
+      tags = [...tags, ...all.map(x => 'X:' + x.tag)];
+      const fmt = (x) => `${x.tag} (${x.diff > 0 ? '+' : ''}${x.diff.toFixed(1)} wt%`;
+      label = all.length === 1 ? `Re-sample ${a.name} — ChemCam ${fmt(a)}, sol ${a.sol})`
+        : `Re-sample ${a.name} — ChemCam ${all.map(x => fmt(x) + ')').join(', ')}, sol ${a.sol}`;
+    } else if (c.kind === 'target') {
+      const all = c.targetAll || [c.target], t = all[0];
+      tags = [...tags, ...all.map(x => 'T:' + x.name)];
+      label = all.length === 1 ? `Re-investigate ${t.name} — ChemCam target (sol ${t.sol})`
+        : `Re-investigate ${all.map(x => x.name).join(', ')} — ChemCam targets (sols ${[...new Set(all.map(x => x.sol))].join(', ')})`;
     } else if (c.kind === 'mineral') {
       const unit = tags.filter(t => t[0] === 'B' || t[0] === 'S').reverse().map(t => t.slice(2)).join(' on ');
       label = `${tags.find(t => t[0] === 'M').slice(2)} (CRISM)${unit ? ' — ' + unit : ''}`;
     } else {
       label = [...tags].reverse().map(t => t.slice(2)).join(' on ') || 'Unmapped';
     }
-    return { id: j, idx: c.idx, row, col, kind: c.kind, tags, label, rtS: c.rt };
+    const out = { id: j, idx: c.idx, row, col, kind: c.kind, tags, label, rtS: c.rt };
+    if (c.chem) out.chem = c.chem;
+    if (c.chemAll?.length > 1) out.chemAll = c.chemAll;
+    if (c.target) out.target = c.target;
+    if (c.targetAll?.length > 1) out.targetAll = c.targetAll;
+    return out;
   });
 }
 
-/** Tag weight by prefix: B bedrock, S surface, M mineral (CRISM), X measured chemistry (ChemCam), C contact. */
-function tagWeight(tag, w) {
-  return tag[0] === 'B' ? w.bedrock : tag[0] === 'S' ? w.surface : tag[0] === 'M' ? (w.mineral ?? 2)
-    : tag[0] === 'X' ? (w.chemistry ?? 2) : w.contact;
+/** Tag weight by prefix: B bedrock, S surface, M mineral (CRISM), X measured chemistry (ChemCam),
+ *  T measured ChemCam target, C contact. An optional per-unit table (w.surfaceUnits / w.bedrockUnits:
+ *  { name: weight }) overrides the bedrock / surface weight for named units. */
+export function tagWeight(tag, w) {
+  const p = tag[0], name = tag.slice(2);
+  if (p === 'B') return w.bedrockUnits?.[name] ?? w.bedrock;
+  if (p === 'S') return w.surfaceUnits?.[name] ?? w.surface;
+  return p === 'M' ? (w.mineral ?? 2) : p === 'X' ? (w.chemistry ?? 2) : p === 'T' ? (w.target ?? 0) : w.contact;
 }
 
 /** Farklı etiketler kümesinin puanı. */
@@ -212,7 +277,9 @@ export function optimizeTour(T, stops, o) {
  */
 export function planScienceEva(geo, home, hMap, wall, o) {
   const n = geo.n;
-  const cands = candidateStops(geo, home, { ...o, wall });
+  let cands = candidateStops(geo, home, { ...o, wall });
+  // A candidate that adds nothing to the objective's score is not a stop for this objective
+  if (o.filter) cands = cands.filter(c => c.tags.some(t => tagWeight(t, o.weights) > 0)).map((c, j) => ({ ...c, id: j }));
   const k = cands.length;
   const T = Array.from({ length: k + 1 }, () => new Array(k + 1).fill(Infinity));
   T[0][0] = 0;
