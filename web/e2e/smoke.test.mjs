@@ -168,7 +168,7 @@ test('Jezero, phone and tablet: workflow reachable, no horizontal scroll, HUD cl
 
 test('Gale loads with its objectives; Moon keeps the original simulator', { timeout: 600_000 }, async () => {
   const g = await open(`${BASE}/?site=gale&ws=plan`, { width: 1500, height: 950 });
-  await g.page.waitForSelector('text=PLAN SCIENCE EVA');
+  await g.page.waitForSelector('button:has-text("PLAN SCIENCE EVA")');
   const gt = await g.page.innerText('body');
   for (const s of ['Boxwork Ridge and Hollow Investigation', 'ChemCam Target Re-investigation']) assert.ok(gt.includes(s), s);
   assert.equal((await layout(g.page)).steps, 13);
