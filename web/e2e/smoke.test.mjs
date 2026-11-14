@@ -56,6 +56,12 @@ const layout = (page) => page.evaluate(() => {
   return { scrollW: document.documentElement.scrollWidth, innerW: innerWidth, hud: box('#eva-hud'), wf: box('[aria-label="Mission workflow"]'),
     steps: document.querySelectorAll('[aria-label="Mission workflow"] button').length };
 });
+/** Open a workspace from the top bar (EXPLORE / ANALYZE / PLAN / OPS). */
+const workspace = (page, name) => page.evaluate((n) => {
+  const b = [...document.querySelectorAll('nav[aria-label="Workspaces"] button')].find(x => x.innerText.includes(n));
+  if (!b) throw new Error(`no workspace ${n}`);
+  b.click();
+}, name);
 const pdfPages = (buf) => (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
 
 /** A shared science plan is re-planned by the app on load; press PLAN SCIENCE EVA only if it has not started. */
@@ -70,6 +76,11 @@ async function planScience(page) {
 test('Jezero, desktop: plan → decision and three assessments → EVA HUD → one-page cuff card', { timeout: 900_000 }, async () => {
   const { page, errors } = await open(`${BASE}/?site=jezero&plan=${PLAN}`, { width: 1500, height: 950 });
   await planScience(page);
+  // a shared plan opens in PLAN MISSION; the four workspaces are in the top bar, the decision stays visible there
+  const tabs = await page.innerText('nav[aria-label="Workspaces"]');
+  for (const w of ['EXPLORE', 'ANALYZE', 'PLAN MISSION', 'OPERATIONS']) assert.ok(tabs.includes(w), w);
+  assert.match(await page.innerText('[aria-label="Mission status"]'), /GO|CONDITIONAL|NO-GO|INSUFFICIENT DATA/);
+  assert.match(await page.innerText('[aria-label="EVA timeline"]'), /EVA TIMELINE[\s\S]*S1/);
   const L = await layout(page);
   assert.equal(L.steps, 13, '13-step workflow');
   assert.ok(L.scrollW <= L.innerW, 'no horizontal scroll');
@@ -80,6 +91,8 @@ test('Jezero, desktop: plan → decision and three assessments → EVA HUD → o
   assert.match(body, /(GO|CONDITIONAL|NO-GO|INSUFFICIENT DATA): /);
   await page.screenshot({ path: fileURLToPath(new URL('jezero-desktop-plan.png', OUT)) });
 
+  await workspace(page, 'OPERATIONS');
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => /START EVA/.test(b.innerText)));
   await click(page, 'START EVA');
   await page.waitForSelector('#eva-hud');
   const hud = await page.innerText('#eva-hud');
@@ -99,6 +112,34 @@ test('Jezero, desktop: plan → decision and three assessments → EVA HUD → o
   await page.emulateMedia({ media: 'print' });
   const pdf = await page.pdf({ format: 'A4', printBackground: true });
   assert.equal(pdfPages(pdf), 1, 'cuff card prints on one page');
+  await page.emulateMedia({ media: 'screen' });
+  await page.keyboard.press('Escape');
+
+  // EXPLORE: data catalog + inspector (map point from a terrain click, layer metadata from ⓘ)
+  await workspace(page, 'EXPLORE');
+  const cat = await page.innerText('aside[aria-label="Data catalog"]');
+  for (const c of ['IMAGERY', 'TOPOGRAPHY', 'GEOLOGY', 'MINERALOGY', 'HAZARDS']) assert.ok(cat.includes(c), c);
+  assert.ok(!cat.includes('AI TERRAIN SEGMENTATION'), 'no fake AI layer');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => [...document.querySelectorAll('aside[aria-label="Data catalog"] button')].find(b => b.getAttribute('aria-label') === 'Information on Dominant minerals (CRISM)').click());
+  await page.waitForFunction(() => /MAP LAYER/.test(document.querySelector('[aria-label="Inspector"]')?.innerText || ''));
+  const insp = await page.innerText('[aria-label="Inspector"]');
+  for (const t of ['Dominant minerals (CRISM)', 'Data source', 'Technical']) assert.ok(insp.includes(t), t);
+  await page.evaluate(() => [...document.querySelectorAll('aside[aria-label="Data catalog"] input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Show Hazard classes').click());
+  await page.evaluate(() => [...document.querySelectorAll('aside[aria-label="Data catalog"] input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Show Surface units').click());
+  assert.equal(await page.locator('aside[aria-label="Data catalog"] input[type=range]').count(), 2, 'two draped layers, each with its opacity');
+  const map = page.locator('[aria-label="Inspector"]');
+  const sitemap = await page.evaluate(() => { const c = [...document.querySelectorAll('canvas')].find(x => x.width === x.height && x.getBoundingClientRect().left > innerWidth / 2); const r = c.getBoundingClientRect(); return { x: r.left + r.width * 0.3, y: r.top + r.height * 0.7 }; });
+  await page.mouse.click(sitemap.x, sitemap.y);
+  await page.waitForFunction(() => /MAP POINT/.test(document.querySelector('[aria-label="Inspector"]')?.innerText || ''));
+  assert.match(await map.innerText(), /Elevation[\s\S]*m \(MOLA datum\)[\s\S]*Slope/);
+  await page.screenshot({ path: fileURLToPath(new URL('jezero-desktop-explore.png', OUT)) });
+
+  // ANALYZE: terrain analysis + science data with what is missing at this site
+  await workspace(page, 'ANALYZE');
+  await page.waitForFunction(() => /Scientific data — available and missing/i.test(document.body.innerText));
+  assert.match(await page.innerText('body'), /NOT AVAILABLE AT THIS SITE/);
+  await page.screenshot({ path: fileURLToPath(new URL('jezero-desktop-analyze.png', OUT)) });
   assert.deepEqual(errors, []);
   await page.close();
 });
@@ -107,6 +148,8 @@ test('Jezero, phone and tablet: workflow reachable, no horizontal scroll, HUD cl
   for (const [name, vp] of [['phone', { width: 390, height: 844 }], ['tablet', { width: 820, height: 1180 }]]) {
     const { page, errors } = await open(`${BASE}/?site=jezero&plan=${PLAN}`, vp, true);
     await planScience(page);
+    await workspace(page, 'OPS');
+    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => /START EVA/.test(b.innerText)));
     await click(page, 'START EVA');
     await page.waitForSelector('#eva-hud');
     const L = await layout(page);
@@ -123,17 +166,20 @@ test('Jezero, phone and tablet: workflow reachable, no horizontal scroll, HUD cl
 });
 
 test('Gale loads with its objectives; Moon keeps the original simulator', { timeout: 600_000 }, async () => {
-  const g = await open(`${BASE}/?site=gale`, { width: 1500, height: 950 });
+  const g = await open(`${BASE}/?site=gale&ws=plan`, { width: 1500, height: 950 });
   await g.page.waitForSelector('text=PLAN SCIENCE EVA');
   const gt = await g.page.innerText('body');
   for (const s of ['Boxwork Ridge and Hollow Investigation', 'ChemCam Target Re-investigation']) assert.ok(gt.includes(s), s);
   assert.equal((await layout(g.page)).steps, 13);
-  // 1 m DTM relief shading: map served, control present, emphasis switch renders without errors
+  // 1 m DTM relief shading: map served; in the data catalog (EXPLORE) the emphasis switch renders without errors
   assert.ok((await g.page.request.get(`${BASE}/sites/gale/relief.jpg`)).ok(), 'relief.jpg served');
-  assert.match(gt, /RELIEF ×1/);
-  assert.match(gt, /Shading: 1 m HiRISE DTM · true slopes/);
+  await workspace(g.page, 'EXPLORE');
+  await g.page.waitForSelector('aside[aria-label="Data catalog"]');
+  const gc = await g.page.innerText('aside[aria-label="Data catalog"]');
+  assert.match(gc, /RELIEF ×1/);
+  assert.match(gc, /CHEMISTRY[\s\S]*ChemCam major oxides/);
   await click(g.page, '^×4$');
-  await g.page.waitForFunction(() => /slopes ×4 for visibility/.test(document.body.innerText));
+  await g.page.waitForFunction(() => /emphasised/.test(document.querySelector('aside[aria-label="Data catalog"]').innerText));
   await g.page.waitForTimeout(2000);
   assert.deepEqual(g.errors, []);
   await g.page.close();

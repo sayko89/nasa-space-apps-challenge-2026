@@ -42,3 +42,18 @@ export function useCompact() {
   }, []);
   return c;
 }
+
+// Wide screens (desktop / laptop): the data catalog is docked; below this it opens as a drawer
+export const WIDE_QUERY = '(min-width: 1100px)';
+export function useWide() {
+  const q = () => typeof window !== 'undefined' && !!window.matchMedia?.(WIDE_QUERY).matches;
+  const [w, setW] = useState(q);
+  useEffect(() => {
+    const m = window.matchMedia?.(WIDE_QUERY);
+    if (!m) return undefined;
+    const on = () => setW(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return w;
+}

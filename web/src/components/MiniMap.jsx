@@ -22,7 +22,8 @@ export function clamp(vx,vy,zoom) {
 }
 
 // ---- Mini-map ----
-export function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr, orthoOn, showTrack }) {
+export function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, onPick, dustHazard, dustPickMode, onDustPlace, ponr, orthoOn, showTrack, onInspect = null }) {
+  const movedRef = useRef(false);   // a drag (pan) is not a click (inspect)
   const canvasRef   = useRef(null);
   const terrainRef  = useRef(null);
   const zoomRef     = useRef(1);
@@ -236,10 +237,12 @@ export function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, on
   const onMouseDown = useCallback(e => {
     if (pickMode || dustPickMode) return;
     dragRef.current={sx:e.clientX,sy:e.clientY,vx:viewRef.current.x,vy:viewRef.current.y};
+    movedRef.current=false;
   }, [pickMode, dustPickMode]);
 
   const onMouseMove = useCallback(e => {
     if (!dragRef.current) return;
+    if (Math.hypot(e.clientX-dragRef.current.sx, e.clientY-dragRef.current.sy) > 4) movedRef.current=true;
     const rect=canvasRef.current.getBoundingClientRect();
     const sx=MAP_S/rect.width, sy=MAP_S/rect.height;
     const dx=(e.clientX-dragRef.current.sx)*sx/zoomRef.current;
@@ -251,7 +254,14 @@ export function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, on
   const onMouseUp = useCallback(() => { dragRef.current=null; }, []);
 
   const onClick = useCallback(e => {
-    if (!pickMode && !dustPickMode) return;
+    if (!pickMode && !dustPickMode) {
+      if (!onInspect || movedRef.current) return;
+      const rect=canvasRef.current.getBoundingClientRect();
+      const mx=(e.clientX-rect.left)*(MAP_S/rect.width), my=(e.clientY-rect.top)*(MAP_S/rect.height);
+      const {wx,wz}=m2w(mx,my,viewRef.current.x,viewRef.current.y,zoomRef.current);
+      if (Math.abs(wx) <= HALF && Math.abs(wz) <= HALF) onInspect({ type: 'point', x: wx, z: wz });
+      return;
+    }
     if (dragRef.current) return;
     const rect=canvasRef.current.getBoundingClientRect();
     const mx=(e.clientX-rect.left)*(MAP_S/rect.width);
@@ -263,7 +273,7 @@ export function MiniMap({ waypoints, roverPos, routes, activeRoute, pickMode, on
     } else {
       onPick(pos);
     }
-  }, [pickMode,dustPickMode,onPick,onDustPlace]);
+  }, [pickMode,dustPickMode,onPick,onDustPlace,onInspect]);
 
   return (
     <canvas ref={canvasRef} width={MAP_S} height={MAP_S}

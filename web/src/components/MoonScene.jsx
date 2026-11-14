@@ -141,7 +141,7 @@ function Terrain({ wireframe, orthoOn = false, reliefScale = 1 }) {
 // ---- Map layer draped on the 3D terrain (DEM "layered view") ----
 // The 2D heatmap canvas is in grid order (row 0 = north, col 0 = west), which is
 // exactly the terrain PlaneGeometry's UV layout (CanvasTexture flipY → v=1 north).
-function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshKey }) {
+function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshKey, order = 0 }) {
   const tex = useMemo(() => {
     if (typeof document === 'undefined') return null;
     const c = document.createElement('canvas');
@@ -155,10 +155,28 @@ function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshK
   useEffect(() => () => tex?.dispose(), [tex]);
   if (!_geo || !tex) return null;
   return (
-    <mesh geometry={_geo} renderOrder={1}>
+    <mesh geometry={_geo} renderOrder={1 + order} raycast={() => null}>
       <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false}
-        polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-4} />
+        polygonOffset polygonOffsetFactor={-1 - order} polygonOffsetUnits={-4 - 2 * order} />
     </mesh>
+  );
+}
+
+// ---- Inspected map point (Explore / inspector): a pin standing on the terrain ----
+function InspectPin({ point }) {
+  if (!point) return null;
+  const y = getTerrainHeight(point.x, point.z);
+  return (
+    <group position={[point.x, y, point.z]} raycast={() => null}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.3, 0]} renderOrder={8}>
+        <ringGeometry args={[5, 6.5, 40]} />
+        <meshBasicMaterial color="#7fb2e6" transparent opacity={0.9} depthTest={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 12, 0]} renderOrder={8}>
+        <cylinderGeometry args={[0.35, 0.35, 24, 6]} />
+        <meshBasicMaterial color="#7fb2e6" transparent opacity={0.75} depthTest={false} />
+      </mesh>
+    </group>
   );
 }
 
@@ -881,6 +899,9 @@ export default function MoonScene({
   returnPath = null,        // DEM: abort return path (dashed)
   sceneApiRef = null,       // optional: { camera, controls } for scripted captures
   overlay = null,           // DEM: { layer, opacity, refreshKey } map layer draped on the terrain
+  overlays = null,          // DEM: [{ layer, opacity }] several draped layers, bottom → top (data catalog)
+  onTerrainClick = null,    // DEM: ({ x, z }) when the terrain is clicked without dragging (inspector)
+  inspectPoint = null,      // DEM: { x, z } pin at the inspected point
   showTrack = false,        // DEM: the rover's own route + named places (sites/<site>/track.json)
   orthoOn = false,          // DEM: HiRISE orthomosaic on the terrain (sites/<site>/ortho.jpg)
   reliefScale = 1,          // DEM: relief shading emphasis (1 = true slopes; shading only)
@@ -917,11 +938,18 @@ export default function MoonScene({
       {/* Sun */}
       <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} playback={playback} />
 
-      <Terrain wireframe={wireframe} orthoOn={orthoOn} reliefScale={reliefScale} />
-      {IS_DEM && overlay?.layer && (
-        <TerrainOverlay layer={overlay.layer} opacity={overlay.opacity ?? 0.6} refreshKey={overlay.refreshKey}
+      <group onClick={onTerrainClick ? (e) => {
+        if (e.delta > 6) return;                          // a drag (orbit / pan), not a click
+        e.stopPropagation();
+        onTerrainClick({ x: e.point.x, z: e.point.z });
+      } : undefined}>
+        <Terrain wireframe={wireframe} orthoOn={orthoOn} reliefScale={reliefScale} />
+      </group>
+      {IS_DEM && (overlays || (overlay?.layer ? [overlay] : [])).map((o, k) => (
+        <TerrainOverlay key={o.layer} layer={o.layer} opacity={o.opacity ?? 0.6} refreshKey={overlay?.refreshKey ?? o.refreshKey} order={k}
           sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />
-      )}
+      ))}
+      {IS_DEM && <InspectPin point={inspectPoint} />}
       <Rocks />
       <SpaceDebris />
 
