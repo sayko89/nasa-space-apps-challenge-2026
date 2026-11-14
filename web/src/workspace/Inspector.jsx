@@ -45,7 +45,7 @@ const USE = {
 const H = ({ children }) => <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: T.muted, margin: '10px 0 4px' }}>{children}</div>;
 const KV = ({ k, v, mono = true }) => (v == null || v === '' ? null : (
   <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.45, padding: '1px 0' }}>
-    <span style={{ color: T.muted, width: 104, flexShrink: 0 }}>{k}</span>
+    <span style={{ color: T.muted, width: 88, flexShrink: 0 }}>{k}</span>
     <span style={{ color: T.text, fontFamily: mono ? T.mono : T.sans, minWidth: 0, overflowWrap: 'anywhere' }}>{v}</span>
   </div>
 ));
