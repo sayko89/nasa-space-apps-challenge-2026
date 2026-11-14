@@ -35,6 +35,7 @@ function marsSky(elDeg) {
 }
 import { useRoverController } from '../three/roverController';
 import { loadOrthoImage } from '../utils/orthoImage';
+import { hasRelief, reliefUrl, flatNormalGeometry } from '../utils/relief';
 import { ROUTE_COLORS } from '../utils/constants';
 
 // ---- Terrain ----
@@ -67,14 +68,43 @@ function useOrthoTexture(on) {
   return on ? tex : null;
 }
 
-function Terrain({ wireframe, orthoOn = false }) {
+// ---- Relief shading from the 1 m HiRISE DTM (pipeline/build_relief.py) ----
+// The mesh is the 4 m grid: lit by its own vertex normals it shows nothing finer than ~8 m, and on the
+// smooth Jezero floor that reads as a flat painted sheet. relief.jpg holds the 1 m DTM's surface normals
+// relative to the horizontal (R east, G north, B up; row 0 = north = UV v 1), so the mesh is given flat
+// (up) vertex normals and lit with the map: the shading is the measured 1 m relief. Heights, shadows
+// and silhouettes still come from the 4 m mesh. `scale` > 1 steepens the shading only (presentation aid).
+let _reliefTex = null, _flatGeo = null;
+function useReliefTexture(on) {
+  const [tex, setTex] = useState(_reliefTex);
+  useEffect(() => {
+    if (!on || _reliefTex || !hasRelief()) return undefined;
+    let alive = true;
+    new THREE.TextureLoader().load(reliefUrl(), (t) => {
+      t.colorSpace = THREE.NoColorSpace;                 // vectors, not colours
+      t.anisotropy = 8;
+      t.generateMipmaps = true;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      _reliefTex = t;
+      if (alive) setTex(t);
+    }, undefined, () => {});                              // no map → the mesh keeps its own normals
+    return () => { alive = false; };
+  }, [on]);
+  return on ? tex : null;
+}
+
+function Terrain({ wireframe, orthoOn = false, reliefScale = 1 }) {
   if (!_geo)          _geo          = generateTerrain();
   if (!_regolithTex)  _regolithTex  = createLunarRegolithTexture(512);
   if (!_normalMap)    _normalMap    = createLunarNormalMap(256);
   const ortho = useOrthoTexture(orthoOn && !wireframe);
+  const relief = useReliefTexture(!wireframe);
+  if (relief && !_flatGeo) _flatGeo = flatNormalGeometry(_geo);
+  const rs = [reliefScale, reliefScale];
+  const reliefProps = relief ? { normalMap: relief, normalScale: rs } : {};
 
   return (
-    <mesh geometry={_geo} receiveShadow>
+    <mesh geometry={relief ? _flatGeo : _geo} receiveShadow>
       {wireframe ? (
         <meshStandardMaterial key="wire" wireframe color="#44aa44" />
       ) : ortho ? (
@@ -82,8 +112,9 @@ function Terrain({ wireframe, orthoOn = false }) {
         // the mid-grey image); the image already holds the orbital lighting, so the scene light
         // adds only the relief of the 4 m terrain.
         <meshStandardMaterial
-          key="ortho"
+          key={relief ? 'ortho-relief' : 'ortho'}
           map={ortho}
+          {...reliefProps}
           color={ORTHO_TINT}
           roughness={0.95}
           metalness={0}
@@ -91,12 +122,13 @@ function Terrain({ wireframe, orthoOn = false }) {
         />
       ) : (
         <meshStandardMaterial
-          key="proc"
+          key={relief ? 'proc-relief' : 'proc'}
           vertexColors
           color="#ffffff"
           map={_regolithTex}
           normalMap={_normalMap}
           normalScale={[0.14, 0.14]}
+          {...reliefProps}
           roughness={0.88}
           metalness={0.04}
           envMapIntensity={0.0}
@@ -109,7 +141,7 @@ function Terrain({ wireframe, orthoOn = false }) {
 // ---- Map layer draped on the 3D terrain (DEM "layered view") ----
 // The 2D heatmap canvas is in grid order (row 0 = north, col 0 = west), which is
 // exactly the terrain PlaneGeometry's UV layout (CanvasTexture flipY → v=1 north).
-function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshKey }) {
+function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshKey, order = 0 }) {
   const tex = useMemo(() => {
     if (typeof document === 'undefined') return null;
     const c = document.createElement('canvas');
@@ -123,10 +155,28 @@ function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshK
   useEffect(() => () => tex?.dispose(), [tex]);
   if (!_geo || !tex) return null;
   return (
-    <mesh geometry={_geo} renderOrder={1}>
+    <mesh geometry={_geo} renderOrder={1 + order} raycast={() => null}>
       <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false}
-        polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-4} />
+        polygonOffset polygonOffsetFactor={-1 - order} polygonOffsetUnits={-4 - 2 * order} />
     </mesh>
+  );
+}
+
+// ---- Inspected map point (Explore / inspector): a pin standing on the terrain ----
+function InspectPin({ point }) {
+  if (!point) return null;
+  const y = getTerrainHeight(point.x, point.z);
+  return (
+    <group position={[point.x, y, point.z]} raycast={() => null}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.3, 0]} renderOrder={8}>
+        <ringGeometry args={[5, 6.5, 40]} />
+        <meshBasicMaterial color="#7fb2e6" transparent opacity={0.9} depthTest={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 12, 0]} renderOrder={8}>
+        <cylinderGeometry args={[0.35, 0.35, 24, 6]} />
+        <meshBasicMaterial color="#7fb2e6" transparent opacity={0.75} depthTest={false} />
+      </mesh>
+    </group>
   );
 }
 
@@ -847,10 +897,15 @@ export default function MoonScene({
   onCrewPose = null,        // DEM: throttled crew pose → App (minimap/telemetry)
   trailKey = 0,             // DEM: change to wipe boot prints
   returnPath = null,        // DEM: abort return path (dashed)
+  reroutePath = null,       // DEM: route re-planned around a dust devil
   sceneApiRef = null,       // optional: { camera, controls } for scripted captures
   overlay = null,           // DEM: { layer, opacity, refreshKey } map layer draped on the terrain
+  overlays = null,          // DEM: [{ layer, opacity }] several draped layers, bottom → top (data catalog)
+  onTerrainClick = null,    // DEM: ({ x, z }) when the terrain is clicked without dragging (inspector)
+  inspectPoint = null,      // DEM: { x, z } pin at the inspected point
   showTrack = false,        // DEM: the rover's own route + named places (sites/<site>/track.json)
   orthoOn = false,          // DEM: HiRISE orthomosaic on the terrain (sites/<site>/ortho.jpg)
+  reliefScale = 1,          // DEM: relief shading emphasis (1 = true slopes; shading only)
 }) {
   const roverRef = useRef();
   const orbitRef = useRef();
@@ -884,11 +939,18 @@ export default function MoonScene({
       {/* Sun */}
       <SunLight roverRef={roverRef} sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} playback={playback} />
 
-      <Terrain wireframe={wireframe} orthoOn={orthoOn} />
-      {IS_DEM && overlay?.layer && (
-        <TerrainOverlay layer={overlay.layer} opacity={overlay.opacity ?? 0.6} refreshKey={overlay.refreshKey}
+      <group onClick={onTerrainClick ? (e) => {
+        if (e.delta > 6) return;                          // a drag (orbit / pan), not a click
+        e.stopPropagation();
+        onTerrainClick({ x: e.point.x, z: e.point.z });
+      } : undefined}>
+        <Terrain wireframe={wireframe} orthoOn={orthoOn} reliefScale={reliefScale} />
+      </group>
+      {IS_DEM && (overlays || (overlay?.layer ? [overlay] : [])).map((o, k) => (
+        <TerrainOverlay key={o.layer} layer={o.layer} opacity={o.opacity ?? 0.6} refreshKey={overlay?.refreshKey ?? o.refreshKey} order={k}
           sunAngleDeg={sunAngleDeg} sunElevationDeg={sunElevationDeg} />
-      )}
+      ))}
+      {IS_DEM && <InspectPin point={inspectPoint} />}
       <Rocks />
       <SpaceDebris />
 
@@ -898,6 +960,7 @@ export default function MoonScene({
         : <RouteLine key={mode} points={pts} color={ROUTE_COLORS[mode] ?? '#ff8800'} active={mode === activeRoute} />
       ))}
       {IS_DEM && returnPath && <DemRouteLine points={returnPath} color="#ff8800" active dashed />}
+      {IS_DEM && reroutePath && <DemRouteLine points={reroutePath} color="#ffe066" active />}
 
       {/* Dust hazard — DEM: dust devil; Moon: dust cloud (world space, anchored to terrain) */}
       {dustHazard && (IS_DEM ? <DustDevil hazard={dustHazard} /> : <DustCloudHazard hazard={dustHazard} />)}

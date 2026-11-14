@@ -21,6 +21,7 @@ export const CATEGORIES = {
   'transferred-reference': { label: 'Transferred reference', color: '#ffa94d' },
   modelled: { label: 'Modelled', color: '#c8a8ff' },
   simulated: { label: 'Simulated', color: '#ff8fa3' },
+  'ai-predicted': { label: 'AI-predicted', color: '#e58fe0' },
 };
 
 const doi = (d) => (d && /^https?:/.test(d) ? d : d ? `https://doi.org/${d}` : null);
@@ -60,6 +61,29 @@ export function provenanceFor(siteName, site) {
     status: 'derived', uncertainty: 'a proxy: relief can come from a boulder, an outcrop step or DTM noise',
     limitations: 'A 1 m DTM shows rocks of a few metres; rocks under ~2 m are not seen. At Gale, DEM noise raises the values',
   });
+  if (site?.segmentation) {
+    const sg = site.segmentation;
+    add({
+      key: 'segmentation', name: 'Terrain classes on rover images (AI)', category: 'ai-predicted',
+      mission: site.track?.rover ? `${site.track.rover} (images)` : 'rover images', instrument: `${sg.model} (LR-ASPP MobileNetV3, trained on AI4Mars v0.6)`,
+      source: { title: 'AI4Mars v0.6 training set (Swan et al., Zenodo 10.5281/zenodo.15995036)', url: 'https://doi.org/10.5281/zenodo.15995036' },
+      observed: `predicted ${sg.predictedUtc?.slice(0, 10) || ''}`, resolution: 'per image pixel (256 px short side)', coverage: `${sg.count} Navcam frames`,
+      dataType: 'image classes (soil, bedrock, sand, big rock)', processing: 'pipeline/segmentation (train → evaluate → ONNX → infer_sites); docs/MARS_SEGMENTATION.md',
+      status: 'model prediction', uncertainty: `pixels below confidence ${sg.lowConfidence} shown as unknown; big rocks poorly detected (test IoU 0.07–0.32)`,
+      limitations: 'Image level, not georeferenced: never drawn on the map and never changes routes or safety rules',
+    });
+  }
+  if (site?.relief) {
+    add({
+      key: 'reliefShading', name: '3D relief shading', category: 'derived',
+      mission: 'Mars Reconnaissance Orbiter', instrument: 'HiRISE DTM (1 m)',
+      source: { title: meta.source?.title || 'HiRISE DTM', url: doi(meta.source?.doi) || meta.source?.page || null },
+      observed: 'as the DTM', resolution: `${site.relief.pixel_m?.toFixed(2)} m/px normal map`, coverage: span, dataType: 'topographic',
+      processing: 'surface normals of the 1 m DTM on the site grid, used to light the 4 m terrain mesh (pipeline/build_relief.py)',
+      status: 'derived', uncertainty: 'DTM noise shows as fine texture; the ×2 / ×4 view steepens the shading only',
+      limitations: 'Lighting only: heights, slopes, routes and every number still come from the 4 m grid',
+    });
+  }
 
   // ---- Images
   if (site?.ortho) {

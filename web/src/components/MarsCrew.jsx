@@ -35,7 +35,27 @@ function useSuitMaterials() {
     lamp:  new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#fff6d8', emissiveIntensity: 1.2 }),
     led:   new THREE.MeshStandardMaterial({ color: '#40e0ff', emissive: '#30d0ff', emissiveIntensity: 1.4 }),
     ledG:  new THREE.MeshStandardMaterial({ color: '#7dff7a', emissive: '#5cff58', emissiveIntensity: 1.4 }),
+    logo:  teamLogoMaterial(),
   }), []);
+}
+
+// Team patch on the back of the life-support backpack: the Periapsis logo (public/brand/periapsis-logo.png,
+// black on transparent, 1024 × 638). One shared material; the image is attached when it has loaded.
+const LOGO_ASPECT = 1024 / 638;
+let _logoMat = null;
+function teamLogoMaterial() {
+  if (_logoMat) return _logoMat;
+  _logoMat = new THREE.MeshStandardMaterial({ color: '#16171a', roughness: 0.75, metalness: 0, transparent: true,
+    opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}brand/periapsis-logo.png`, (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    _logoMat.map = t;                     // the logo's alpha cuts the shape; colour comes from `color`
+    _logoMat.alphaMap = null;
+    _logoMat.opacity = 0.92;
+    _logoMat.needsUpdate = true;
+  }, undefined, () => {});                // no logo file → nothing drawn (opacity 0)
+  return _logoMat;
 }
 
 // ---------------------------------------------------------------- the suit
@@ -85,7 +105,7 @@ function Astronaut({ J, ev1 }) {
     </group>
   );
   return (
-    <group ref={reg('root')}>
+    <group ref={reg('root')} scale={CREW_SCALE}>
       <group ref={reg('body')}>
         <group ref={reg('pelvis')} position={[0, 0.95, 0]}>
           {/* brief / hip bearing */}
@@ -103,6 +123,10 @@ function Astronaut({ J, ev1 }) {
             </mesh>
             <mesh material={m.dark} castShadow position={[0, 0.7, -0.25]}>
               <boxGeometry args={[0.36, 0.05, 0.16]} />
+            </mesh>
+            {/* team patch, centred on the backpack's back face (0.42 × 0.62 m), upper half */}
+            <mesh material={m.logo} position={[0, 0.46, -0.351]} rotation={[0, Math.PI, 0]} renderOrder={2}>
+              <planeGeometry args={[0.3, 0.3 / LOGO_ASPECT]} />
             </mesh>
             <mesh material={m.metal} position={[0.15, 0.82, -0.3]}>
               <cylinderGeometry args={[0.008, 0.008, 0.22, 6]} />
@@ -178,11 +202,15 @@ function applyPose(J, P) {
   J.elL.rotation.x = P.elL; J.elR.rotation.x = P.elR;
 }
 
+// Display scale of the crew figures (true size ~1.9 m with helmet is a few pixels against 2 km of terrain).
+// Drawing only: positions, routes, speeds and every number are unchanged. Decimal point, not comma.
+const CREW_SCALE = 9.4;
+
 const wrapAngle = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
 // Visual gait: one walk cycle (two steps) covers STRIDE_M; in time-lapse the
 // cadence is capped so the legs read as "walking fast" instead of flickering.
-const STRIDE_M = 0.9;
+const STRIDE_M = 0.9 * CREW_SCALE;   // legs scale with the figure: keep feet from sliding
 const MAX_CADENCE_HZ = 1.7;
 const STEP_M = 0.45;            // boot print spacing (one step)
 
@@ -340,7 +368,7 @@ export function MarsCrew({ playback, idlePos, leadRef, onPose, trailKey = 0, sun
   const crewRefs = useMemo(() => [leadRef, ev2Ref], [leadRef]);
   const anim = useRef({
     phase: 0, heading1: 0, heading2: 0, cur1: walkPose(0, 0), cur2: walkPose(0, 0),
-    side: new THREE.Vector2(1.3, 0), lastEmit: 0, time: 0,
+    side: new THREE.Vector2(1.3 * CREW_SCALE, 0), lastEmit: 0, time: 0,
   });
   const ringRef = useRef();
 
@@ -385,7 +413,7 @@ export function MarsCrew({ playback, idlePos, leadRef, onPose, trailKey = 0, sun
     if (p2) A.heading2 += wrapAngle(p2.heading - A.heading2) * (1 - Math.exp(-dt * 7));
     const atStop2 = !!p2 && p2.state === 'dwell' && !playback.aborted && playback.status !== 'done';
     // side offset: 1.3 m to EV1's right while walking, 1.8 m right + 0.9 m back while documenting
-    const wantSide = atStop2 ? 1.8 : 1.3, wantBack = atStop2 ? 0.9 : 0;
+    const wantSide = (atStop2 ? 1.8 : 1.3) * CREW_SCALE, wantBack = (atStop2 ? 0.9 : 0) * CREW_SCALE;
     A.side.x += (wantSide - A.side.x) * (1 - Math.exp(-dt * 4));
     A.side.y += (wantBack - A.side.y) * (1 - Math.exp(-dt * 4));
     const h2 = A.heading2;

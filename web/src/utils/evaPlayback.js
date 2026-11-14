@@ -25,6 +25,7 @@ import {
 } from './evaTimeline.js';
 import { fmtHM } from './format.js';
 import { oxygenState } from './oxygen.js';
+import { spliceTimeline } from './dustReroute.js';
 
 export const SPEEDS = [1, 30, 120, 600];
 export const DEFAULT_SPEED = 120;
@@ -42,12 +43,16 @@ export class EvaPlayback {
     this.speed = DEFAULT_SPEED;
     this.hazard = null;
     this.o2cfg = null;             // oxygenConfig() — survives reloads; set by setOxygen()
+    this.dustPlanner = null;       // (ctx) → planDustReroute result; null = a dust devil ahead aborts (old behaviour)
     this._clear();
   }
 
   _clear() {
     this.status = 'idle';          // idle | ready | playing | paused | done
     this.aborted = null;           // { reason, t0, etaS, fromX, fromZ }
+    this.rerouted = null;          // { t0, extraS, skipped, path, checks } — route changed around a dust devil
+    this._toHomeOverride = null;   // walk-home times avoiding the dust devil (after a re-route)
+    this._lastAvoidReturn = null;  // walk home around the dust devil (from the last re-route attempt)
     this.t = 0;                    // mission elapsed time [s]
     this.nominal = null;           // planned timeline
     this.active = null;            // nominal, or the abort (return) timeline
@@ -60,7 +65,7 @@ export class EvaPlayback {
   }
 
   _resetFlags() {
-    this.flags = { ponr: false, warned: new Set(), sunset: false, noPath: false, o2Reserve: false, o2Return: false, o2Empty: false };
+    this.flags = { ponr: false, warned: new Set(), sunset: false, noPath: false, o2Reserve: false, o2Return: false, o2Empty: false, rerouted: false };
   }
 
   /**
@@ -92,7 +97,7 @@ export class EvaPlayback {
   oxygenAt(t = this.t) {
     if (!this.o2cfg?.valid || !this.active || !this.o2History.length) return null;
     const p = this._poseAt(t);
-    return oxygenState(this.o2cfg, this.o2History, t, this.env.toHomeAt(p.x, p.z), this.active.totalS - t);
+    return oxygenState(this.o2cfg, this.o2History, t, this._toHome(p.x, p.z), this.active.totalS - t);
   }
 
   /** Oxygen and carried mass over the whole active timeline (current rate continues), for the charts. */
@@ -110,6 +115,12 @@ export class EvaPlayback {
     this._seriesCache = { key, data };
     return data;
   }
+
+  /** Walk-home time from (x, z): around the dust devil after a re-route, else the planner's map. */
+  _toHome(x, z) { return this._toHomeOverride ? this._toHomeOverride(x, z) : this.env.toHomeAt(x, z); }
+
+  /** Re-plan around a dust devil instead of aborting (App passes a planner bound to the site grids). */
+  setDustPlanner(fn) { this.dustPlanner = fn || null; }
 
   _poseAt(t) {
     if (this.aborted && t < this.aborted.t0) return sampleTimeline(this.nominal, Math.max(0, t));
@@ -157,6 +168,7 @@ export class EvaPlayback {
     this._clear();
     this.speed = keepSpeed;
     this.nominal = buildTimeline(path, stats.elapsedS, stats.stops || []);
+    this.planned = this.nominal;   // the plan as loaded (a re-route replaces nominal; restart returns here)
     this.active = this.nominal;
     this.meta = { ponrIdx: -1, ...meta };
     this.env = env;
@@ -192,8 +204,12 @@ export class EvaPlayback {
 
   restart(autoplay = true) {
     if (!this.nominal) return;
+    this.nominal = this.planned || this.nominal;
     this.active = this.nominal;
     this.aborted = null;
+    this.rerouted = null;
+    this._toHomeOverride = null;
+    this._lastAvoidReturn = null;
     this.t = 0;
     this.events = [];
     this._resetFlags();
@@ -233,12 +249,12 @@ export class EvaPlayback {
     this._emit('seek');
   }
 
-  /** Abort the EVA: walk home on the fastest path from the current position. */
-  abort(reason = 'manual abort') {
+  /** Abort the EVA: walk home on the fastest path from the current position (or `returnPath`, e.g. around a dust devil). */
+  abort(reason = 'manual abort', returnPath = null) {
     if (!this.active || this.aborted) return false;
     if (this.status === 'idle' || this.status === 'done' || this.status === 'ready') return false;
     const p = sampleTimeline(this.active, this.t);
-    const r = this.env.returnPath(p.x, p.z);
+    const r = (returnPath && returnPath(p.x, p.z)) || this.env.returnPath(p.x, p.z);
     if (!r || !r.path || r.path.length < 2) {
       this._event('abort-failed', 'ABORT FAILED — no walkable path home from here');
       return false;
@@ -252,8 +268,52 @@ export class EvaPlayback {
   }
 
   setHazard(h) {
+    if (h !== this.hazard) this.flags.rerouted = false;   // a new dust devil may be avoided again
     this.hazard = h || null;
     this._emit('hazard');
+  }
+
+  /**
+   * Dust devil on the route ahead: plan around it from here (remaining stops + home, see
+   * utils/dustReroute.js). Accepted → the rest of the EVA follows the new route; rejected (or a
+   * second time for the same dust devil) → abort, walking home around it when possible.
+   */
+  _dustAhead() {
+    const reason = 'dust devil on the route ahead';
+    if (!this.dustPlanner || this.flags.rerouted) { this.abort(reason, this._lastAvoidReturn || null); return; }
+    this.flags.rerouted = true;
+    const t = this.t, p = sampleTimeline(this.active, t);
+    const stops = this.nominal.stops.filter(s => s.arriveS > t + 1e-6);
+    const here = this.nominal.stops.find(s => s.arriveS <= t && s.departS > t);   // sampling now: finish it first
+    const wait = here ? here.departS - t : 0;
+    const hist = this.o2History;
+    const r = this.dustPlanner({
+      pos: { x: p.x, z: p.z }, t: t + wait, stops, hazard: this.hazard, budgetS: this.meta.budgetS, nominalEndS: this.active.totalS,
+      mode: 'SAFE', startMs: this.meta.startMs, sunAt: this.env.sunAt || null,
+      oxygenCheck: (planLeftS, backS) => {
+        if (!this.o2cfg?.valid || !hist.length) return { ok: true, detail: 'no oxygen settings' };
+        const o = oxygenState(this.o2cfg, hist, t, backS, planLeftS + wait);
+        const need = o.planNeedKg + o.reserveKg;
+        return { ok: o.remainingKg >= need, detail: `${o.remainingKg.toFixed(2)} kg left, ${need.toFixed(2)} kg needed incl. reserve` };
+      },
+    });
+    this._lastAvoidReturn = r?.returnPath || null;
+    if (!r?.ok) {
+      this._event('reroute-failed', `DUST DEVIL AHEAD — no safe route around it (${r?.reason || 'planner unavailable'}). Returning home.`);
+      this.abort(`${reason} — no safe route around it`, r?.returnPath || null);
+      return;
+    }
+    const tl = spliceTimeline(this.nominal, t, p, r.path, r.elapsedS, r.stops, here ? { dwellS: wait, n: here.n, label: here.label } : null);
+    this.nominal = tl;
+    this.active = tl;
+    this._toHomeOverride = r.toHomeAt;
+    this.rerouted = { t0: t, extraS: r.extraS, skipped: r.skipped.map(s => s.n), finishing: here ? here.n : null,
+      path: r.path, checks: r.checks, fromX: p.x, fromZ: p.z };
+    const sk = r.skipped.length ? ` · skipped ${r.skipped.map(s => `S${s.n}`).join(', ')} (inside the dust devil's safety distance)` : '';
+    const ct = here ? ` · S${here.n} finished first` : '';
+    const ex = r.extraS >= 0 ? `+${fmtHM(r.extraS)}` : `−${fmtHM(-r.extraS)}`;
+    this._event('reroute', `DUST DEVIL AHEAD — new route around it (${ex})${sk}${ct}`, { extraS: r.extraS });
+    this._emit('status');
   }
 
   /** Advance the mission clock by dtReal seconds of wall time. Returns true if it moved. */
@@ -276,7 +336,7 @@ export class EvaPlayback {
   marginAt(t = this.t) {
     if (!this.active || !this.meta) return NaN;
     const p = sampleTimeline(this.active, t);
-    const back = this.env.toHomeAt(p.x, p.z);
+    const back = this._toHome(p.x, p.z);
     return Number.isFinite(back) ? this.meta.budgetS - t - back : -Infinity;
   }
 
@@ -310,7 +370,7 @@ export class EvaPlayback {
     }
     if (this.hazard && !this.aborted && this.status === 'playing') {
       const d = minDistanceAhead(this.active, now, HAZARD_LOOKAHEAD_S, this.hazard.x, this.hazard.z);
-      if (d <= (this.hazard.interferenceRadius ?? this.hazard.radius)) this.abort('dust devil on the route ahead');
+      if (d <= (this.hazard.interferenceRadius ?? this.hazard.radius)) this._dustAhead();
     }
   }
 
@@ -356,6 +416,7 @@ export function evaSnapshot(pb) {
     nominalTotalS: nom.totalS,
     progress: f(t),
     aborted: pb.aborted,
+    rerouted: pb.rerouted,
     pose: s,
     activity,
     margin,

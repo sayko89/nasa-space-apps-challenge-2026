@@ -5,10 +5,12 @@
 import { IS_DEM } from '../three/terrainGenerator';
 
 export const UI_SCALE = IS_DEM ? 1.25 : 1;
-export const PANEL_W = Math.round(218 * UI_SCALE);          // right panel width [px]
-export const MAP_S = PANEL_W - 16;                           // mini-map / heatmap canvas [px]
+// Mars panel text is drawn larger again (first-time readers, projectors): fs() uses TEXT_SCALE
+export const TEXT_SCALE = IS_DEM ? 1.42 : 1;
+export const PANEL_W = IS_DEM ? 340 : 218;                   // right panel width [px]
+export const MAP_S = PANEL_W - 20;                           // mini-map / heatmap canvas [px]
 /** Scaled font size. */
-export const fs = (px) => Math.round(px * UI_SCALE * 10) / 10;
+export const fs = (px) => Math.round(px * TEXT_SCALE * 10) / 10;
 
 // ---- Phone layout: below this width the panel becomes a bottom sheet under the 3D view
 import { useEffect, useState } from 'react';
@@ -41,4 +43,19 @@ export function useCompact() {
     return () => m.removeEventListener('change', on);
   }, []);
   return c;
+}
+
+// Wide screens (desktop / laptop): the data catalog is docked; below this it opens as a drawer
+export const WIDE_QUERY = '(min-width: 1100px)';
+export function useWide() {
+  const q = () => typeof window !== 'undefined' && !!window.matchMedia?.(WIDE_QUERY).matches;
+  const [w, setW] = useState(q);
+  useEffect(() => {
+    const m = window.matchMedia?.(WIDE_QUERY);
+    if (!m) return undefined;
+    const on = () => setW(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return w;
 }
