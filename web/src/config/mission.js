@@ -8,6 +8,8 @@
  * that suit pressure offsets, i.e. ~45 kg Earth-equivalent.
  */
 
+import { DEFAULT_O2 } from './oxygen.js';
+
 export const MARS_G = 3.711;      // m/s²
 export const EARTH_G = 9.80665;   // m/s²
 
@@ -34,8 +36,10 @@ export const ROVER = {
 /** Default mission settings (UI state). */
 // payload: null = one equipment figure; { instruments, comms, sampling, emergency, other } = itemised (utils/payload.js)
 // dust: protection settings, all 'unknown' until the crew states them (config/dust.js)
+// o2: oxygen scenario, initial oxygen (null = sized), reserve (config/oxygen.js)
 export const DEFAULT_MISSION = { suit: 'mars', equipmentKg: 10, rover: false, limits: 'lunar', obstacleBuffer: false,
-  payload: null, dust: { outerLayer: 'unknown', jointProtection: 'unknown', equipmentProtection: 'unknown', covers: 'unknown' } };
+  payload: null, dust: { outerLayer: 'unknown', jointProtection: 'unknown', equipmentProtection: 'unknown', covers: 'unknown' },
+  o2: { ...DEFAULT_O2 } };
 
 /**
  * Carried-weight check: suit + equipment weight on Mars, as Earth-equivalent kg,

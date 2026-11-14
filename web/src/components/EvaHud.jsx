@@ -15,6 +15,7 @@ import { K_TO_C, climateInstrument } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
 import { param } from '../config/marswalkProfile';
 import { evaDoseMSv } from '../utils/radiation';
+import { OxygenHud } from './OxygenPanel';
 
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
@@ -121,7 +122,7 @@ function Activity({ snap }) {
  * @param {EvaPlayback} playback
  * @param {number} right  px from the right edge of the window (panel width + gap)
  */
-export default function EvaHud({ playback, right = 12, narrow = false, compact = narrow, onAbort, onStop }) {
+export default function EvaHud({ playback, right = 12, narrow = false, compact = narrow, onAbort, onStop, o2Scenario, onO2Scenario }) {
   const [snap, setSnap] = useState(() => evaSnapshot(playback));
   useEffect(() => {
     const id = setInterval(() => setSnap(evaSnapshot(playback)), 100);
@@ -196,6 +197,9 @@ export default function EvaHud({ playback, right = 12, narrow = false, compact =
         </Tile>
       </div>
 
+      <OxygenHud o={snap.oxygen} series={playback.oxygenSeries()} t={snap.t} compact={compact}
+        scenario={o2Scenario} onScenario={snap.status === 'done' ? null : onO2Scenario} />
+
       {/* controls (phones: the bottom sheet has PAUSE / ABORT / CLOSE) */}
       {!compact && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
         <HudButton onClick={() => playback.toggle()} color="#5be37a" title="Play / pause (Space)">
@@ -210,7 +214,7 @@ export default function EvaHud({ playback, right = 12, narrow = false, compact =
       </div>}
 
       {lastEvent && !compact && (
-        <div style={{ fontSize: 10, color: lastEvent.kind === 'ponr' || lastEvent.kind === 'abort' ? '#ff9a6a' : 'rgba(232,196,168,0.7)',
+        <div style={{ fontSize: 10, color: /^(ponr|abort|o2-)/.test(lastEvent.kind) ? '#ff9a6a' : 'rgba(232,196,168,0.7)',
           marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {fmtClock(lastEvent.t)} · {lastEvent.text}
         </div>

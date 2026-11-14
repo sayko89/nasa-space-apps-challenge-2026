@@ -108,3 +108,7 @@ All tests pass. The existing assertions were kept; one label format was kept so 
 ## 7. Follow-up: dust, spacesuit and equipment reliability
 
 A separate task added three independent assessments under the decision: **Payload & Mass**, **Dust Exposure & Equipment Reliability** (qualitative, sourced, never a NO-GO by itself) and **Terrain & Mobility**. The audit, sources, rules and tests are in [`EVA_ASSESSMENT.md`](EVA_ASSESSMENT.md). Tests: 94 → 110 JavaScript, 7 Python.
+
+## 8. Follow-up: dynamic oxygen consumption and carried mass
+
+Oxygen is tracked on the EVA mission clock with NASA BVAD (NASA/TP-2015-218570 Rev 2) life-support reference scenarios. It is checked in planning (NO-GO / CONDITIONAL / INSUFFICIENT DATA) and shown live with charts. Carried mass falls as oxygen is used, without changing walking speed. Details: [`OXYGEN_AND_MASS.md`](OXYGEN_AND_MASS.md). Tests: 110 → 123 JavaScript, 7 Python.

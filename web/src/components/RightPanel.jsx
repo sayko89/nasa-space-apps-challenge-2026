@@ -32,6 +32,8 @@ import { payloadAssessment } from '../utils/payload';
 import { dustAssessment } from '../utils/dust';
 import { mobilityAssessment } from '../utils/mobility';
 import EvaAssessment, { PayloadSetup, DustSetup } from './EvaAssessment';
+import { OxygenSetup } from './OxygenPanel';
+import { oxygenConfig, planOxygenCheck } from '../utils/oxygen';
 import { worldToGrid } from '../utils/pathfinder';
 const cellIdx = (x, z) => { const { col, row } = worldToGrid(x, z); return row * GRID_RES + col; };
 import { HAZARD_PARAMS } from '../config/marswalkProfile';
@@ -508,6 +510,7 @@ function MissionPanel({ mission, setMission, start, disabled }) {
           Routes stay at least {HAZARD_PARAMS.obstacleBufferM.value} m from every slope / rock obstacle (assumption: {HAZARD_PARAMS.obstacleBufferM.note}). Longer routes, fewer stops in reach.
         </div>
       )}
+      <OxygenSetup mission={mission} setMission={setMission} />
       <DustSetup mission={mission} setMission={setMission} />
       <div style={{ fontSize: fs(6.5), color: '#6a7a6a', marginTop: 2 }}>Suit masses, carry limit, walkback: Ogilvie et al., ICES 2026 (NASA)</div>
     </div>
@@ -655,6 +658,8 @@ function MissionSummary({ routes, activeRoute, science, mission, startMs }) {
       {row('Space weather', wxState.wx?.advisory === 'clear' ? 'no SEP ±2 d' : wxState.wx?.advisory === 'postpone' ? 'SEP — postpone' : 'unknown', wxState.wx?.advisory === 'clear' ? undefined : '#ffc94d')}
       {A.payload && row('A. Payload & mass', A.payload.status, A.payload.status === 'WITHIN LIMIT' ? undefined : A.payload.status === 'OVER LIMIT' ? '#ff6655' : '#ffc94d')}
       {A.dust && row('B. Dust & equipment', `${A.dust.level} exposure · ${A.dust.warnings.filter(w => w.level !== 'info').length} warnings`, '#ffc94d')}
+      {A.oxygen && row('Oxygen', A.oxygen.valid ? `${A.oxygen.initialKg.toFixed(2)} kg · ${A.oxygen.rateKgH} kg/h · ${A.oxygen.reserveOk ? 'return + reserve covered' : A.oxygen.returnOk ? 'reserve not kept' : 'NOT enough to return'}` : 'insufficient data',
+        A.oxygen.valid && A.oxygen.reserveOk ? undefined : A.oxygen.valid && A.oxygen.returnOk ? '#ffc94d' : '#ff6655')}
       {row('C. Terrain & mobility', A.mobility.status, A.mobility.status === 'PASS' ? undefined : A.mobility.status === 'FAIL' ? '#ff6655' : '#ffc94d')}
       <div style={{ color:'#9ab09a', marginTop:2 }}>{d.summary}</div>
     </div>
@@ -680,7 +685,7 @@ function missionExport({ science, mission, routes, activeRoute, startMs }) {
     assessments: active ? { payload: active.payload, dust: active.dust && { status: active.dust.status, level: active.dust.level, exposure: active.dust.exposure,
       warnings: active.dust.warnings, missing: active.dust.missing,
       components: active.dust.components.map(({ key, name, vulnerability, mechanism, protection, evidence, confidence }) => ({ key, name, vulnerability, mechanism, protection: protection.state, evidence, confidence })) },
-      mobility: active.mobility } : null,
+      mobility: active.mobility, oxygen: active.oxygen } : null,
     provenance: provenanceFor(SITE.name, SITE).map(({ key, name, category, available, instrument, source, observed, reason }) =>
       ({ key, name, category, available, instrument, source, observed, ...(available ? {} : { reason }) })),
   };
@@ -928,16 +933,17 @@ export function evaAssessments(r, wxState, { mission = null, startMs = null } = 
   const payload = mission ? payloadAssessment(mission) : null;
   const dust = mission ? dustAssessment({ dust: mission.dust, startMs, stopCount: s.stopCount,
     dustGroundShare: s.layers?.thermal ? s.layers.thermal.dustShare : null, site: SITE.name }) : null;
+  const oxygen = mission ? planOxygenCheck(oxygenConfig(mission), s) : null;
   const decision = missionDecision(s, {
     limits: { maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRadialM: param('maxRadialDistanceKm') * 1000 },
     wx: wxState?.wx || null, wxLive: wxState?.live, startFuture: wxState?.future,
     radiationLocal: radiationIsLocal(), hazards,
-    ...(payload ? { payload } : {}), ...(dust ? { dust } : {}),
+    ...(payload ? { payload } : {}), ...(dust ? { dust } : {}), ...(oxygen ? { oxygen } : {}),
   });
   const prof = EVA_PROFILES[getEvaProfile()];
   const mobility = mobilityAssessment(s, decision, { hazards,
     profile: { label: prof.label, levelWalkSpeedKmh: param('levelWalkSpeedKmh'), source: getEvaProfile() === 'mars' ? 'Norcross et al. 2009, NASA/TP-2009-214796' : 'NASA xEVA ConOps' } });
-  return { decision, payload, dust, mobility };
+  return { decision, payload, dust, mobility, oxygen };
 }
 
 function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs, mission }) {

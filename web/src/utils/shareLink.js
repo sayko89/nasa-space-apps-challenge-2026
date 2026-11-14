@@ -18,6 +18,7 @@
 
 import { PAYLOAD_CATEGORIES } from './payload.js';
 import { DUST_OPTIONS } from '../config/dust.js';
+import { O2_SCENARIOS, O2_INITIAL_LIMITS, O2_RESERVE } from '../config/oxygen.js';
 
 const PAYLOAD_KEYS = PAYLOAD_CATEGORIES.map(c => c.key);
 const VERSION = 1;
@@ -50,6 +51,7 @@ export function encodePlan({ waypoints = [], science = false, route, startMs, mi
     if (mission.payload) st.m.p = PAYLOAD_KEYS.map(k => mission.payload[k]);
     const du = mission.dust ? Object.fromEntries(Object.entries(mission.dust).filter(([k, v]) => DUST_OPTIONS[k]?.options[v] && v !== 'unknown')) : {};
     if (Object.keys(du).length) st.m.du = du;
+    if (mission.o2) st.m.o2 = { s: mission.o2.scenario, ...(Number.isFinite(mission.o2.initialKg) ? { i: mission.o2.initialKg } : {}), r: mission.o2.reserveMin };
   }
   if (Number.isFinite(dwellMin)) st.d = dwellMin;
   if (typeof objectiveId === 'string' && objectiveId) st.o = objectiveId;
@@ -104,6 +106,12 @@ export function decodePlan(search) {
     if (st.m.du && typeof st.m.du === 'object') {
       const du = Object.fromEntries(Object.keys(DUST_OPTIONS).map(k => [k, DUST_OPTIONS[k].options[st.m.du[k]] ? st.m.du[k] : 'unknown']));
       if (Object.values(du).some(v => v !== 'unknown')) out.mission.dust = du;
+    }
+    if (st.m.o2 && typeof st.m.o2 === 'object' && O2_SCENARIOS[st.m.o2.s]) {
+      const i = num(st.m.o2.i), r = num(st.m.o2.r);
+      out.mission.o2 = { scenario: st.m.o2.s,
+        initialKg: i != null && i >= O2_INITIAL_LIMITS.min && i <= O2_INITIAL_LIMITS.max ? i : null,
+        reserveMin: r != null && r >= O2_RESERVE.min && r <= O2_RESERVE.max ? r : O2_RESERVE.defaultMin };
     }
   }
   return out;

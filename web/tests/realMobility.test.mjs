@@ -33,3 +33,8 @@ test('the Mars-conservative walking speed applies the same way outbound and on t
   assert.ok(Math.abs(r('walkTimeS') - ratio) < 0.02, `outbound ${r('walkTimeS')}`);
   assert.ok(Math.abs(r('returnTimeS') - ratio) < 0.02, `return ${r('returnTimeS')}`);
 });
+
+test('jezero: oxygen in planning and on the played-back route (BVAD scenarios)', async () => {
+  const { oxygenScenario } = await import('./helpers/oxygenScenario.mjs');
+  await oxygenScenario(ctx, 'mineral-diversity', 77.45);
+});
