@@ -30,6 +30,7 @@ const USE = {
   reliefShading: 'Display only: lights the 3D terrain. Changes no number.',
   orthoImage: 'Display only: the image on the terrain and the map. Changes no number.',
   pov: 'Ground truth near a point; cells far from any rover image are flagged "known only from orbit".',
+  segmentation: 'Shown in ANALYZE next to the rover image it was predicted on. Image level only: it changes no route, rule or number.',
   roverTrack: 'Display only: the rover’s own traverse for context.',
   geology: 'Science-stop candidates (units and contacts) and the stop cards.',
   minerals: 'Science-stop candidates (CRISM classes).',

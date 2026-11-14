@@ -344,6 +344,28 @@ At Gale, stops near rocks Curiosity analysed also have a **chemistry** card: the
 
 ![CRISM minerals draped on the Jezero terrain: olivine in red, olivine + smectite in pink, high-Ca pyroxene in brown; the route card lists radiation dose, ground type and minerals crossed](docs/img/minerals.jpg)
 
+## Mars AI terrain segmentation — what the ground in the rover images is
+
+A small segmentation network trained on **AI4Mars v0.6** (NASA/JPL crowdsourced and expert labels of Curiosity and
+Perseverance images, CC BY 4.0) labels every pixel of the Navcam frames near the route as **soil, bedrock, sand or big
+rock**. Open it in **02 ANALYZE → Mars AI Terrain Segmentation**: the original image, the predicted classes, the overlay,
+the confidence and the unknown (low-confidence) pixels, with the image's source and the model version.
+
+| | |
+|---|---|
+| Model | LR-ASPP MobileNetV3-Large, ImageNet-pretrained encoder, cross-entropy + Dice (`mars-terrain-v1.onnx`, 3.2 M parameters) — chosen on validation from three trained variants |
+| Training | 14,068 Curiosity + 2,643 Perseverance images, split by Mars day (no near-duplicate frames across splits), 12 epochs, 3.5 h on CPU |
+| Curiosity Navcam, expert test (≈ Gale) | mIoU **0.64 / 0.68 / 0.76** (≥1 / ≥2 / ≥3 experts agree) · pixel accuracy 0.90–0.96 |
+| Perseverance Navcam, test (≈ Jezero, crowdsourced labels) | mIoU **0.58** · pixel accuracy 0.80 |
+| Per class (expert test) | soil 0.89–0.95 · bedrock 0.78–0.91 · sand 0.81–0.91 · **big rock 0.08–0.27** (rare in the labels; mostly missed) |
+| Predictions | 408 Curiosity frames at Gale, 37 Perseverance frames at Jezero |
+
+**Honest limits.** These are *model predictions on images*, not NASA measurements, and they are **not georeferenced**
+(no camera model or range data): they are never drawn on the map and never change a route, a rule or a number. Big
+rocks are poorly detected, so the planner keeps using the 1 m DTM rock relief for obstacles. All three runs stopped on
+the time budget while still improving. Every number above is measured — details in
+[`docs/MARS_SEGMENTATION.md`](docs/MARS_SEGMENTATION.md).
+
 ## NASA tools, resources and design inspiration
 
 The challenge lists five NASA resources; we also looked at NASA's other public map and visualization tools. This is what each one gave the project — data, or only an idea for the interface.
@@ -412,11 +434,12 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 | Sun, local solar time | — | Mars24 algorithm (NASA GISS) | light, shadow, darkness, mission clock |
 | EVA limits | — | NASA xEVA System ConOps; Mars-conservative set from Norcross et al. (2009) and Apollo 17 planning data | walls, speed, budget, radius |
 | Suit mass, carry limit, rover walkback | — | NASA Mars suit study — Ogilvie et al. (ICES 2026) | mission setup, GO checks |
+| Terrain classes on rover images | AI-predicted | `mars-terrain-v1` trained on AI4Mars v0.6 (Zenodo 10.5281/zenodo.15995036) — image level, not georeferenced | ANALYZE panel, inspector; changes no number |
 | Hazard classes | derived | the DTM, rock relief and rover positions above; thresholds in `HAZARD_PARAMS` | Hazards layer, decision, mission summary |
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (146 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed, together with:
+`node --test web/tests/*.test.mjs` (169 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed, together with:
 
 - **Lint** (`pnpm --filter martian-map lint`): undefined names, JSX components that do not exist, rules of hooks.
 - **README figures** (`pnpm --filter martian-map readme:figures:check`): every route figure in this README is marked `<!--fig:…-->` and recomputed from the real site files by the planner. The deploy fails if one has drifted; `pnpm --filter martian-map readme:figures` rewrites them.

@@ -22,7 +22,10 @@ test('catalog lists only what the site loaded, each item documented by a provena
   const ids = cats.map(c => c.id);
   for (const c of ['imagery', 'topography', 'geology', 'mineralogy', 'thermal', 'atmospheric', 'radiation', 'rover', 'hazards', 'mission']) assert.ok(ids.includes(c), c);
   assert.ok(!ids.includes('chemistry'), 'no ChemCam table at Jezero');
-  assert.ok(!ids.includes('ai'), 'no segmentation outputs: no AI category');
+  // AI segmentation appears because the site has real model outputs; it is marked AI-predicted
+  assert.ok(ids.includes('ai'));
+  assert.equal(PV.provenanceFor('jezero', site).find(r => r.key === 'segmentation').category, 'ai-predicted');
+  assert.ok(!buildCatalog({ ...site, segmentation: null }, { drapeLayers: DRAPES }).some(c => c.id === 'ai'), 'no outputs → no AI category');
   assert.ok(ids.every(id => CATALOG_CATEGORIES.some(([k]) => k === id)));
   const prov = new Set(PV.provenanceFor('jezero', site).filter(r => r.available).map(r => r.key));
   for (const it of cats.flatMap(c => c.items)) assert.ok(prov.has(it.prov), `${it.id} → ${it.prov}`);
@@ -30,7 +33,6 @@ test('catalog lists only what the site loaded, each item documented by a provena
   assert.ok(!buildCatalog(site, { drapeLayers: [] }).flatMap(c => c.items).some(i => i.kind === 'drape'));
   assert.deepEqual(filterCatalog(cats, 'crism').flatMap(c => c.items).map(i => i.layer), ['Minerals (CRISM)']);
   assert.equal(filterCatalog(cats, 'zzz').length, 0);
-  assert.ok(buildCatalog({ ...site, segmentation: {} }, { drapeLayers: DRAPES }).some(c => c.id === 'ai'));
 });
 
 test('route-mode explanations are the planner weights, not new rules', () => {

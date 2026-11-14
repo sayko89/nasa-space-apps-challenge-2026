@@ -1,0 +1,71 @@
+{
+ "version": "mars-terrain-v1",
+ "file": "mars-terrain-v1.onnx",
+ "selected": "pretrained-cedice",
+ "selected_on": "mean validation mIoU (MSL + M2020)",
+ "classes": [
+  "soil",
+  "bedrock",
+  "sand",
+  "big_rock"
+ ],
+ "class_values": {
+  "soil": 0,
+  "bedrock": 1,
+  "sand": 2,
+  "big_rock": 3
+ },
+ "unknown_value": 255,
+ "palette": {
+  "0": [
+   166,
+   124,
+   82
+  ],
+  "1": [
+   122,
+   74,
+   40
+  ],
+  "2": [
+   240,
+   178,
+   50
+  ],
+  "3": [
+   214,
+   48,
+   39
+  ],
+  "255": [
+   128,
+   128,
+   128
+  ]
+ },
+ "input": {
+  "channels": "grey repeated on 3 channels",
+  "short_side_px": 256,
+  "normalise": {
+   "mean": 0.449,
+   "std": 0.226
+  }
+ },
+ "output": "softmax probabilities per class",
+ "low_confidence_threshold": 0.3,
+ "dataset": {
+  "name": "AI4Mars merged v0.6",
+  "doi": "10.5281/zenodo.15995036",
+  "license": "CC BY 4.0",
+  "used": [
+   "MSL Navcam train (crowdsourced, merged)",
+   "M2020 NAV (crowdsourced, merged)"
+  ],
+  "test": [
+   "MSL Navcam expert labels (min1/2/3, 100 % agreement)",
+   "M2020 NAV sol-grouped hold-out (crowdsourced)"
+  ]
+ },
+ "lunar_model": "not available \u2014 transfer from a lunar model (approach A) was not run",
+ "created_utc": "2026-11-14T20:24:13+00:00"
+}

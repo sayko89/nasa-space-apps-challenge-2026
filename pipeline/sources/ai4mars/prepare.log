@@ -1,0 +1,96 @@
+archive: /mnt/seg/ai4mars.zip
+{
+ "splits": {
+  "train-msl": {
+   "samples": 14068,
+   "groups": 1272,
+   "pixels": {
+    "soil": 195658559,
+    "bedrock": 255387743,
+    "sand": 60353941,
+    "big_rock": 4677805,
+    "unlabelled": 405882400
+   }
+  },
+  "val-msl": {
+   "samples": 1832,
+   "groups": 169,
+   "pixels": {
+    "soil": 22106546,
+    "bedrock": 35925742,
+    "sand": 10037783,
+    "big_rock": 710860,
+    "unlabelled": 51281021
+   }
+  },
+  "test-min1": {
+   "samples": 322,
+   "groups": 48,
+   "pixels": {
+    "soil": 5567214,
+    "bedrock": 3750498,
+    "sand": 2798470,
+    "big_rock": 23839,
+    "unlabelled": 8962571
+   }
+  },
+  "test-min2": {
+   "samples": 321,
+   "groups": 48,
+   "pixels": {
+    "soil": 5015269,
+    "bedrock": 2795758,
+    "sand": 2395327,
+    "big_rock": 8116,
+    "unlabelled": 10822586
+   }
+  },
+  "test-min3": {
+   "samples": 287,
+   "groups": 48,
+   "pixels": {
+    "soil": 3754206,
+    "bedrock": 1636933,
+    "sand": 1914376,
+    "big_rock": 4852,
+    "unlabelled": 11498465
+   }
+  },
+  "train-m2020": {
+   "samples": 2643,
+   "groups": 126,
+   "pixels": {
+    "soil": 84853977,
+    "bedrock": 71180025,
+    "sand": 32195226,
+    "big_rock": 7192463,
+    "unlabelled": 160338949
+   }
+  },
+  "test-m2020": {
+   "samples": 369,
+   "groups": 24,
+   "pixels": {
+    "soil": 12823749,
+    "bedrock": 9710202,
+    "sand": 4607093,
+    "big_rock": 812477,
+    "unlabelled": 17625487
+   }
+  },
+  "val-m2020": {
+   "samples": 183,
+   "groups": 9,
+   "pixels": {
+    "soil": 8821475,
+    "bedrock": 1331677,
+    "sand": 1172764,
+    "big_rock": 212488,
+    "unlabelled": 8368924
+   }
+  }
+ },
+ "leaking_groups": {},
+ "seconds": 206.1
+}
+rejections: {'duplicate image (.jpg kept .jpeg)': 287, 'excluded set: geology taxonomy (M2020_GEO)': 2, 'excluded set: MSL Mastcam: undocumented label value 4': 1, 'excluded set: MER: range mask not applied': 1, 'M2020 duplicate label (-1 … -4 of one image)': 131, 'label without image': 498, 'empty label (no labelled pixel)': 202, 'exact duplicate image (second copy dropped)': 1}

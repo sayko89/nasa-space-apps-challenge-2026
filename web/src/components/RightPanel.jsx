@@ -42,6 +42,7 @@ import { WorkflowStrip, MissionSummary, DecisionBadge, DecisionDetail } from './
 import { MiniMap } from './MiniMap';
 import { HeatmapViewer } from './HeatmapViewer';
 import { ProcessingMapPreview } from './HelmetCamPreview';
+import TerrainSegmentation from './TerrainSegmentation';
 import { T, WORKSPACES, WORKSPACE_OF_TARGET, STATUS_COLOR } from '../ui/theme';
 import { O2_SCENARIOS } from '../config/oxygen';
 import { provenanceFor, CATEGORIES } from '../config/provenance';
@@ -1179,6 +1180,12 @@ export default function RightPanel({
           signalLost={cameraSignalLost}
           signalQuality={cameraSignalQuality}
         />}
+
+        {IS_DEM && show('analyze') && (
+          <Sect label="Mars AI Terrain Segmentation" id="wf-ai-terrain">
+            <TerrainSegmentation crewPos={evaStatus !== 'idle' ? { x, z } : null} />
+          </Sect>
+        )}
 
         {/* AI (rover traversal learning — Moon mode only) */}
         {!IS_DEM && (

@@ -1,0 +1,1371 @@
+{
+ "chosen": "pretrained-cedice",
+ "models": {
+  "pretrained-ce": {
+   "val": {
+    "msl": {
+     "pixels": 68780931,
+     "pixel_accuracy": 0.9504,
+     "mIoU": 0.7843,
+     "mean_dice": 0.8611,
+     "per_class": {
+      "soil": {
+       "iou": 0.9222,
+       "dice": 0.9595,
+       "precision": 0.9564,
+       "recall": 0.9626,
+       "gt_pixels": 22106546
+      },
+      "bedrock": {
+       "iou": 0.9213,
+       "dice": 0.959,
+       "precision": 0.9668,
+       "recall": 0.9514,
+       "gt_pixels": 35925742
+      },
+      "sand": {
+       "iou": 0.8697,
+       "dice": 0.9303,
+       "precision": 0.9255,
+       "recall": 0.9351,
+       "gt_pixels": 10037783
+      },
+      "big_rock": {
+       "iou": 0.424,
+       "dice": 0.5955,
+       "precision": 0.5022,
+       "recall": 0.7313,
+       "gt_pixels": 710860
+      }
+     },
+     "confusion_matrix": [
+      [
+       21279979,
+       601608,
+       178243,
+       46716
+      ],
+      [
+       770539,
+       34179779,
+       549891,
+       425533
+      ],
+      [
+       185911,
+       422180,
+       9386726,
+       42966
+      ],
+      [
+       13139,
+       150871,
+       27000,
+       519850
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "m2020": {
+     "pixels": 11538404,
+     "pixel_accuracy": 0.8473,
+     "mIoU": 0.5064,
+     "mean_dice": 0.6456,
+     "per_class": {
+      "soil": {
+       "iou": 0.8567,
+       "dice": 0.9228,
+       "precision": 0.9206,
+       "recall": 0.9251,
+       "gt_pixels": 8821475
+      },
+      "bedrock": {
+       "iou": 0.4915,
+       "dice": 0.6591,
+       "precision": 0.7631,
+       "recall": 0.5801,
+       "gt_pixels": 1331677
+      },
+      "sand": {
+       "iou": 0.4213,
+       "dice": 0.5928,
+       "precision": 0.5788,
+       "recall": 0.6076,
+       "gt_pixels": 1172764
+      },
+      "big_rock": {
+       "iou": 0.2559,
+       "dice": 0.4076,
+       "precision": 0.3044,
+       "recall": 0.6163,
+       "gt_pixels": 212488
+      }
+     },
+     "confusion_matrix": [
+      [
+       8160873,
+       156433,
+       433754,
+       70415
+      ],
+      [
+       368506,
+       772469,
+       58721,
+       131981
+      ],
+      [
+       305883,
+       57539,
+       712561,
+       96781
+      ],
+      [
+       29548,
+       25859,
+       26131,
+       130950
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    }
+   },
+   "val_mIoU_mean": 0.6453,
+   "train": {
+    "init": "pretrained",
+    "loss": "ce",
+    "architecture": "LR-ASPP MobileNetV3-Large (torchvision)",
+    "params": 3218648,
+    "epochs_run": 12,
+    "training_seconds": 12647.5,
+    "best_val_mIoU": 0.6453,
+    "hardware": "x86_64, 4 CPU threads, no GPU",
+    "train_samples": {
+     "msl": 14068,
+     "m2020": 2643
+    }
+   },
+   "test": {
+    "test-min1": {
+     "pixels": 12140021,
+     "pixel_accuracy": 0.9105,
+     "mIoU": 0.6455,
+     "mean_dice": 0.7149,
+     "per_class": {
+      "soil": {
+       "iou": 0.9023,
+       "dice": 0.9486,
+       "precision": 0.9648,
+       "recall": 0.9331,
+       "gt_pixels": 5567214
+      },
+      "bedrock": {
+       "iou": 0.7792,
+       "dice": 0.8759,
+       "precision": 0.8465,
+       "recall": 0.9074,
+       "gt_pixels": 3750498
+      },
+      "sand": {
+       "iou": 0.8329,
+       "dice": 0.9088,
+       "precision": 0.9474,
+       "recall": 0.8732,
+       "gt_pixels": 2798470
+      },
+      "big_rock": {
+       "iou": 0.0675,
+       "dice": 0.1264,
+       "precision": 0.0729,
+       "recall": 0.4774,
+       "gt_pixels": 23839
+      }
+     },
+     "confusion_matrix": [
+      [
+       5194538,
+       286784,
+       78790,
+       7102
+      ],
+      [
+       168614,
+       3403236,
+       55611,
+       123037
+      ],
+      [
+       17416,
+       322624,
+       2443730,
+       14700
+      ],
+      [
+       3703,
+       7518,
+       1237,
+       11381
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-min2": {
+     "pixels": 10214470,
+     "pixel_accuracy": 0.9495,
+     "mIoU": 0.6941,
+     "mean_dice": 0.7438,
+     "per_class": {
+      "soil": {
+       "iou": 0.9489,
+       "dice": 0.9738,
+       "precision": 0.9797,
+       "recall": 0.9679,
+       "gt_pixels": 5015269
+      },
+      "bedrock": {
+       "iou": 0.8538,
+       "dice": 0.9212,
+       "precision": 0.9124,
+       "recall": 0.9301,
+       "gt_pixels": 2795758
+      },
+      "sand": {
+       "iou": 0.9035,
+       "dice": 0.9493,
+       "precision": 0.965,
+       "recall": 0.9341,
+       "gt_pixels": 2395327
+      },
+      "big_rock": {
+       "iou": 0.07,
+       "dice": 0.1308,
+       "precision": 0.0712,
+       "recall": 0.7965,
+       "gt_pixels": 8116
+      }
+     },
+     "confusion_matrix": [
+      [
+       4854480,
+       105553,
+       53883,
+       1353
+      ],
+      [
+       90054,
+       2600431,
+       27016,
+       78257
+      ],
+      [
+       9954,
+       143305,
+       2237409,
+       4659
+      ],
+      [
+       520,
+       938,
+       194,
+       6464
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-min3": {
+     "pixels": 7310367,
+     "pixel_accuracy": 0.9749,
+     "mIoU": 0.7732,
+     "mean_dice": 0.831,
+     "per_class": {
+      "soil": {
+       "iou": 0.9721,
+       "dice": 0.9859,
+       "precision": 0.9905,
+       "recall": 0.9813,
+       "gt_pixels": 3754206
+      },
+      "bedrock": {
+       "iou": 0.9186,
+       "dice": 0.9576,
+       "precision": 0.9446,
+       "recall": 0.9709,
+       "gt_pixels": 1636933
+      },
+      "sand": {
+       "iou": 0.9451,
+       "dice": 0.9718,
+       "precision": 0.978,
+       "recall": 0.9656,
+       "gt_pixels": 1914376
+      },
+      "big_rock": {
+       "iou": 0.2571,
+       "dice": 0.409,
+       "precision": 0.2584,
+       "recall": 0.9808,
+       "gt_pixels": 4852
+      }
+     },
+     "confusion_matrix": [
+      [
+       3684035,
+       33603,
+       36141,
+       427
+      ],
+      [
+       30457,
+       1589235,
+       5448,
+       11793
+      ],
+      [
+       4888,
+       59550,
+       1848498,
+       1440
+      ],
+      [
+       93,
+       0,
+       0,
+       4759
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-m2020": {
+     "pixels": 27953521,
+     "pixel_accuracy": 0.7962,
+     "mIoU": 0.5652,
+     "mean_dice": 0.7032,
+     "per_class": {
+      "soil": {
+       "iou": 0.7675,
+       "dice": 0.8685,
+       "precision": 0.8879,
+       "recall": 0.8498,
+       "gt_pixels": 12823749
+      },
+      "bedrock": {
+       "iou": 0.6581,
+       "dice": 0.7938,
+       "precision": 0.8603,
+       "recall": 0.7369,
+       "gt_pixels": 9710202
+      },
+      "sand": {
+       "iou": 0.5574,
+       "dice": 0.7158,
+       "precision": 0.6562,
+       "recall": 0.7872,
+       "gt_pixels": 4607093
+      },
+      "big_rock": {
+       "iou": 0.2778,
+       "dice": 0.4349,
+       "precision": 0.3136,
+       "recall": 0.7091,
+       "gt_pixels": 812477
+      }
+     },
+     "confusion_matrix": [
+      [
+       10897638,
+       829355,
+       941343,
+       155413
+      ],
+      [
+       867339,
+       7155014,
+       840016,
+       847833
+      ],
+      [
+       489148,
+       233352,
+       3626826,
+       257767
+      ],
+      [
+       18786,
+       99177,
+       118412,
+       576102
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    }
+   }
+  },
+  "pretrained-cedice": {
+   "val": {
+    "msl": {
+     "pixels": 68780931,
+     "pixel_accuracy": 0.9498,
+     "mIoU": 0.7881,
+     "mean_dice": 0.8652,
+     "per_class": {
+      "soil": {
+       "iou": 0.9195,
+       "dice": 0.9581,
+       "precision": 0.9599,
+       "recall": 0.9562,
+       "gt_pixels": 22106546
+      },
+      "bedrock": {
+       "iou": 0.9201,
+       "dice": 0.9584,
+       "precision": 0.9623,
+       "recall": 0.9545,
+       "gt_pixels": 35925742
+      },
+      "sand": {
+       "iou": 0.8703,
+       "dice": 0.9306,
+       "precision": 0.9283,
+       "recall": 0.933,
+       "gt_pixels": 10037783
+      },
+      "big_rock": {
+       "iou": 0.4425,
+       "dice": 0.6135,
+       "precision": 0.518,
+       "recall": 0.7522,
+       "gt_pixels": 710860
+      }
+     },
+     "confusion_matrix": [
+      [
+       21139010,
+       745724,
+       196942,
+       24870
+      ],
+      [
+       705444,
+       34292747,
+       506112,
+       421439
+      ],
+      [
+       161303,
+       460199,
+       9365100,
+       51181
+      ],
+      [
+       16919,
+       139086,
+       20157,
+       534698
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "m2020": {
+     "pixels": 11538404,
+     "pixel_accuracy": 0.8516,
+     "mIoU": 0.5165,
+     "mean_dice": 0.6568,
+     "per_class": {
+      "soil": {
+       "iou": 0.8592,
+       "dice": 0.9243,
+       "precision": 0.9214,
+       "recall": 0.9272,
+       "gt_pixels": 8821475
+      },
+      "bedrock": {
+       "iou": 0.4915,
+       "dice": 0.6591,
+       "precision": 0.7358,
+       "recall": 0.5969,
+       "gt_pixels": 1331677
+      },
+      "sand": {
+       "iou": 0.4356,
+       "dice": 0.6069,
+       "precision": 0.5921,
+       "recall": 0.6224,
+       "gt_pixels": 1172764
+      },
+      "big_rock": {
+       "iou": 0.2797,
+       "dice": 0.4371,
+       "precision": 0.3518,
+       "recall": 0.5771,
+       "gt_pixels": 212488
+      }
+     },
+     "confusion_matrix": [
+      [
+       8178914,
+       180710,
+       416789,
+       45062
+      ],
+      [
+       379068,
+       794832,
+       61644,
+       96133
+      ],
+      [
+       289244,
+       68874,
+       729885,
+       84761
+      ],
+      [
+       29762,
+       35740,
+       24351,
+       122635
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    }
+   },
+   "val_mIoU_mean": 0.6523,
+   "train": {
+    "init": "pretrained",
+    "loss": "ce+dice",
+    "architecture": "LR-ASPP MobileNetV3-Large (torchvision)",
+    "params": 3218648,
+    "epochs_run": 12,
+    "training_seconds": 12651.6,
+    "best_val_mIoU": 0.6523,
+    "hardware": "x86_64, 4 CPU threads, no GPU",
+    "train_samples": {
+     "msl": 14068,
+     "m2020": 2643
+    }
+   },
+   "test": {
+    "test-min1": {
+     "pixels": 12140021,
+     "pixel_accuracy": 0.9036,
+     "mIoU": 0.6379,
+     "mean_dice": 0.7134,
+     "per_class": {
+      "soil": {
+       "iou": 0.8881,
+       "dice": 0.9408,
+       "precision": 0.9639,
+       "recall": 0.9187,
+       "gt_pixels": 5567214
+      },
+      "bedrock": {
+       "iou": 0.7773,
+       "dice": 0.8747,
+       "precision": 0.8429,
+       "recall": 0.9089,
+       "gt_pixels": 3750498
+      },
+      "sand": {
+       "iou": 0.8087,
+       "dice": 0.8942,
+       "precision": 0.92,
+       "recall": 0.8698,
+       "gt_pixels": 2798470
+      },
+      "big_rock": {
+       "iou": 0.0775,
+       "dice": 0.1438,
+       "precision": 0.0838,
+       "recall": 0.5054,
+       "gt_pixels": 23839
+      }
+     },
+     "confusion_matrix": [
+      [
+       5114696,
+       294045,
+       154987,
+       3486
+      ],
+      [
+       173466,
+       3408887,
+       55637,
+       112508
+      ],
+      [
+       14797,
+       333747,
+       2434201,
+       15725
+      ],
+      [
+       3373,
+       7498,
+       920,
+       12048
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-min2": {
+     "pixels": 10214470,
+     "pixel_accuracy": 0.9414,
+     "mIoU": 0.6834,
+     "mean_dice": 0.7393,
+     "per_class": {
+      "soil": {
+       "iou": 0.9338,
+       "dice": 0.9658,
+       "precision": 0.9793,
+       "recall": 0.9526,
+       "gt_pixels": 5015269
+      },
+      "bedrock": {
+       "iou": 0.8508,
+       "dice": 0.9194,
+       "precision": 0.909,
+       "recall": 0.93,
+       "gt_pixels": 2795758
+      },
+      "sand": {
+       "iou": 0.8742,
+       "dice": 0.9329,
+       "precision": 0.9339,
+       "recall": 0.9319,
+       "gt_pixels": 2395327
+      },
+      "big_rock": {
+       "iou": 0.0748,
+       "dice": 0.1391,
+       "precision": 0.0762,
+       "recall": 0.8024,
+       "gt_pixels": 8116
+      }
+     },
+     "confusion_matrix": [
+      [
+       4777621,
+       109265,
+       127646,
+       737
+      ],
+      [
+       92709,
+       2599981,
+       30200,
+       72868
+      ],
+      [
+       7807,
+       149963,
+       2232161,
+       5396
+      ],
+      [
+       470,
+       937,
+       197,
+       6512
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-min3": {
+     "pixels": 7310367,
+     "pixel_accuracy": 0.9648,
+     "mIoU": 0.7618,
+     "mean_dice": 0.8267,
+     "per_class": {
+      "soil": {
+       "iou": 0.9539,
+       "dice": 0.9764,
+       "precision": 0.9906,
+       "recall": 0.9626,
+       "gt_pixels": 3754206
+      },
+      "bedrock": {
+       "iou": 0.9149,
+       "dice": 0.9556,
+       "precision": 0.9406,
+       "recall": 0.971,
+       "gt_pixels": 1636933
+      },
+      "sand": {
+       "iou": 0.9115,
+       "dice": 0.9537,
+       "precision": 0.9439,
+       "recall": 0.9638,
+       "gt_pixels": 1914376
+      },
+      "big_rock": {
+       "iou": 0.2667,
+       "dice": 0.4211,
+       "precision": 0.2682,
+       "recall": 0.9792,
+       "gt_pixels": 4852
+      }
+     },
+     "confusion_matrix": [
+      [
+       3613871,
+       35811,
+       104504,
+       20
+      ],
+      [
+       31182,
+       1589390,
+       5168,
+       11193
+      ],
+      [
+       3107,
+       64508,
+       1845012,
+       1749
+      ],
+      [
+       101,
+       0,
+       0,
+       4751
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-m2020": {
+     "pixels": 27953521,
+     "pixel_accuracy": 0.8034,
+     "mIoU": 0.5779,
+     "mean_dice": 0.7167,
+     "per_class": {
+      "soil": {
+       "iou": 0.7724,
+       "dice": 0.8716,
+       "precision": 0.8851,
+       "recall": 0.8585,
+       "gt_pixels": 12823749
+      },
+      "bedrock": {
+       "iou": 0.6642,
+       "dice": 0.7982,
+       "precision": 0.8527,
+       "recall": 0.7503,
+       "gt_pixels": 9710202
+      },
+      "sand": {
+       "iou": 0.5597,
+       "dice": 0.7177,
+       "precision": 0.6642,
+       "recall": 0.7806,
+       "gt_pixels": 4607093
+      },
+      "big_rock": {
+       "iou": 0.3153,
+       "dice": 0.4795,
+       "precision": 0.3649,
+       "recall": 0.6989,
+       "gt_pixels": 812477
+      }
+     },
+     "confusion_matrix": [
+      [
+       11009497,
+       844053,
+       874869,
+       95330
+      ],
+      [
+       916576,
+       7285437,
+       824944,
+       683245
+      ],
+      [
+       492420,
+       308806,
+       3596116,
+       209751
+      ],
+      [
+       20876,
+       105531,
+       118219,
+       567851
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    }
+   }
+  },
+  "scratch-cedice": {
+   "val": {
+    "msl": {
+     "pixels": 68780931,
+     "pixel_accuracy": 0.9487,
+     "mIoU": 0.7778,
+     "mean_dice": 0.8575,
+     "per_class": {
+      "soil": {
+       "iou": 0.913,
+       "dice": 0.9545,
+       "precision": 0.9467,
+       "recall": 0.9624,
+       "gt_pixels": 22106546
+      },
+      "bedrock": {
+       "iou": 0.9244,
+       "dice": 0.9607,
+       "precision": 0.962,
+       "recall": 0.9595,
+       "gt_pixels": 35925742
+      },
+      "sand": {
+       "iou": 0.8483,
+       "dice": 0.9179,
+       "precision": 0.9324,
+       "recall": 0.9038,
+       "gt_pixels": 10037783
+      },
+      "big_rock": {
+       "iou": 0.4255,
+       "dice": 0.597,
+       "precision": 0.5828,
+       "recall": 0.6118,
+       "gt_pixels": 710860
+      }
+     },
+     "confusion_matrix": [
+      [
+       21276339,
+       591687,
+       205395,
+       33125
+      ],
+      [
+       807450,
+       34469732,
+       410247,
+       238313
+      ],
+      [
+       361198,
+       564405,
+       9072362,
+       39818
+      ],
+      [
+       28849,
+       205274,
+       41858,
+       434879
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "m2020": {
+     "pixels": 11538404,
+     "pixel_accuracy": 0.8467,
+     "mIoU": 0.4955,
+     "mean_dice": 0.6347,
+     "per_class": {
+      "soil": {
+       "iou": 0.8616,
+       "dice": 0.9257,
+       "precision": 0.9156,
+       "recall": 0.9359,
+       "gt_pixels": 8821475
+      },
+      "bedrock": {
+       "iou": 0.4801,
+       "dice": 0.6487,
+       "precision": 0.7265,
+       "recall": 0.5859,
+       "gt_pixels": 1331677
+      },
+      "sand": {
+       "iou": 0.378,
+       "dice": 0.5486,
+       "precision": 0.5987,
+       "recall": 0.5063,
+       "gt_pixels": 1172764
+      },
+      "big_rock": {
+       "iou": 0.2624,
+       "dice": 0.4157,
+       "precision": 0.3047,
+       "recall": 0.6539,
+       "gt_pixels": 212488
+      }
+     },
+     "confusion_matrix": [
+      [
+       8256066,
+       164953,
+       336038,
+       64418
+      ],
+      [
+       370389,
+       780296,
+       47227,
+       133765
+      ],
+      [
+       361042,
+       99173,
+       593733,
+       118816
+      ],
+      [
+       29290,
+       29589,
+       14665,
+       138944
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    }
+   },
+   "val_mIoU_mean": 0.6367,
+   "train": {
+    "init": "scratch",
+    "loss": "ce+dice",
+    "architecture": "LR-ASPP MobileNetV3-Large (torchvision)",
+    "params": 3218648,
+    "epochs_run": 18,
+    "training_seconds": 12628.4,
+    "best_val_mIoU": 0.6367,
+    "hardware": "x86_64, 4 CPU threads, no GPU",
+    "train_samples": {
+     "msl": 14068,
+     "m2020": 2643
+    }
+   },
+   "test": {
+    "test-min1": {
+     "pixels": 12140021,
+     "pixel_accuracy": 0.907,
+     "mIoU": 0.6441,
+     "mean_dice": 0.7202,
+     "per_class": {
+      "soil": {
+       "iou": 0.8931,
+       "dice": 0.9435,
+       "precision": 0.9498,
+       "recall": 0.9373,
+       "gt_pixels": 5567214
+      },
+      "bedrock": {
+       "iou": 0.7761,
+       "dice": 0.8739,
+       "precision": 0.8525,
+       "recall": 0.8965,
+       "gt_pixels": 3750498
+      },
+      "sand": {
+       "iou": 0.8183,
+       "dice": 0.9001,
+       "precision": 0.9391,
+       "recall": 0.8641,
+       "gt_pixels": 2798470
+      },
+      "big_rock": {
+       "iou": 0.0889,
+       "dice": 0.1633,
+       "precision": 0.097,
+       "recall": 0.516,
+       "gt_pixels": 23839
+      }
+     },
+     "confusion_matrix": [
+      [
+       5218342,
+       228862,
+       116495,
+       3515
+      ],
+      [
+       250131,
+       3362343,
+       39502,
+       98522
+      ],
+      [
+       21438,
+       346288,
+       2418286,
+       12458
+      ],
+      [
+       4082,
+       6713,
+       742,
+       12302
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-min2": {
+     "pixels": 10214470,
+     "pixel_accuracy": 0.9438,
+     "mIoU": 0.6883,
+     "mean_dice": 0.7442,
+     "per_class": {
+      "soil": {
+       "iou": 0.9359,
+       "dice": 0.9669,
+       "precision": 0.9668,
+       "recall": 0.967,
+       "gt_pixels": 5015269
+      },
+      "bedrock": {
+       "iou": 0.8468,
+       "dice": 0.917,
+       "precision": 0.9198,
+       "recall": 0.9143,
+       "gt_pixels": 2795758
+      },
+      "sand": {
+       "iou": 0.8883,
+       "dice": 0.9409,
+       "precision": 0.9516,
+       "recall": 0.9304,
+       "gt_pixels": 2395327
+      },
+      "big_rock": {
+       "iou": 0.0823,
+       "dice": 0.1521,
+       "precision": 0.084,
+       "recall": 0.7999,
+       "gt_pixels": 8116
+      }
+     },
+     "confusion_matrix": [
+      [
+       4849535,
+       71234,
+       93592,
+       908
+      ],
+      [
+       154179,
+       2556101,
+       19690,
+       65788
+      ],
+      [
+       11738,
+       150890,
+       2228639,
+       4060
+      ],
+      [
+       641,
+       797,
+       186,
+       6492
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-min3": {
+     "pixels": 7310367,
+     "pixel_accuracy": 0.9688,
+     "mIoU": 0.7649,
+     "mean_dice": 0.8269,
+     "per_class": {
+      "soil": {
+       "iou": 0.9609,
+       "dice": 0.9801,
+       "precision": 0.9854,
+       "recall": 0.9747,
+       "gt_pixels": 3754206
+      },
+      "bedrock": {
+       "iou": 0.9151,
+       "dice": 0.9557,
+       "precision": 0.9515,
+       "recall": 0.9599,
+       "gt_pixels": 1636933
+      },
+      "sand": {
+       "iou": 0.9255,
+       "dice": 0.9613,
+       "precision": 0.9581,
+       "recall": 0.9646,
+       "gt_pixels": 1914376
+      },
+      "big_rock": {
+       "iou": 0.2583,
+       "dice": 0.4105,
+       "precision": 0.2602,
+       "recall": 0.9716,
+       "gt_pixels": 4852
+      }
+     },
+     "confusion_matrix": [
+      [
+       3659345,
+       18186,
+       76673,
+       2
+      ],
+      [
+       49880,
+       1571342,
+       4129,
+       11582
+      ],
+      [
+       4083,
+       61938,
+       1846538,
+       1817
+      ],
+      [
+       138,
+       0,
+       0,
+       4714
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    },
+    "test-m2020": {
+     "pixels": 27953521,
+     "pixel_accuracy": 0.7872,
+     "mIoU": 0.5435,
+     "mean_dice": 0.6816,
+     "per_class": {
+      "soil": {
+       "iou": 0.7457,
+       "dice": 0.8543,
+       "precision": 0.8471,
+       "recall": 0.8617,
+       "gt_pixels": 12823749
+      },
+      "bedrock": {
+       "iou": 0.6447,
+       "dice": 0.784,
+       "precision": 0.8444,
+       "recall": 0.7316,
+       "gt_pixels": 9710202
+      },
+      "sand": {
+       "iou": 0.5514,
+       "dice": 0.7108,
+       "precision": 0.6828,
+       "recall": 0.7412,
+       "gt_pixels": 4607093
+      },
+      "big_rock": {
+       "iou": 0.2324,
+       "dice": 0.3771,
+       "precision": 0.2911,
+       "recall": 0.5353,
+       "gt_pixels": 812477
+      }
+     },
+     "confusion_matrix": [
+      [
+       11050276,
+       824485,
+       770792,
+       178196
+      ],
+      [
+       1304300,
+       7104177,
+       680486,
+       621239
+      ],
+      [
+       667795,
+       264849,
+       3414901,
+       259548
+      ],
+      [
+       22571,
+       219956,
+       135052,
+       434898
+      ]
+     ],
+     "classes_absent_from_ground_truth": []
+    }
+   }
+  }
+ },
+ "calibration": {
+  "per_val_set": {
+   "msl": [
+    {
+     "from": 0.0,
+     "to": 0.4,
+     "pixels": 30427,
+     "accuracy": 0.3881
+    },
+    {
+     "from": 0.4,
+     "to": 0.5,
+     "pixels": 225538,
+     "accuracy": 0.4665
+    },
+    {
+     "from": 0.5,
+     "to": 0.6,
+     "pixels": 1373859,
+     "accuracy": 0.536
+    },
+    {
+     "from": 0.6,
+     "to": 0.7,
+     "pixels": 1520058,
+     "accuracy": 0.6163
+    },
+    {
+     "from": 0.7,
+     "to": 0.8,
+     "pixels": 1923468,
+     "accuracy": 0.7013
+    },
+    {
+     "from": 0.8,
+     "to": 0.9,
+     "pixels": 3116603,
+     "accuracy": 0.8035
+    },
+    {
+     "from": 0.9,
+     "to": 1.0,
+     "pixels": 60590978,
+     "accuracy": 0.9851
+    }
+   ],
+   "m2020": [
+    {
+     "from": 0.0,
+     "to": 0.4,
+     "pixels": 69320,
+     "accuracy": 0.3542
+    },
+    {
+     "from": 0.4,
+     "to": 0.5,
+     "pixels": 257427,
+     "accuracy": 0.441
+    },
+    {
+     "from": 0.5,
+     "to": 0.6,
+     "pixels": 603692,
+     "accuracy": 0.5256
+    },
+    {
+     "from": 0.6,
+     "to": 0.7,
+     "pixels": 662371,
+     "accuracy": 0.6035
+    },
+    {
+     "from": 0.7,
+     "to": 0.8,
+     "pixels": 795875,
+     "accuracy": 0.6766
+    },
+    {
+     "from": 0.8,
+     "to": 0.9,
+     "pixels": 1163594,
+     "accuracy": 0.7652
+    },
+    {
+     "from": 0.9,
+     "to": 1.0,
+     "pixels": 7986125,
+     "accuracy": 0.9444
+    }
+   ]
+  },
+  "low_confidence_threshold": 0.3,
+  "target_accuracy": 0.9,
+  "val_accuracy_above_threshold": 0.9358,
+  "val_pixels_above_threshold": 1.0,
+  "val_accuracy_below_threshold": 0.2406
+ },
+ "model_card": {
+  "version": "mars-terrain-v1",
+  "file": "mars-terrain-v1.onnx",
+  "selected": "pretrained-cedice",
+  "selected_on": "mean validation mIoU (MSL + M2020)",
+  "classes": [
+   "soil",
+   "bedrock",
+   "sand",
+   "big_rock"
+  ],
+  "class_values": {
+   "soil": 0,
+   "bedrock": 1,
+   "sand": 2,
+   "big_rock": 3
+  },
+  "unknown_value": 255,
+  "palette": {
+   "0": [
+    166,
+    124,
+    82
+   ],
+   "1": [
+    122,
+    74,
+    40
+   ],
+   "2": [
+    240,
+    178,
+    50
+   ],
+   "3": [
+    214,
+    48,
+    39
+   ],
+   "255": [
+    128,
+    128,
+    128
+   ]
+  },
+  "input": {
+   "channels": "grey repeated on 3 channels",
+   "short_side_px": 256,
+   "normalise": {
+    "mean": 0.449,
+    "std": 0.226
+   }
+  },
+  "output": "softmax probabilities per class",
+  "low_confidence_threshold": 0.3,
+  "dataset": {
+   "name": "AI4Mars merged v0.6",
+   "doi": "10.5281/zenodo.15995036",
+   "license": "CC BY 4.0",
+   "used": [
+    "MSL Navcam train (crowdsourced, merged)",
+    "M2020 NAV (crowdsourced, merged)"
+   ],
+   "test": [
+    "MSL Navcam expert labels (min1/2/3, 100 % agreement)",
+    "M2020 NAV sol-grouped hold-out (crowdsourced)"
+   ]
+  },
+  "lunar_model": "not available \u2014 transfer from a lunar model (approach A) was not run",
+  "created_utc": "2026-11-14T20:24:13+00:00"
+ },
+ "seconds": 187.4
+}

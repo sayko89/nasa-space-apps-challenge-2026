@@ -1,14 +1,20 @@
 /** Rover camera (Moon) / EV1 helmet camera (Mars) preview (split out of RightPanel). */
-import { useRef, useEffect } from 'react';
-import { TERRAIN_SIZE, IS_DEM } from '../three/terrainGenerator';
+import { useRef, useEffect, useState } from 'react';
+import { TERRAIN_SIZE, IS_DEM, SITE } from '../three/terrainGenerator';
+import { aheadProfile, contourInterval, elevationColor, AHEAD_M } from '../utils/helmetView';
 import { MAP_S, fs, UI_SCALE } from '../ui/layout';
 import { Label } from './ui';
 import { HALF, CANVAS_FONT } from './panelConstants';
 
 // ---- Image Processing Preview (Rover camera 3D / DEM: EV1 helmet camera) ----
 export const CAM_H = Math.round(126 * UI_SCALE);
+/** Vertical exaggeration of the ELEVATION view (Jezero's floor is nearly flat at true scale). Display only. */
+const ELEV_VE = 3;
+
 export function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, signalLost, signalQuality }) {
   const ref = useRef(null);
+  const [mode, setMode] = useState(IS_DEM ? 'elevation' : 'slope');   // DEM: elevation | slope
+  const [readout, setReadout] = useState(null);
 
   useEffect(() => {
     const cv = ref.current;
@@ -83,6 +89,21 @@ export function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, sig
 
     const yBuffer = new Float32Array(W);
     yBuffer.fill(H);
+    const elev = IS_DEM && mode === 'elevation';
+    const focal = (W / 2) / Math.tan(fov / 2);
+    // ELEVATION: colour = height above / below the astronaut's ground; contour interval from the visible range
+    let relRange = 1, cInt = 1;
+    if (elev) {
+      let lo = Infinity, hi = -Infinity;
+      for (let d = near; d <= far; d += stepD * 4) for (const nx of [-1, -0.5, 0, 0.5, 1]) {
+        const lat = nx * Math.tan(fov * 0.5) * d, wx = camX + fx * d + rx * lat, wz = camZ + fz * d + rz * lat;
+        if (wx < -HALF || wx > HALF || wz < -HALF || wz > HALF) continue;
+        const dh = sample(hMap, wx, wz, camGround) - camGround; lo = Math.min(lo, dh); hi = Math.max(hi, dh);
+      }
+      relRange = Number.isFinite(lo) ? Math.max(0.5, Math.abs(lo), Math.abs(hi)) : 1;
+      cInt = contourInterval(Number.isFinite(lo) ? hi - lo : 1);
+    }
+    const prevContour = new Float64Array(W).fill(NaN);
 
     for (let d = near; d <= far; d += stepD) {
       const halfLane = Math.tan(fov * 0.5) * d;
@@ -101,16 +122,26 @@ export function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, sig
         const crater = Math.max(0, Math.min(1, sample(craterMask, wx, wz, 0)));
         const edge = craterEdge(wx, wz);
 
-        const sy = horizon - ((h - camY) * 65 * UI_SCALE) / Math.max(1.0, d);
+        const sy = elev ? horizon - ((h - camY) * focal * ELEV_VE) / Math.max(1.0, d)
+          : horizon - ((h - camY) * 65 * UI_SCALE) / Math.max(1.0, d);
+        // contour crossing in this column (drawn even where the next band hides it, so ridges stay visible)
+        const cIdx = elev ? Math.floor(h / cInt) : NaN;
+        const crossed = elev && !Number.isNaN(prevContour[sx]) && cIdx !== prevContour[sx];
+        prevContour[sx] = cIdx;
         if (sy >= yBuffer[sx]) continue;
 
         const hazard = Math.max(crater, slope * 0.66);
         let r = 24 + 180 * hazard;
         let g = 84 + 118 * (1 - hazard);
         let b = 26 + 44 * (1 - hazard);
+        if (elev) {
+          const shade = 0.78 + 0.22 * (1 - slope);           // steeper faces a little darker (relief shading)
+          [r, g, b] = elevationColor(h - camGround, relRange).map(v => v * shade);
+        }
 
+        if (crossed) { r *= 0.45; g *= 0.45; b *= 0.45; }
         // Edge detector output: mark crater rims clearly.
-        if (edge > 0.20) {
+        if (!elev && edge > 0.20) {
           r = 255;
           g = 78;
           b = 52;
@@ -138,7 +169,24 @@ export function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, sig
     ctx.stroke();
     ctx.fillStyle = '#76d476';
     ctx.font = CANVAS_FONT(7);
-    ctx.fillText(IS_DEM ? 'SLOPE HAZARD VIEW' : 'EDGE DETECT: CRATER RIMS', 6, fs(10));
+    ctx.fillText(!IS_DEM ? 'EDGE DETECT: CRATER RIMS' : elev ? `ELEVATION · contours ${cInt} m · vertical ×${ELEV_VE}` : 'SLOPE HAZARD VIEW', 6, fs(10));
+    if (IS_DEM) {
+      // Heights ahead along the walking direction (DTM samples), marked at the screen centre column
+      const prof = aheadProfile((ax, az) => sample(hMap, ax, az, NaN), roverPos?.x ?? 0, roverPos?.z ?? 0, heading, HALF, SITE.heightOrigin || 0);
+      ctx.font = CANVAS_FONT(6.5);
+      ctx.fillStyle = '#f0e6c8';
+      ctx.fillText(`HERE ${prof.absM.toFixed(1)} m`, 6, fs(19));
+      for (const a of prof.ahead) {
+        if (!a) continue;
+        const gy = horizon - ((prof.hereM + a.dhM - camY) * (elev ? focal * ELEV_VE : 65 * UI_SCALE)) / a.d;
+        if (gy < 0 || gy > H) continue;
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.beginPath(); ctx.moveTo(W / 2 - 4, gy); ctx.lineTo(W / 2 + 4, gy); ctx.stroke();
+        ctx.fillStyle = Math.abs(a.gradePct) > 30 ? '#ff8866' : '#f0e6c8';
+        ctx.fillText(`${a.d} m ${a.dhM >= 0 ? '+' : ''}${a.dhM.toFixed(1)}`, W / 2 + 6, gy + 3);
+      }
+      setReadout(prof);
+    }
 
     // Subtle scan-lines for a terminal style readout.
     ctx.strokeStyle = 'rgba(120,180,120,0.08)';
@@ -199,11 +247,21 @@ export function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, sig
       ctx.fillText('NO SIGNAL - DUST INTERFERENCE', W / 2, H / 2 + 22);
       ctx.textAlign = 'start';
     }
-  }, [slopeMap, craterMask, hMap, roverPos?.x, roverPos?.z, roverPos?.heading, signalLost, signalQuality]);
+  }, [slopeMap, craterMask, hMap, roverPos?.x, roverPos?.z, roverPos?.heading, signalLost, signalQuality, mode]);
 
   return (
     <div>
-      <Label>{IS_DEM ? 'EV1 Helmet Camera (slope hazard view)' : 'Rover Front Camera (3D)'}</Label>
+      <Label>{IS_DEM ? `EV1 Helmet Camera (${mode === 'elevation' ? 'elevation' : 'slope hazard'} view)` : 'Rover Front Camera (3D)'}</Label>
+      {IS_DEM && (
+        <div role="radiogroup" aria-label="Helmet camera view" style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+          {[['elevation', 'ELEVATION'], ['slope', 'SLOPE']].map(([k, l]) => (
+            <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)}
+              style={{ flex: 1, fontFamily: 'monospace', fontSize: fs(7), padding: '1px 0', cursor: 'pointer', borderRadius: 2,
+                background: mode === k ? 'rgba(60,120,60,0.45)' : 'transparent', color: mode === k ? '#cfffcf' : '#6a8a6a',
+                border: `1px solid ${mode === k ? '#7fd07f' : 'rgba(80,120,60,0.4)'}` }}>{l}</button>
+          ))}
+        </div>
+      )}
       <div style={{ marginTop: 4 }}>
         <canvas
           ref={ref}
@@ -221,8 +279,21 @@ export function ProcessingMapPreview({ slopeMap, craterMask, hMap, roverPos, sig
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize:fs(7), color: '#557755', marginTop: 2 }}>
           <span style={{ color: signalLost ? '#ff7755' : '#66cc66' }}>{signalLost ? 'NO SIGNAL' : 'SAFE'}</span>
           <span style={{ color: signalLost ? '#ff9966' : '#8cd08c' }}>{IS_DEM ? 'HELMET CAM' : 'FRONT CAM + EDGE DETECT'}</span>
-          <span style={{ color: '#ff6644' }}>{IS_DEM ? 'STEEP' : 'RIM / HAZARD'}</span>
+          <span style={{ color: '#ff6644' }}>{IS_DEM ? (mode === 'elevation' ? 'HIGHER' : 'STEEP') : 'RIM / HAZARD'}</span>
         </div>
+        {IS_DEM && readout && (
+          <div aria-label="Terrain ahead" style={{ fontSize: fs(6.5), color: '#9ab89a', lineHeight: 1.45, marginTop: 2 }}>
+            <div>Here: <b style={{ color: '#e8e0c8' }}>{readout.absM.toFixed(1)} m</b> (MOLA) · ahead along the walking direction:</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {readout.ahead.map((a, i) => (
+                <span key={AHEAD_M[i]} style={{ color: !a ? '#55665a' : Math.abs(a.gradePct) > 30 ? '#ff8866' : '#e8e0c8' }}>
+                  {AHEAD_M[i]} m: {a ? `${a.dhM >= 0 ? '+' : ''}${a.dhM.toFixed(1)} m (${a.gradePct >= 0 ? '+' : ''}${a.gradePct.toFixed(0)} %)` : 'outside site'}
+                </span>
+              ))}
+            </div>
+            <div style={{ color: '#6a7a6a' }}>Heights from the HiRISE DTM (orbital, 4 m grid; measured). Colours: blue below you, sand level, red above.{mode === 'elevation' ? ` Relief drawn ×${ELEV_VE}.` : ''}</div>
+          </div>
+        )}
       </div>
     </div>
   );

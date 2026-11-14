@@ -61,6 +61,18 @@ export function provenanceFor(siteName, site) {
     status: 'derived', uncertainty: 'a proxy: relief can come from a boulder, an outcrop step or DTM noise',
     limitations: 'A 1 m DTM shows rocks of a few metres; rocks under ~2 m are not seen. At Gale, DEM noise raises the values',
   });
+  if (site?.segmentation) {
+    const sg = site.segmentation;
+    add({
+      key: 'segmentation', name: 'Terrain classes on rover images (AI)', category: 'ai-predicted',
+      mission: site.track?.rover ? `${site.track.rover} (images)` : 'rover images', instrument: `${sg.model} (LR-ASPP MobileNetV3, trained on AI4Mars v0.6)`,
+      source: { title: 'AI4Mars v0.6 training set (Swan et al., Zenodo 10.5281/zenodo.15995036)', url: 'https://doi.org/10.5281/zenodo.15995036' },
+      observed: `predicted ${sg.predictedUtc?.slice(0, 10) || ''}`, resolution: 'per image pixel (256 px short side)', coverage: `${sg.count} Navcam frames`,
+      dataType: 'image classes (soil, bedrock, sand, big rock)', processing: 'pipeline/segmentation (train → evaluate → ONNX → infer_sites); docs/MARS_SEGMENTATION.md',
+      status: 'model prediction', uncertainty: `pixels below confidence ${sg.lowConfidence} shown as unknown; big rocks poorly detected (test IoU 0.08–0.32)`,
+      limitations: 'Image level, not georeferenced: never drawn on the map and never changes routes or safety rules',
+    });
+  }
   if (site?.relief) {
     add({
       key: 'reliefShading', name: '3D relief shading', category: 'derived',

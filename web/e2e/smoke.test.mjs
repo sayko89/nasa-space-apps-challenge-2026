@@ -103,6 +103,27 @@ test('Jezero, desktop: plan → decision and three assessments → EVA HUD → o
   assert.match(hud, /CARRIED MASS/);
   await page.screenshot({ path: fileURLToPath(new URL('jezero-desktop-eva.png', OUT)) });
 
+  // helmet camera: elevation view with heights ahead (DTM)
+  const ahead = await page.innerText('[aria-label="Terrain ahead"]');
+  assert.match(ahead, /Here: -2\d{3}\.\d m \(MOLA\)/);
+  assert.match(ahead, /10 m: [+-]\d+\.\d m/);
+  assert.equal(await page.getAttribute('[role="radio"][aria-checked="true"]', 'role'), 'radio');
+  // AI terrain segmentation inspector (image level)
+  const seg = page.locator('[aria-label="Mars AI terrain segmentation"]');
+  if (await seg.count()) {
+    assert.match(await seg.innerText(), /not georeferenced/);
+    const opts = await page.locator('select[aria-label="Rover image"] option').count();
+    assert.ok(opts > 0, 'rover images to choose from');
+    await page.selectOption('select[aria-label="Rover image"]', { index: Math.min(1, opts - 1) });
+    for (const v of ['ORIGINAL', 'MASK', 'CONFIDENCE', 'OVERLAY']) await click(page, `^${v}$`);
+    await page.locator('input[aria-label="Overlay opacity"]').fill('0.8');
+    const txt = await seg.innerText();
+    assert.match(txt, /80 %/);
+    for (const re of [/Soil/, /Bedrock/, /Sand/, /Big rock/, /Unknown \/ low confidence/, /confidence mean 0\.\d+/, /Processed [\d,]+ pixels/, /Perseverance|Mars 2020/]) assert.match(txt, re);
+    assert.match(txt, /NEAREST TO EV1/);
+    await page.screenshot({ path: fileURLToPath(new URL('jezero-desktop-ai-terrain.png', OUT)) });
+  }
+
   await page.evaluate(() => [...document.querySelectorAll('#eva-hud button')].find(b => b.innerText.trim() === '✕')?.click());
   await click(page, 'PRINT CUFF CARD');
   await page.waitForSelector('.cuff-sheet');
@@ -120,7 +141,7 @@ test('Jezero, desktop: plan → decision and three assessments → EVA HUD → o
   await workspace(page, 'EXPLORE');
   const cat = await page.innerText('aside[aria-label="Data catalog"]');
   for (const c of ['IMAGERY', 'TOPOGRAPHY', 'GEOLOGY', 'MINERALOGY', 'HAZARDS']) assert.ok(cat.includes(c), c);
-  assert.ok(!cat.includes('AI TERRAIN SEGMENTATION'), 'no fake AI layer');
+  assert.ok(cat.includes('AI TERRAIN SEGMENTATION'), 'real model outputs → AI category');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.evaluate(() => [...document.querySelectorAll('aside[aria-label="Data catalog"] button')].find(b => b.getAttribute('aria-label') === 'Information on Dominant minerals (CRISM)').click());
   await page.waitForFunction(() => /MAP LAYER/.test(document.querySelector('[aria-label="Inspector"]')?.innerText || ''));
@@ -181,6 +202,19 @@ test('Gale loads with its objectives; Moon keeps the original simulator', { time
   assert.match(gc, /CHEMISTRY[\s\S]*ChemCam major oxides/);
   await click(g.page, '^×4$');
   await g.page.waitForFunction(() => /emphasised/.test(document.querySelector('aside[aria-label="Data catalog"]').innerText));
+  // AI terrain segmentation (image level, real model outputs): catalog item + panel in ANALYZE
+  assert.match(await g.page.innerText('aside[aria-label="Data catalog"]'), /AI TERRAIN SEGMENTATION[\s\S]*Terrain classes \(AI\)/);
+  await workspace(g.page, 'ANALYZE');
+  const gs = g.page.locator('[aria-label="Mars AI terrain segmentation"]');
+  await gs.waitFor();
+  assert.match(await gs.innerText(), /Curiosity|Mars Science Laboratory/);
+  // missing model / predictions: a clear message, no crash
+  const x = await open(`${BASE}/?site=gale&ws=analyze`, { width: 1500, height: 950 });
+  await x.page.route('**/segmentation/index.json', r => r.fulfill({ status: 404, body: 'missing' }));
+  await x.page.reload();
+  await x.page.waitForSelector('text=No terrain-segmentation predictions for this site');
+  assert.deepEqual(x.errors, []);
+  await x.page.close();
   await g.page.waitForTimeout(2000);
   assert.deepEqual(g.errors, []);
   await g.page.close();
