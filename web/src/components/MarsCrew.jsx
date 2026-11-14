@@ -180,7 +180,7 @@ function applyPose(J, P) {
 
 // Display scale of the crew figures. True size (~1.9 m with helmet) is a few pixels against 2 km of terrain
 // and the metre-scale relief; ×1.4 keeps them readable. Positions, routes, speeds and every number are unchanged.
-const CREW_SCALE = 3;
+const CREW_SCALE = 9,4;
 
 const wrapAngle = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
