@@ -31,11 +31,12 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **Mission objectives** | 5 per site — the chosen objective decides which stops the planner can pick ([table](#mission-objectives--the-plan-follows-the-objective)) |
 | **Safety checks** | hard: walk-back margin and point of no return, slope, radius, carry weight, rover reach, daylight · environment: space weather, 30-min reserve, depressions / obstacle edges |
 | **Decision** | **GO · CONDITIONAL · NO-GO · INSUFFICIENT DATA**, each with its reasons; missing data is never "safe" |
+| **EVA assessment** | three separate results, no combined score: **A. Payload & Mass** · **B. Dust Exposure & Equipment Reliability** (qualitative, sourced) · **C. Terrain & Mobility** ([details](#suit-payload-and-dust--three-separate-assessments)) |
 | **Hazard map** | slope and rock walls, obstacle buffer, closed depressions, steep / rough ground, rover reach, ground known only from orbit |
 | **Provenance** | every layer labelled direct measurement / orbital / derived / transferred reference / modelled / simulated |
 | **EVA limit sets** | Lunar ConOps (NASA) or **Mars conservative** (derived for Mars gravity) |
 | **Outputs** | 3D planning view, live EVA HUD, printable **cuff card** (A4 / PDF); works on desktop, tablet and phone |
-| **Tests** | 94 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 7 Python, on every push before deploy |
+| **Tests** | 110 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 7 Python, on every push before deploy |
 
 ## Try it
 
@@ -206,7 +207,8 @@ Every route card, the mission summary, the cuff card and the JSON export carry t
 |---|---|---|
 | **Hard constraints** | walk-back margin ≥ 0 everywhere (no point of no return) · slope ≤ limit · distance ≤ limit · carried weight ≤ 45 kg Earth-equivalent · within 30 min of the rover (rover mode) · start after sunrise and home before sunset | one fails → **NO-GO**; one cannot be evaluated (e.g. no start time) → **INSUFFICIENT DATA** |
 | **Environment** | space weather: a solar particle event within ±2 days, *or no event data for the date* · tightest margin below the 30-min reserve of the Apollo 17 traverse plan · route crosses a closed depression or an obstacle edge | any open → **CONDITIONAL** |
-| **Notes** | radiation dose (at Jezero from a transferred Gale reference) · ground known only from orbit | shown, do not change the status |
+| **Notes** | radiation dose (at Jezero from a transferred Gale reference) · ground known only from orbit · dust & equipment warnings | shown, do not change the status |
+| **Payload** | an itemised payload with a missing or invalid entry | **INSUFFICIENT DATA** (an over-limit payload already fails the carried-weight check) |
 
 **GO** therefore means: every hard constraint met *and* every environmental condition known and clear. Unknown space weather is never read as clear — DONKI records past events and does not forecast, so a future EVA date is CONDITIONAL until it is checked. The daylight rule is a design choice: every Apollo surface EVA was flown in sunlight.
 
@@ -232,6 +234,47 @@ The **Hazards** layer (`web/src/utils/hazards.js`) classes every 4 m cell from d
 The 1 m DTM resolves rocks of a few metres: a cell with no flag is **not** certified rock-free. Smaller rocks are for the crew's eyes and the ground views.
 
 ![Hazards layer draped on the Gale terrain: slope walls, rock obstacles, obstacle buffer, steep and rough ground and areas known only from orbit, with the legend and thresholds in the panel](docs/img/hazards.jpg)
+
+## Suit, payload and dust — three separate assessments
+
+Under the decision of the active route, **EVA assessment** shows three results side by side. Each has its own result and explanation; they are never merged into one risk score. Technical details: [`docs/EVA_ASSESSMENT.md`](docs/EVA_ASSESSMENT.md).
+
+| | Result | Built from | Effect on the decision |
+|---|---|---|---|
+| **A. Payload & Mass** (`utils/payload.js`) | WITHIN LIMIT · OVER LIMIT · INSUFFICIENT DATA | suit mass + itemised payload (instruments, communications beyond the suit radio, sampling, emergency, other) → weight on Mars as Earth-equivalent kg, limit, remaining capacity | over the limit → the existing carried-weight rule → **NO-GO**; missing / invalid entry → **INSUFFICIENT DATA** |
+| **B. Dust Exposure & Equipment Reliability** (`utils/dust.js`, `config/dust.js`) | WARNINGS · INSUFFICIENT DATA | exposure factors of this EVA, seven equipment groups with their own failure mechanism and vulnerability class, the crew's protection settings, precautions, sources | **none** — dust warnings are notes; a dusty EVA is never rejected for dust alone |
+| **C. Terrain & Mobility** (`utils/mobility.js`) | PASS · CAUTION · FAIL · INSUFFICIENT DATA | the planner's own A* route, Dijkstra walking times, Tobler slope–speed shape, slope limit, rock obstacles, buffer, depressions, walk-back margin and point of no return | the same hard constraints and conditions as before, unchanged |
+
+**Payload & Mass.** The ~45 kg Earth-equivalent limit is unchanged (NIOSH lifting limit 23 kg + 22 kg offset by suit pressure, Ogilvie et al., ICES 2026). The suit mass already contains the pressure garment and the life-support backpack, so they are listed but cannot be entered again; the suit radio is *assumed* to be part of the backpack mass. Items are entered by the crew — no masses are invented. **Carried mass does not slow the walk**: no validated model of walking speed against carried load at Mars gravity was found, so the payload is a limit, not a speed penalty.
+
+**Dust Exposure & Equipment Reliability.** No source found gives a validated, quantitative model of how Martian dust degrades suits or tools during an EVA. The assessment is therefore qualitative: no failure probabilities, no protection percentages, no degradation rates, and no change to mass or walking speed.
+
+| Component | Failure mechanism | Vulnerability | Why this class |
+|---|---|---|---|
+| Spacesuit joints (soft goods) | outer fabric abraded where it flexes; dust through the layers | high | Apollo: abrasion not solved by simple mitigation; Ortho-Fabric deficient in lunar-simulant tests |
+| Bearings & mechanical interfaces | regolith in bearing races: stiffness, wear, seal damage | high | Apollo: clogging and seal failures; dust-tolerant bearings an open NASA gap |
+| External connectors & quick disconnects | dust on mating faces and seals | high | Apollo seal failures; dust-tolerant QDs and connectors open gaps |
+| Sampling instruments & tools | coating; clogged hinges and container seals | moderate | meant to touch regolith; risk is in the moving parts and seals |
+| Cameras & optical surfaces (incl. visor) | reduced visibility; scratching when wiped | moderate | Apollo visibility loss; scratch-resistant visor an open gap; visor material changes on Perseverance; visible and cleanable in the field |
+| Rover interfaces | dust carried into hatches, seals, umbilicals | high | Apollo seal failures; dust brought inside is a crew-health concern |
+| Exposed moving mechanisms | jammed valves, latches, actuators | high | Apollo clogging; limited xEMU effort on dust-tolerant mechanisms |
+
+The crew states four **protection settings** in Mission setup: suit outer layer, joint & bearing protection, equipment dust protection and protective covers. "Not specified" is reported as missing information. A protection is shown as *protected — not Mars-validated* and never lowers a vulnerability class. **Exposure factors** are the dusty season (southern spring and summer, Ls 180°–360°), dust-mantled ground on the route (Jezero thermal inertia < 150; no such layer at Gale) and regolith contact at sampling stops. The warnings follow fixed rules, for example *"Exposed mechanical interfaces may be vulnerable to regolith intrusion"*, *"Optical surfaces may require additional protection"*, *"Unprotected joints may require inspection or maintenance"*, and always *"Dust exposure information is insufficient to quantify degradation."*
+
+**Lunar-derived vs Mars-specific evidence.** Every dust source is labelled in the app with its program, date, context, Mars applicability, relevance and limitations:
+
+| Kind | Sources |
+|---|---|
+| Direct Mars evidence | Perseverance SHERLOC spacesuit-material samples (JPL, 2025; per-material results not yet published) · MRO seasonal dust-storm pattern (JPL / Kass et al., 2016) · THEMIS thermal inertia of Jezero (Edwards & Buz 2021) · Martian dust health review (Wang et al., GeoHealth 2025) |
+| Lunar research used as an analogy | Apollo dust effects on EVA systems (Gaier, NASA/TM-2005-213610) · Artemis suit-material tests with lunar simulant (Jones et al., ICES-2025-56) · EVA gap list incl. xEMU status (NASA, 2020) · Dust Mitigation Technology Roadmap (Litofsky, NASA JSC, 2026) |
+| Mars analog field research | MARS-V, Gobi Desert — reviewed; no results published, **not used** for any classification |
+| Project assumption | how the evidence becomes the classes above |
+
+The **xEMU** is NASA's exploration suit developed for Artemis lunar EVAs; it is not a Mars-certified suit, and the app says so where it is offered. NASA's own roadmap notes that lunar dust mitigation "might not be directly applicable to Martian dust".
+
+<img src="docs/img/eva-assessment.jpg" width="640" alt="Left: Mission setup with the itemised payload (instruments, communications, sampling, emergency, other), the parts already in the suit mass, and the four dust protection settings. Right: the EVA assessment at Jezero — A. Payload & Mass within limit, B. Dust Exposure & Equipment Reliability opened with exposure factors, warnings and the first equipment groups with their vulnerability, protection, rationale, precautions and sources">
+
+**Terrain & Mobility** reuses what the planner computed and adds nothing: the same speeds apply outbound and on the way back (a test checks that the Mars-conservative factor scales both by 1.65), and payload or dust settings leave the route and every walking time unchanged (a real-data test at Jezero).
 
 ## Data provenance
 
@@ -339,7 +382,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (94 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
+`node --test web/tests/*.test.mjs` (110 tests) and `python -m unittest discover pipeline/tests`, run on every push before the demo is deployed:
 
 | Area | What is checked |
 |---|---|
@@ -354,6 +397,9 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 | Moon mode | `?site=moon` stays procedural: no Mars objectives, all four route modes plan around craters |
 | Hazards | dilation, sink depth on a pit and a draining slope, class priority and thresholds, rover / orbit classes only when that data exists, hazard length along a route |
 | Decision | any failed hard constraint → NO-GO; unevaluable → INSUFFICIENT DATA; unknown space weather → never GO; notes never change the status |
+| Payload | total = suit + items; suit parts never added twice; the existing 45 kg limit; remaining capacity; missing or invalid entries → INSUFFICIENT DATA |
+| Dust | seven components with different classes, each sourced; lunar / analog / Mars sources kept apart; protection never lowers a class; unknown settings, date and layer reported as missing; no probability, percentage or rate fields |
+| Mobility & integration | no payload or dust penalty (real Jezero route and walking times identical with 0 and 40 kg); the Mars speed factor applies outbound and on the return; dust never changes the decision; an over-limit payload is NO-GO through the existing rule |
 | Provenance | every record complete and categorised against the real files; Jezero RAD transferred; Gale geology derived; CRISM / THEMIS / SuperCam shown as unavailable with reasons |
 | Rover track | waypoints come out in drive order and split where the rover leaves the site; every region label lies inside its own unit |
 | Share link | site, start, date, mission setup and route survive the link; bad links are ignored |
@@ -366,6 +412,8 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - **Radiation at Jezero.** RAD measured at Gale, about 1.8 km lower than Jezero; with less atmosphere above it, the real dose at Jezero is likely a little higher.
 - **Design choices.** How slope changes suited walking speed is an assumption (Tobler shape). Time per stop, the objectives' weights, the 0.5 m rock-relief limit, the hazard thresholds other than the slope limit, the ±2-day SEP window and the 10 km/h rover speed are design choices or assumptions, labelled as such in the app.
 - **Objectives.** They select among the layers each site has; they do not add data. The Jezero delta is outside the 2 km site, so the lake-and-delta objective can only sample crater-floor rocks. "CaO high" stands in for calcium-sulfate veins because this ChemCam product reports no sulfur. Gale's ridge / hollow classes come from a DEM that does not resolve single boxwork ridges.
+- **Dust and equipment.** Qualitative only: no validated data gives degradation rates or failure probabilities for suits or tools in Martian dust, so none are computed. Most evidence is lunar (Apollo, lunar simulant) and is used as an analogy; the Perseverance spacesuit samples are Mars data but their per-material results are not yet published. Dust-mantled ground is known only at Jezero (100 m thermal-inertia pixels); the dusty season is a seasonal pattern, not a storm forecast.
+- **Payload.** Carried mass does not change walking speed, because no validated load–speed model at Mars gravity was found; the payload acts only through the weight limit. The suit radio is assumed to be inside the life-support mass.
 - **Hazards.** Closed depressions are found only where the DTM sees them (≥ 1 m deep); "known only from orbit" uses the positions the rover took ground views from, not everywhere it could see.
 - **Resolution.** A 1 m DTM shows rocks of a few metres, not smaller ones. Jezero's landing area was chosen for being smooth, so there only a handful of cells exceed the 0.5 m rock-relief limit. CRISM mineral names are the closest match of each spectral class. Thermal-inertia classes are guidance.
 - **Time.** Temperatures are a one-Mars-year climatology, not a forecast. Space weather is queried live from api.nasa.gov for the EVA date (public demo key, rate-limited); offline, or when the lookup fails, the advisory says there is no data. `fetch-donki.yml` can bundle a DONKI archive since 2012 so past dates also work offline — it needs a free NASA API key as the repository secret `NASA_API_KEY`, because GitHub's shared runners hit the demo-key limit. DONKI has no forecast: for a future EVA the advisory says there is no data.
@@ -410,7 +458,7 @@ Every number on the card is the planner's own: the same timeline the GO / NO-GO 
 - NASA/JPL-Caltech/ESA/Univ. of Arizona/JHUAPL/MSSS/USGS Astrogeology Science Center. *Curiosity's Proposed Path up Mount Sharp* (PIA23179, 2019) and *Curiosity's Path to Gediz Vallis Ridge and Beyond* ([PIA26042](https://science.nasa.gov/photojournal/curiositys-path-to-gediz-vallis-ridge-and-beyond/), 2023) — the route-map style. NASA/JPL *Mars Trek* ([about](https://trek.nasa.gov/mars/jpl/config/textAbout.html)) — elevation plots. NASA *Worldview* ([comparison mode](https://www.earthdata.nasa.gov/news/blog/introducing-worldviews-comparison-feature)) — layer swipe.
 - Allison, M. & McEwen, M. (2000). Mars24 algorithm, NASA GISS. Tobler, W. (1993), NCGIA TR 93-1.
 
-Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md).
+Audit, feature status and remaining limits for the challenge brief: [docs/CHALLENGE_COMPLIANCE.md](docs/CHALLENGE_COMPLIANCE.md). Payload, dust and mobility assessments: [docs/EVA_ASSESSMENT.md](docs/EVA_ASSESSMENT.md).
 
 ## Use of AI
 
@@ -423,10 +471,11 @@ web/     the web app (React + Three.js / react-three-fiber, Vite)
   src/utils/              walkModel · pathfinder (A*) · walkback (Dijkstra) · science (stop optimiser)
                           radiation · marsTime (Mars24) · shadows · climate · chemistry · cuffCard · elevationProfile
                           evaTimeline + evaPlayback · orthoImage · hazards · missionStatus · stopCards · shareLink
+                          payload · dust · mobility (the three EVA assessments)
   src/config/             marswalkProfile (EVA limits, hazard thresholds) · mission (suit, equipment, rover)
-                          objectives (5 per site) · provenance (every layer, every kind)
+                          objectives (5 per site) · provenance (every layer, every kind) · dust (sources, components)
   src/components/         MoonScene (3D) · MarsCrew · EvaHud · RightPanel · SiteSwitcher
-                          PovViewer (ground view) · ChemistryCard · CuffCard · ElevationProfile · ProvenancePanel
+                          PovViewer (ground view) · ChemistryCard · CuffCard · ElevationProfile · ProvenancePanel · EvaAssessment
   public/sites/jezero/    grid.bin · ortho (HiRISE) · geology · climate (MEDA) · layers (THEMIS, CRISM, rocks) · pov · track
   public/sites/gale/      grid.bin · ortho (HiRISE) · geology (derived) · climate (REMS) · layers (rocks) · chemistry (ChemCam) · pov · track
   tests/                  node --test suites (incl. real Jezero / Gale runs and Moon mode)

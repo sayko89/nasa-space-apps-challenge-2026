@@ -202,6 +202,7 @@ export default function App() {
   const [mission, setMission] = useState(() => {
     const m = { ...DEFAULT_MISSION, ...(SHARED?.mission || {}) };
     if (!SUITS[m.suit]) m.suit = DEFAULT_MISSION.suit;
+    m.dust = { ...DEFAULT_MISSION.dust, ...(m.dust || {}) };
     return m;
   });
   // The active EVA limit set follows Mission setup; set before any planning in this render
@@ -796,14 +797,16 @@ export default function App() {
   }, [evaStartMs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // DEM: suit / equipment / rover changed → re-plan so the GO checks follow
-  const lastMissionRef = useRef(mission);
+  // Only what the planner uses: dust protection settings and the payload split (same total) do not re-plan
+  const planKey = `${mission.suit}|${mission.equipmentKg}|${!!mission.rover}|${mission.limits}|${!!mission.obstacleBuffer}`;
+  const lastMissionRef = useRef(planKey);
   useEffect(() => {
-    if (!IS_DEM || mission === lastMissionRef.current) return;
-    lastMissionRef.current = mission;
+    if (!IS_DEM || planKey === lastMissionRef.current) return;
+    lastMissionRef.current = planKey;
     if (!routes || waypoints.length < 2) return;
     const id = setTimeout(() => handlePlanPath(), 300);
     return () => clearTimeout(id);
-  }, [mission]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [planKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-plan when sun angle changes significantly (10° threshold)
   const lastSunRef = useRef(sunAngleDeg);

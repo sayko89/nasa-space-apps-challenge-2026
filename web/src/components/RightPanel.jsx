@@ -28,11 +28,15 @@ import { SUITS, DEFAULT_MISSION, carryCheck, roverDrive, ROVER } from '../config
 import { generateHeatmapCanvas, GEOLOGY_LAYERS, geologyLegend, dataLayerOptions, dataLayerLegend, HAZARD_LAYER, hazardLegend, getHazardMap } from '../utils/heatmaps';
 import { missionDecision, STATUS_STYLE } from '../utils/missionStatus';
 import { routeHazards } from '../utils/hazards';
+import { payloadAssessment } from '../utils/payload';
+import { dustAssessment } from '../utils/dust';
+import { mobilityAssessment } from '../utils/mobility';
+import EvaAssessment, { PayloadSetup, DustSetup } from './EvaAssessment';
 import { worldToGrid } from '../utils/pathfinder';
 const cellIdx = (x, z) => { const { col, row } = worldToGrid(x, z); return row * GRID_RES + col; };
 import { HAZARD_PARAMS } from '../config/marswalkProfile';
 import { DUST_STATES } from '../utils/dustHazardModel';
-import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS, param, EVA_PROFILES, MARS_SUIT_COST_RATIO } from '../config/marswalkProfile';
+import { MODE_WEIGHTS, MARSWALK_PROFILE, SCIENCE_PARAMS, param, EVA_PROFILES, MARS_SUIT_COST_RATIO, getEvaProfile } from '../config/marswalkProfile';
 import { msAtLtst, sunriseSunset, ltst as ltstOf, j2000tt } from '../utils/marsTime';
 import { airTemp, diurnalCurve, K_TO_C, climateInstrument, climateHeightM } from '../utils/climate';
 import { SITE } from '../three/terrainGenerator';
@@ -459,7 +463,8 @@ function MissionPanel({ mission, setMission, start, disabled }) {
       </div>
       <div style={row}>
         <span style={{ width: 54 }}>Equipment</span>
-        <input type="range" min={0} max={40} step={1} value={mission.equipmentKg}
+        <input type="range" min={0} max={40} step={1} value={mission.equipmentKg} disabled={!!mission.payload}
+          title={mission.payload ? 'Sum of the itemised payload' : ''}
           onChange={e => set('equipmentKg', Number(e.target.value))} style={{ flex: 1 }} />
         <b style={{ color: '#e8e0c8', width: 40, textAlign: 'right' }}>{mission.equipmentKg} kg</b>
       </div>
@@ -467,6 +472,7 @@ function MissionPanel({ mission, setMission, start, disabled }) {
         Carried weight on Mars: {c.earthEqKg.toFixed(1)} kg Earth-equivalent / {c.limitKg} kg limit
         {c.ok ? ` · up to ${c.maxEquipmentKg.toFixed(0)} kg of equipment` : ' · NO-GO: too heavy to walk with'}
       </div>
+      <PayloadSetup mission={mission} setMission={setMission} />
       <div style={row}>
         <span style={{ width: 54 }}>EVA limits</span>
         {Object.entries(EVA_PROFILES).map(([k, pr]) => (
@@ -502,6 +508,7 @@ function MissionPanel({ mission, setMission, start, disabled }) {
           Routes stay at least {HAZARD_PARAMS.obstacleBufferM.value} m from every slope / rock obstacle (assumption: {HAZARD_PARAMS.obstacleBufferM.note}). Longer routes, fewer stops in reach.
         </div>
       )}
+      <DustSetup mission={mission} setMission={setMission} />
       <div style={{ fontSize: fs(6.5), color: '#6a7a6a', marginTop: 2 }}>Suit masses, carry limit, walkback: Ogilvie et al., ICES 2026 (NASA)</div>
     </div>
   );
@@ -624,7 +631,8 @@ function MissionSummary({ routes, activeRoute, science, mission, startMs }) {
   const wxState = useSpaceWeather(startMs);
   const r = routes?.[activeRoute], s = r?.stats;
   if (!s || s.walkTimeS === undefined) return null;
-  const d = routeDecision(r, wxState);
+  const A = evaAssessments(r, wxState, { mission, startMs });
+  const d = A.decision;
   const hz = getHazardMap();
   const hazards = hz && r.path ? routeHazards(r.path, hz.cls, cellIdx).filter(h => h.key !== 'unseen') : [];
   const obj = findObjective(SITE.name, science?.objectiveId);
@@ -645,6 +653,9 @@ function MissionSummary({ routes, activeRoute, science, mission, startMs }) {
       {row('Major hazards on route', hazards.length ? hazards.slice(0, 3).map(h => `${h.name} ${Math.round(h.lengthM)} m`).join(' · ') : 'none flagged')}
       {row('Radiation', `${s.radiation.doseMSv.toFixed(2)} mSv GCR${radiationIsLocal() ? '' : ' (Gale reference)'}`)}
       {row('Space weather', wxState.wx?.advisory === 'clear' ? 'no SEP ±2 d' : wxState.wx?.advisory === 'postpone' ? 'SEP — postpone' : 'unknown', wxState.wx?.advisory === 'clear' ? undefined : '#ffc94d')}
+      {A.payload && row('A. Payload & mass', A.payload.status, A.payload.status === 'WITHIN LIMIT' ? undefined : A.payload.status === 'OVER LIMIT' ? '#ff6655' : '#ffc94d')}
+      {A.dust && row('B. Dust & equipment', `${A.dust.level} exposure · ${A.dust.warnings.filter(w => w.level !== 'info').length} warnings`, '#ffc94d')}
+      {row('C. Terrain & mobility', A.mobility.status, A.mobility.status === 'PASS' ? undefined : A.mobility.status === 'FAIL' ? '#ff6655' : '#ffc94d')}
       <div style={{ color:'#9ab09a', marginTop:2 }}>{d.summary}</div>
     </div>
   );
@@ -660,11 +671,16 @@ function missionExport({ science, mission, routes, activeRoute, startMs }) {
   })) : [];
   const wx = Number.isFinite(startMs) ? spaceWeatherAt(SITE.spaceWeather, startMs) : null;
   const decisions = routes ? Object.fromEntries(Object.entries(routes).filter(([, r]) => r?.stats?.checks)
-    .map(([m, r]) => [m, routeDecision(r, { wx, live: false, future: startMs > Date.now() })])) : null;
+    .map(([m, r]) => [m, routeDecision(r, { wx, live: false, future: startMs > Date.now() }, { mission, startMs })])) : null;
+  const active = routes?.[activeRoute] ? evaAssessments(routes[activeRoute], { wx, live: false, future: startMs > Date.now() }, { mission, startMs }) : null;
   return {
     objective: obj ? { id: obj.id, name: obj.name, purpose: obj.purpose, uncertainty: obj.uncertainty, availability: obj.availability } : null,
     mission, evaStartUtc: Number.isFinite(startMs) ? new Date(startMs).toISOString() : null,
     stopCards: cards, decisions, activeDecision: decisions?.[activeRoute] || null,
+    assessments: active ? { payload: active.payload, dust: active.dust && { status: active.dust.status, level: active.dust.level, exposure: active.dust.exposure,
+      warnings: active.dust.warnings, missing: active.dust.missing,
+      components: active.dust.components.map(({ key, name, vulnerability, mechanism, protection, evidence, confidence }) => ({ key, name, vulnerability, mechanism, protection: protection.state, evidence, confidence })) },
+      mobility: active.mobility } : null,
     provenance: provenanceFor(SITE.name, SITE).map(({ key, name, category, available, instrument, source, observed, reason }) =>
       ({ key, name, category, available, instrument, source, observed, ...(available ? {} : { reason }) })),
   };
@@ -899,19 +915,32 @@ function SciencePanel({ science, onPlan, busy, dwellMin, setDwellMin, disabled, 
 }
 
 /** Decision for one route, from the planner's stats + the shared space-weather lookup. */
-export function routeDecision(r, wxState) {
+export function routeDecision(r, wxState, extra = {}) {
+  return evaAssessments(r, wxState, extra)?.decision || null;
+}
+
+/** Decision + the three separate assessments (payload, dust, terrain & mobility) for one route. */
+export function evaAssessments(r, wxState, { mission = null, startMs = null } = {}) {
   const s = r?.stats;
   if (!s || s.walkTimeS === undefined) return null;
   const hz = getHazardMap();
-  return missionDecision(s, {
+  const hazards = hz && r.path ? routeHazards(r.path, hz.cls, (x, z) => cellIdx(x, z)) : undefined;
+  const payload = mission ? payloadAssessment(mission) : null;
+  const dust = mission ? dustAssessment({ dust: mission.dust, startMs, stopCount: s.stopCount,
+    dustGroundShare: s.layers?.thermal ? s.layers.thermal.dustShare : null, site: SITE.name }) : null;
+  const decision = missionDecision(s, {
     limits: { maxSlopeDeg: param('maxWalkableSlopeDeg'), maxRadialM: param('maxRadialDistanceKm') * 1000 },
     wx: wxState?.wx || null, wxLive: wxState?.live, startFuture: wxState?.future,
-    radiationLocal: radiationIsLocal(),
-    hazards: hz && r.path ? routeHazards(r.path, hz.cls, (x, z) => cellIdx(x, z)) : undefined,
+    radiationLocal: radiationIsLocal(), hazards,
+    ...(payload ? { payload } : {}), ...(dust ? { dust } : {}),
   });
+  const prof = EVA_PROFILES[getEvaProfile()];
+  const mobility = mobilityAssessment(s, decision, { hazards,
+    profile: { label: prof.label, levelWalkSpeedKmh: param('levelWalkSpeedKmh'), source: getEvaProfile() === 'mars' ? 'Norcross et al. 2009, NASA/TP-2009-214796' : 'NASA xEVA ConOps' } });
+  return { decision, payload, dust, mobility };
 }
 
-function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs }) {
+function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs, mission }) {
   const wxState = useSpaceWeather(startMs);
   if (!routes) return (
     <div style={{fontSize:fs(8),color:'#3a5a3a',textAlign:'center',padding:'8px 0'}}>
@@ -941,8 +970,11 @@ function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs }) {
               </div>
               {s && <span style={{color:'rgba(150,200,150,0.7)',fontSize:fs(8)}}>{s.distance.toFixed(1)}m</span>}
             </div>
-            {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} decision={IS_DEM ? routeDecision(r, wxState) : null} />}
-            {IS_DEM && s && s.walkTimeS !== undefined && active && <DecisionDetail d={routeDecision(r, wxState)} />}
+            {s && s.walkTimeS !== undefined && <MarswalkStats mode={mode} s={s} decision={IS_DEM ? routeDecision(r, wxState, { mission, startMs }) : null} />}
+            {IS_DEM && s && s.walkTimeS !== undefined && active && <DecisionDetail d={routeDecision(r, wxState, { mission, startMs })} />}
+            {IS_DEM && s && s.walkTimeS !== undefined && active && mission && (
+              <div onClick={e => e.stopPropagation()}><EvaAssessment a={evaAssessments(r, wxState, { mission, startMs })} /></div>
+            )}
             {s && s.walkTimeS !== undefined && active && r.path?.length > 1 && (
               <div style={{ marginTop:5, borderTop:'1px solid rgba(60,100,60,0.3)', paddingTop:3 }}
                 title="Elevation along the route (MOLA metres), stops numbered — as Mars Trek plots for a measured path">
@@ -1770,10 +1802,10 @@ export default function RightPanel({
         {/* Route Analysis */}
         <Sect label="Route Analysis — GO / NO-GO" id="wf-decision">
           {IS_DEM && <MissionSummary routes={routes} activeRoute={activeRoute} science={science} mission={mission} startMs={evaStartMs} />}
-          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs}/>
+          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs} mission={mission}/>
           {cuffMode && routes?.[cuffMode]?.stats?.marginS && (
             <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)}
-              decision={routeDecision(routes[cuffMode], cuffWx)} />
+              decision={routeDecision(routes[cuffMode], cuffWx, { mission, startMs: evaStartMs })} />
           )}
         </Sect>
 

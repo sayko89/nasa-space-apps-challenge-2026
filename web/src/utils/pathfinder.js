@@ -21,6 +21,7 @@ import { findObjective } from '../config/objectives.js';
 import { evaDoseMSv, careerFraction } from './radiation.js';
 import { carryCheck, ROVER } from '../config/mission.js';
 import { thermalClass } from '../terrain/layers.js';
+import { DUST_TI_MAX } from '../config/dust.js';
 
 const HALF = TERRAIN_SIZE / 2;
 
@@ -554,7 +555,8 @@ export function computeLayerStats(path) {
   ti.sort((a, b) => a - b);
   const tiMedian = ti.length ? ti[ti.length >> 1] : null;
   return {
-    thermal: L.thermal && ti.length ? { median: tiMedian, min: ti[0], max: ti[ti.length - 1], cls: thermalClass(L.thermal, tiMedian) } : null,
+    thermal: L.thermal && ti.length ? { median: tiMedian, min: ti[0], max: ti[ti.length - 1], cls: thermalClass(L.thermal, tiMedian),
+      dustShare: ti.filter(v => v < DUST_TI_MAX.value).length / ti.length } : null,   // dust-mantled ground (utils/dust.js)
     rock: L.rock ? { maxReliefM: rockMax, roughShare: n ? rockN / n : 0, limitM: rockLim } : null,
     minerals: L.minerals ? [...minerals.entries()].map(([name, c]) => ({ name, share: c / n })).sort((a, b) => b.share - a.share) : null,
   };

@@ -18,7 +18,7 @@ export const SUITS = {
   mars: { label: 'Mars suit (target)', massKg: 104, source: ICES, url: ICES_URL,
     note: 'Mass NASA derives for a Mars-capable suit: ~42 kg pressure garment + ~62 kg life-support backpack.' },
   xemu: { label: 'Lunar xEMU', massKg: 170, source: ICES, url: ICES_URL,
-    note: 'Current lunar suit mass used as the baseline in the same study.' },
+    note: 'Current lunar suit mass used as the baseline in the same study. The xEMU is developed for Artemis lunar EVAs — not a Mars-certified suit.' },
 };
 
 export const CARRY = {
@@ -32,7 +32,10 @@ export const ROVER = {
 };
 
 /** Default mission settings (UI state). */
-export const DEFAULT_MISSION = { suit: 'mars', equipmentKg: 10, rover: false, limits: 'lunar', obstacleBuffer: false };
+// payload: null = one equipment figure; { instruments, comms, sampling, emergency, other } = itemised (utils/payload.js)
+// dust: protection settings, all 'unknown' until the crew states them (config/dust.js)
+export const DEFAULT_MISSION = { suit: 'mars', equipmentKg: 10, rover: false, limits: 'lunar', obstacleBuffer: false,
+  payload: null, dust: { outerLayer: 'unknown', jointProtection: 'unknown', equipmentProtection: 'unknown', covers: 'unknown' } };
 
 /**
  * Carried-weight check: suit + equipment weight on Mars, as Earth-equivalent kg,

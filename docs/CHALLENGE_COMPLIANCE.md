@@ -104,3 +104,7 @@ All tests pass. The existing assertions were kept; one label format was kept so 
 - The 1 m DTM cannot show rocks under ~2 m. No cell is certified rock-free.
 - Gale units are derived (an elevation band and DEM relief) and assume near-horizontal layers.
 - Ground-view images load from mars.nasa.gov, so they need an internet connection.
+
+## 7. Follow-up: dust, spacesuit and equipment reliability
+
+A separate task added three independent assessments under the decision: **Payload & Mass**, **Dust Exposure & Equipment Reliability** (qualitative, sourced, never a NO-GO by itself) and **Terrain & Mobility**. The audit, sources, rules and tests are in [`EVA_ASSESSMENT.md`](EVA_ASSESSMENT.md). Tests: 94 → 110 JavaScript, 7 Python.
