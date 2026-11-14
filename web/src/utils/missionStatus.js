@@ -91,6 +91,9 @@ export function missionDecision(s, ctx = {}) {
   // ---- status
   const failHard = hard.filter(h => !h.ok);
   const envProblems = environment.filter(e => e.ok !== true);
+  // how an open environmental condition reads in the one-line summary
+  const ISSUE = { spaceWeather: (e) => (e.ok === null ? 'space weather unknown' : 'solar particle event near the date'),
+    reserve: () => 'walk-back margin below the 30-min reserve', terrain: () => 'route crosses depressions / obstacle edges' };
   let status;
   if (failHard.length) status = 'NO-GO';
   else if (missing.length) status = 'INSUFFICIENT DATA';
@@ -98,7 +101,7 @@ export function missionDecision(s, ctx = {}) {
   else status = 'GO';
   const summary = status === 'NO-GO' ? `Fails: ${failHard.map(h => h.label.toLowerCase()).join('; ')}.`
     : status === 'INSUFFICIENT DATA' ? `Cannot evaluate: ${missing.map(m => m.label.toLowerCase()).join('; ')}.`
-    : status === 'CONDITIONAL' ? `All hard constraints met; conditions: ${envProblems.map(e => e.ok === null ? `${e.label.toLowerCase()} unknown` : e.label.toLowerCase()).join('; ')}.`
+    : status === 'CONDITIONAL' ? `All hard constraints met; open: ${envProblems.map(e => (ISSUE[e.key] ? ISSUE[e.key](e) : e.label.toLowerCase())).join('; ')}.`
     : 'All hard constraints met and no environmental condition open.';
   return { status, hard, environment, notes, missing, summary };
 }

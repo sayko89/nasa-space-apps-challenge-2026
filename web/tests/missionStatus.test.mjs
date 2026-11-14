@@ -33,6 +33,7 @@ test('missing information is never a safe result', () => {
   // no space-weather data → CONDITIONAL, not GO
   const a = missionDecision(stats(), { limits, wx: { advisory: 'no-data', near: [], sep: [] }, hazards: [] });
   assert.equal(a.status, 'CONDITIONAL');
+  assert.match(a.summary, /space weather unknown/);
   assert.equal(a.environment.find(e => e.key === 'spaceWeather').ok, null);
   const f = missionDecision(stats(), { limits, wx: null, startFuture: true, hazards: [] });
   assert.match(f.environment.find(e => e.key === 'spaceWeather').detail, /does not forecast/);
@@ -48,11 +49,12 @@ test('missing information is never a safe result', () => {
 test('environmental conditions → CONDITIONAL; notes never change the status', () => {
   const sep = missionDecision(stats(), { limits, wx: { advisory: 'postpone', near: [{}], sep: [{}] }, hazards: [] });
   assert.equal(sep.status, 'CONDITIONAL');
-  assert.match(sep.summary, /space weather/);
+  assert.match(sep.summary, /solar particle event near the date/);
   const tight = missionDecision(stats({ minMarginS: RESERVE_S - 60 }), { limits, wx: clearWx, hazards: [] });
   assert.equal(tight.status, 'CONDITIONAL');
   const pit = missionDecision(stats(), { limits, wx: clearWx, hazards: [{ key: 'depression', name: 'closed depression / crater', lengthM: 12 }] });
   assert.equal(pit.status, 'CONDITIONAL');
+  assert.match(pit.summary, /route crosses depressions/);
   const unseen = missionDecision(stats(), { limits, wx: clearWx, radiationLocal: false,
     hazards: [{ key: 'unseen', name: 'known only from orbit', lengthM: 300 }] });
   assert.equal(unseen.status, 'GO');

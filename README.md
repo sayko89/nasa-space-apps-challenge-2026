@@ -138,7 +138,7 @@ Every plan above passes all hard constraints. With the space weather unknown (a 
 
 Every chosen stop has a **stop card**: position (lat / lon and metres from the site centre), the objective, why it was chosen (the features it adds and their weights), what to investigate there, the evidence (units, CRISM class, ChemCam values against the layer mean), the data layers behind it, its terrain risk (from the planner's own slope and rock thresholds), its data confidence (measured / mapped / derived) and the objective's uncertainty.
 
-![Science EVA panel at Gale: the Water-Related Alteration objective with its purpose, relevance, candidates, weights, data layers, uncertainty and sources, and the opened stop card for La Troya (ChemCam CaO high)](docs/img/objective.jpg)
+<img src="docs/img/objective.jpg" width="640" alt="Science EVA panel at Gale: the Water-Related Alteration objective with its purpose, relevance, candidates, weights, data layers, uncertainty and sources, and the opened stop card for La Troya (ChemCam CaO high)">
 
 ## How it answers the challenge
 
@@ -210,7 +210,7 @@ Every route card, the mission summary, the cuff card and the JSON export carry t
 
 **GO** therefore means: every hard constraint met *and* every environmental condition known and clear. Unknown space weather is never read as clear — DONKI records past events and does not forecast, so a future EVA date is CONDITIONAL until it is checked. The daylight rule is a design choice: every Apollo surface EVA was flown in sunlight.
 
-![Route Analysis at Gale: the mission summary (objective, stops, distance, duration, margin, max slope, major hazards, radiation, space weather) and the decision with its hard constraints, environmental conditions and notes](docs/img/decision.jpg)
+<img src="docs/img/decision.jpg" width="330" alt="Route Analysis at Gale: the mission summary (objective, stops, distance, duration, margin, max slope, major hazards, radiation, space weather) and the decision with its hard constraints, environmental conditions and notes">
 
 ## Hazard map
 
