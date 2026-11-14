@@ -36,6 +36,7 @@ function marsSky(elDeg) {
 import { useRoverController } from '../three/roverController';
 import { loadOrthoImage } from '../utils/orthoImage';
 import { hasRelief, reliefUrl, flatNormalGeometry } from '../utils/relief';
+import { safetyZoneRadius } from '../utils/dustReroute';
 import { ROUTE_COLORS } from '../utils/constants';
 
 // ---- Terrain ----
@@ -159,6 +160,38 @@ function TerrainOverlay({ layer, opacity, sunAngleDeg, sunElevationDeg, refreshK
       <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false}
         polygonOffset polygonOffsetFactor={-1 - order} polygonOffsetUnits={-4 - 2 * order} />
     </mesh>
+  );
+}
+
+// ---- Dust-devil safety zone: the no-go ring the crew keeps away from (utils/dustReroute.js) ----
+function SafetyZone({ x, z, r }) {
+  const pts = useMemo(() => {
+    const a = [];
+    for (let k = 0; k <= 96; k++) {
+      const t = (k / 96) * Math.PI * 2, px = x + r * Math.cos(t), pz = z + r * Math.sin(t);
+      a.push(new THREE.Vector3(px, getTerrainHeight(px, pz) + 0.6, pz));
+    }
+    return a;
+  }, [x, z, r]);
+  const geo = useMemo(() => new THREE.BufferGeometry().setFromPoints(pts), [pts]);
+  const line = useMemo(() => {
+    const l = new THREE.Line(geo, new THREE.LineDashedMaterial({ color: '#ffd166', dashSize: 6, gapSize: 4, transparent: true, opacity: 0.95, depthTest: false }));
+    l.computeLineDistances(); l.renderOrder = 7;
+    return l;
+  }, [geo]);
+  return (
+    <>
+      <primitive object={line} />
+      {/* faint fill so the zone reads at a glance */}
+      <mesh position={[x, getTerrainHeight(x, z) + 0.4, z]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={5} raycast={() => null}>
+        <ringGeometry args={[r * 0.985, r, 96]} />
+        <meshBasicMaterial color="#ffd166" transparent opacity={0.85} depthTest={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[x, getTerrainHeight(x, z) + 0.3, z]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={4} raycast={() => null}>
+        <circleGeometry args={[r, 96]} />
+        <meshBasicMaterial color="#ffd166" transparent opacity={0.08} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </>
   );
 }
 
@@ -964,6 +997,7 @@ export default function MoonScene({
 
       {/* Dust hazard — DEM: dust devil; Moon: dust cloud (world space, anchored to terrain) */}
       {dustHazard && (IS_DEM ? <DustDevil hazard={dustHazard} /> : <DustCloudHazard hazard={dustHazard} />)}
+      {IS_DEM && dustHazard && <SafetyZone x={dustHazard.x} z={dustHazard.z} r={safetyZoneRadius(dustHazard)} />}
 
       <PonrMarker point={ponrPoint} />
 

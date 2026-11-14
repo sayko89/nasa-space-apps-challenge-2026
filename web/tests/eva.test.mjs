@@ -274,7 +274,10 @@ test('dust devil on the leg ahead: the crew goes around it, keeps both stops and
   assert.ok(pb.rerouted, 're-routed');
   assert.ok(!pb.aborted, 'not aborted');
   const ev = pb.events.find(e => e.kind === 'reroute');
-  assert.match(ev.text, /new route around it/);
+  assert.match(ev.text, /new SAFE route planned from here/);
+  assert.match(ev.text, /25 m safety zone set/);
+  // the new route keeps the 25 m safety zone around the dust devil (its radius + 25 m)
+  assert.ok(minDistTl(pb.active, pb.rerouted.t0 + 1, hz.x, hz.z) > DR.safetyZoneRadius(hz) - 4, 'outside the safety zone');
   assert.deepEqual(pb.rerouted.skipped, []);
   assert.ok(pb.rerouted.checks.every(c => c.ok), JSON.stringify(pb.rerouted.checks));
   assert.ok(pb.rerouted.extraS > 0, `a detour takes longer: ${pb.rerouted.extraS} ${pb.rerouted.t0} ${pb.nominal.totalS} ${r.stats.roundTripS}`);
@@ -330,7 +333,9 @@ test('no safe route around it (budget): abort, and the walk home avoids the dust
   runUntil(pb, () => pb.rerouted || pb.aborted);
   assert.ok(pb.aborted && !pb.rerouted);
   const f = pb.events.find(e => e.kind === 'reroute-failed');
-  assert.match(f.text, /no safe route around it .*margin/);
+  assert.match(f.text, /no new route found .*margin/);
+  assert.match(f.text, /Returning to the start point for safety/);
+  assert.match(pb.aborted.reason, /returning to the start point for safety/);
   assert.match(pb.aborted.reason, /dust devil/);
   assert.ok(minDistTl(pb.active, pb.aborted.t0, hz.x, hz.z) > hz.interferenceRadius, 'walk home stays clear of it');
 });
@@ -342,7 +347,7 @@ test('planDustReroute: strict "no path" when the dust devil closes home; a secon
   const res = DR.planDustReroute({ pos: p, t: tl.stops[0].departS + 100, stops: [], home: HOME, hazard: { x: HOME.x, z: HOME.z, radius: 20, interferenceRadius: 27 },
     budgetS: r.stats.budgetS, nominalEndS: tl.totalS, maps });
   assert.equal(res.ok, false);
-  assert.match(res.reason, /no walkable path around the dust devil/);
+  assert.match(res.reason, /no walkable path around the safety zone/);
 
   const pb = new EP.EvaPlayback();
   pb.load(r.path, r.stats, { budgetS: r.stats.budgetS }, envFor());
