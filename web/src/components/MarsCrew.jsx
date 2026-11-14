@@ -17,6 +17,7 @@ import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Line } from '@react-three/drei';
 import * as THREE from 'three';
+import { CREW_SCALE, EV2_SIDE_M } from '../config/crew';
 import { getTerrainHeight } from '../three/terrainGenerator';
 import { EV2_LAG_S } from '../utils/evaPlayback';
 
@@ -202,9 +203,7 @@ function applyPose(J, P) {
   J.elL.rotation.x = P.elL; J.elR.rotation.x = P.elR;
 }
 
-// Display scale of the crew figures (true size ~1.9 m with helmet is a few pixels against 2 km of terrain).
-// Drawing only: positions, routes, speeds and every number are unchanged. Decimal point, not comma.
-const CREW_SCALE = 9.4;
+// Display scale of the crew figures: config/crew.js
 
 const wrapAngle = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
@@ -413,7 +412,7 @@ export function MarsCrew({ playback, idlePos, leadRef, onPose, trailKey = 0, sun
     if (p2) A.heading2 += wrapAngle(p2.heading - A.heading2) * (1 - Math.exp(-dt * 7));
     const atStop2 = !!p2 && p2.state === 'dwell' && !playback.aborted && playback.status !== 'done';
     // side offset: 1.3 m to EV1's right while walking, 1.8 m right + 0.9 m back while documenting
-    const wantSide = (atStop2 ? 1.8 : 1.3) * CREW_SCALE, wantBack = (atStop2 ? 0.9 : 0) * CREW_SCALE;
+    const wantSide = (atStop2 ? 1.8 : EV2_SIDE_M) * CREW_SCALE, wantBack = (atStop2 ? 0.9 : 0) * CREW_SCALE;
     A.side.x += (wantSide - A.side.x) * (1 - Math.exp(-dt * 4));
     A.side.y += (wantBack - A.side.y) * (1 - Math.exp(-dt * 4));
     const h2 = A.heading2;

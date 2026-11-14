@@ -37,6 +37,7 @@ import { useRoverController } from '../three/roverController';
 import { loadOrthoImage } from '../utils/orthoImage';
 import { hasRelief, reliefUrl, flatNormalGeometry } from '../utils/relief';
 import { safetyZoneRadius } from '../utils/dustReroute';
+import { CREW_SCALE, EV2_SIDE_M } from '../config/crew';
 import { ROUTE_COLORS } from '../utils/constants';
 
 // ---- Terrain ----
@@ -859,10 +860,13 @@ function PonrMarker({ point }) {
 }
 
 // ---- Camera ----
-// DEM chase camera: behind and above EV1 (astronaut scale), smoothed heading.
-const FOLLOW_BACK = IS_DEM ? 9 : 14;
-const FOLLOW_UP   = IS_DEM ? 4.2 : 13;
-const FOLLOW_LOOK = IS_DEM ? 1.1 : 0;
+// DEM chase camera: behind the crew, framing EV1 and EV2 side by side, head to boots
+// (distances follow the crew's display scale, config/crew.js; figure ≈ 1.9 m × scale).
+const CREW_H = 1.9 * CREW_SCALE;
+const FOLLOW_BACK = IS_DEM ? CREW_H * 2.2 : 14;
+const FOLLOW_UP   = IS_DEM ? CREW_H * 0.72 : 13;
+const FOLLOW_LOOK = IS_DEM ? CREW_H * 0.62 : 0;
+const FOLLOW_SIDE = IS_DEM ? EV2_SIDE_M * CREW_SCALE * 0.5 : 0;   // aim between EV1 and EV2 (EV2 on EV1's right)
 // DEM overview: oblique view of the whole site from the south.
 const OVERVIEW_POS = new THREE.Vector3(0, TERRAIN_SIZE * 0.55, TERRAIN_SIZE * 0.62);
 function CameraController({ roverRef, cameraMode, orbitRef }) {
@@ -878,14 +882,15 @@ function CameraController({ roverRef, cameraMode, orbitRef }) {
       while (d > Math.PI) d -= 2 * Math.PI;
       while (d < -Math.PI) d += 2 * Math.PI;
       S.heading += d * (1 - Math.exp(-Math.min(dt, 0.1) * 2.5));
+      const rx = -Math.cos(S.heading) * FOLLOW_SIDE, rz = Math.sin(S.heading) * FOLLOW_SIDE;   // towards EV2
       const want = new THREE.Vector3(
-        rover.position.x - Math.sin(S.heading) * FOLLOW_BACK,
+        rover.position.x - Math.sin(S.heading) * FOLLOW_BACK + rx,
         rover.position.y + FOLLOW_UP,
-        rover.position.z - Math.cos(S.heading) * FOLLOW_BACK,
+        rover.position.z - Math.cos(S.heading) * FOLLOW_BACK + rz,
       );
       if (IS_DEM) camera.position.lerp(want, 1 - Math.exp(-Math.min(dt, 0.1) * 6));
       else camera.position.lerp(want, 0.055);
-      const target = rover.position.clone(); target.y += FOLLOW_LOOK;
+      const target = rover.position.clone(); target.y += FOLLOW_LOOK; target.x += rx; target.z += rz;
       camera.lookAt(target);
       if (orbitRef.current) orbitRef.current.target.lerp(target, IS_DEM ? 0.5 : 0.07);
     } else if (cameraMode === 'overview' && S.overviewT < 1.2) {
