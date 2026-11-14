@@ -8,7 +8,7 @@ Every number in this file is copied from files that the pipeline wrote:
 - `pipeline/sources/ai4mars/training/*-meta.json`
 - `web/public/models/mars-terrain-v1.json`
 
-Values marked ⟨pending⟩ are filled in from those files after the training run. Nothing is estimated.
+Every number below is read from those files (full run 43603275202, evaluation/export by run 43636893719). Nothing is estimated.
 
 ## 1. Lunar model audit (Phase 1)
 
@@ -68,7 +68,20 @@ The split is by **Mars day**, so near-identical frames never straddle the splits
 - **Seed:** 1234.
 - **Leakage check:** the run fails if any group appears in two splits.
 
-Split sizes: ⟨pending⟩
+Split sizes (measured, `pipeline/sources/ai4mars/manifest.json`; pixel counts at 256 px):
+
+| Split | Images | Mars-day groups | soil px | bedrock px | sand px | big rock px |
+|---|---|---|---|---|---|---|
+| train-msl | 14,068 | 1272 | 195,658,559 | 255,387,743 | 60,353,941 | 4,677,805 |
+| val-msl | 1,832 | 169 | 22,106,546 | 35,925,742 | 10,037,783 | 710,860 |
+| test-min1 | 322 | 48 | 5,567,214 | 3,750,498 | 2,798,470 | 23,839 |
+| test-min2 | 321 | 48 | 5,015,269 | 2,795,758 | 2,395,327 | 8,116 |
+| test-min3 | 287 | 48 | 3,754,206 | 1,636,933 | 1,914,376 | 4,852 |
+| train-m2020 | 2,643 | 126 | 84,853,977 | 71,180,025 | 32,195,226 | 7,192,463 |
+| test-m2020 | 369 | 24 | 12,823,749 | 9,710,202 | 4,607,093 | 812,477 |
+| val-m2020 | 183 | 9 | 8,821,475 | 1,331,677 | 1,172,764 | 212,488 |
+
+Leakage check: no group in two splits. Rejected or excluded during preparation (counts from `manifest.json`): duplicate image (.jpg kept .jpeg) — 287; excluded set: geology taxonomy (M2020_GEO) — 2; excluded set: MSL Mastcam: undocumented label value 4 — 1; excluded set: MER: range mask not applied — 1; M2020 duplicate label (-1 … -4 of one image) — 131; label without image — 498; empty label (no labelled pixel) — 202; exact duplicate image (second copy dropped) — 1.
 
 ## 3. Model and training (Phases 3–4)
 
@@ -99,7 +112,15 @@ Split sizes: ⟨pending⟩
 | History | exported |
 | Hardware | GitHub-hosted runner, CPU only. Each run's hardware string and its measured training time are in its `*-meta.json` |
 
-Measured training time, epochs, and the best validation epoch: ⟨pending⟩
+Measured (`pipeline/sources/ai4mars/training/*-meta.json`):
+
+| Run | Epochs run | Training time | Best validation epoch | Best mean val mIoU | Training images (MSL + M2020) |
+|---|---|---|---|---|---|
+| `pretrained-cedice` | 12 | 3.51 h | 11 (of 0…11) | 0.6523 | 14,068 + 2,643 |
+| `pretrained-ce` | 12 | 3.51 h | 11 (of 0…11) | 0.6453 | 14,068 + 2,643 |
+| `scratch-cedice` | 18 | 3.51 h | 17 (of 0…17) | 0.6367 | 14,068 + 2,643 |
+
+Hardware (from the meta files): x86_64, 4 CPU threads, no GPU, torch 2.8.0+cpu. **All three runs stopped on the 210-min time budget, not on early stopping, and the best epoch is the last one** — validation mIoU was still rising, so longer training (or a GPU) would likely improve the model; that is not measured here.
 
 ## 4. Evaluation (Phase 5)
 
@@ -117,7 +138,28 @@ Measured training time, epochs, and the best validation epoch: ⟨pending⟩
 | MSL Navcam expert, min1 / min2 / min3 | Curiosity Navcam images, expert labels — closest to **Gale** |
 | M2020 NAV hold-out | Perseverance Navcam, crowdsourced labels — closest to **Jezero**; *not expert-verified* |
 
-Results: ⟨pending⟩
+Results (measured, `pipeline/sources/ai4mars/evaluation.json`):
+
+**Selected model: `pretrained-cedice`** (highest mean validation mIoU), exported as `web/public/models/mars-terrain-v1.onnx`.
+
+| Run | val mIoU MSL | val mIoU M2020 | test min1 | test min2 | test min3 | test M2020 |
+|---|---|---|---|---|---|---|
+| `pretrained-cedice` (selected) | 0.788 | 0.516 | 0.638 | 0.683 | 0.762 | 0.578 |
+| `pretrained-ce` | 0.784 | 0.506 | 0.645 | 0.694 | 0.773 | 0.565 |
+| `scratch-cedice` | 0.778 | 0.495 | 0.644 | 0.688 | 0.765 | 0.543 |
+
+Selected model, per class on the test sets (IoU; pixel accuracy in the last column):
+
+| Test set | soil | bedrock | sand | big rock | pixel accuracy |
+|---|---|---|---|---|---|
+| test-min1 | 0.888 | 0.777 | 0.809 | 0.077 | 0.904 |
+| test-min2 | 0.934 | 0.851 | 0.874 | 0.075 | 0.941 |
+| test-min3 | 0.954 | 0.915 | 0.911 | 0.267 | 0.965 |
+| test-m2020 | 0.772 | 0.664 | 0.560 | 0.315 | 0.803 |
+
+**What this means.** Soil, bedrock and sand are segmented well on Curiosity Navcam images (expert test, IoU 0.78–0.95). **Big rocks are not**: IoU 0.07–0.32 — they are rare in the training labels (0.9 % of labelled MSL pixels) and the model mostly misses them. On Perseverance Navcam (Jezero, crowdsourced labels) the scores are lower than on Curiosity (mIoU 0.58).
+
+**Low-confidence threshold (measured on validation):** 0.3 — validation pixels above it are right 93.6 % of the time (target 90 %), the few below it 24.1 %. Confidence is reasonably calibrated: in the 0.9–1.0 bin, MSL validation pixels are right 98.5 % and M2020 94.4 % of the time.
 
 **Low-confidence pixels.** A pixel is shown as *unknown* when its top softmax probability is below a threshold. The threshold is the lowest value at which validation pixels above it are right at least 90 % of the time. The 90 % target is a design choice; the threshold itself and the accuracy above and below it are measured on validation and recorded in `evaluation.json`.
 
@@ -138,7 +180,10 @@ Every prediction stores:
 - the model version and prediction time
 - class shares, unknown share, and a confidence summary
 
-Counts: ⟨pending⟩
+Counts (measured, `web/public/sites/<site>/segmentation/index.json`):
+
+- **Jezero:** 37 frames predicted, 0 errors; skipped — other cameras (out of training domain): 774, download errors: 0, subframe strips (too thin to segment): 100 (2026-11-14T20:24:39+00:00).
+- **Gale:** 408 frames predicted, 0 errors; skipped — other cameras (out of training domain): 0, download errors: 0, subframe strips (too thin to segment): 0 (2026-11-14T20:25:10+00:00).
 
 ## 6. Geographic alignment (Phase 7)
 
