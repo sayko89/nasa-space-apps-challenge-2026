@@ -43,6 +43,7 @@ import { MiniMap } from './MiniMap';
 import { HeatmapViewer } from './HeatmapViewer';
 import { ProcessingMapPreview } from './HelmetCamPreview';
 import TerrainSegmentation from './TerrainSegmentation';
+import { CuffConcept } from '../workspace/EvaCuff';
 import { T, WORKSPACES, WORKSPACE_OF_TARGET, STATUS_COLOR } from '../ui/theme';
 import { O2_SCENARIOS } from '../config/oxygen';
 import { provenanceFor, CATEGORIES } from '../config/provenance';
@@ -733,6 +734,7 @@ export default function RightPanel({
   dustMode, dustHazard, cameraSignalLost, cameraSignalQuality, onTriggerDustHazard, onDustPlaced, onClearDustHazard,
   workspace = null, setWorkspace = null, topOffset = 0, inspector = null, hasSelection = false, timeline = null,
   onInspect = null, onProvenance = null, catalog = [],
+  cuffOpen = false, setCuffOpen = null, cuffPrintReq = 0,
 }) {
   // Mars workspaces: each section belongs to one or more workspaces; the Moon (workspace null) shows them all
   const ws = workspace;
@@ -740,6 +742,8 @@ export default function RightPanel({
   const narrow = useNarrow();   // phone: bottom sheet under the 3D view
   const [pickMode, setPickMode] = useState(false);
   const [cuffMode, setCuffMode] = useState(null);   // route mode whose cuff card is open
+  // the wrist console's PRINT key opens the printable backup of the selected route
+  useEffect(() => { if (cuffPrintReq > 0 && routes?.[activeRoute]) setCuffMode(activeRoute); }, [cuffPrintReq]); // eslint-disable-line react-hooks/exhaustive-deps
   // Mission workflow (steps 4, 5, 10 are "done" once the crew has looked / exported)
   const [visited, setVisited] = useState({});
   const [layerRequest, setLayerRequest] = useState(null);
@@ -806,9 +810,10 @@ export default function RightPanel({
         .ws-plan > #wf-objective { order: -9 }
         .ws-plan > #route-modes { order: -8 }
         .ws-plan > #route-compare { order: -7 }
-        .ws-ops > [aria-label="Mission workflow"] { order: -10 }
-        .ws-ops > #eva-exec { order: -9 }
-        .ws-ops > #wf-decision { order: -8 }
+        .ws-ops > [aria-label="Mission workflow"] { order: -12 }
+        .ws-ops > #eva-exec { order: -11 }
+        .ws-ops > #eva-cuff { order: -10 }
+        .ws-ops > #wf-decision { order: -9 }
       `}</style>}
       <div className={ws ? `ws-${ws}` : undefined} style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
         {IS_DEM && show('plan', 'ops') && <WorkflowStrip steps={workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus })}
@@ -1043,6 +1048,26 @@ export default function RightPanel({
           )}
         </Sect>}
 
+        {/* ── MARTIAN EVA CUFF (Operations) ── */}
+        {ws && show('ops') && setCuffOpen && (
+          <Sect label="Martian EVA Cuff — wrist console" id="eva-cuff">
+            <div style={{ fontSize: fs(7.5), color: T.text, lineHeight: 1.45, marginBottom: 6 }}>
+              The selected mission on a forearm display: status, map, tasks, hazards, return and a one-press emergency reference — it follows the EVA playback.
+              A printed backup checklist works without it.
+            </div>
+            <Row>
+              <Btn active={cuffOpen} onClick={() => setCuffOpen(!cuffOpen)} style={{ padding: '7px 4px' }}>{cuffOpen ? '✕ CLOSE WRIST CONSOLE' : '⌚ OPEN WRIST CONSOLE'}</Btn>
+              <Btn onClick={() => routes?.[activeRoute] && setCuffMode(activeRoute)} disabled={!routes?.[activeRoute]} style={{ padding: '7px 4px' }}>▤ PRINT BACKUP CUFF</Btn>
+            </Row>
+            <More label="Device concept — what it would look like">
+              <CuffConcept />
+              <div style={{ fontSize: fs(6.8), color: T.muted, lineHeight: 1.4, marginTop: 4 }}>
+                Proposed concept inspired by Apollo 15–17 cuff checklists and rugged wrist displays — not a NASA device, not manufactured or flight-qualified; this app has no hardware link.
+              </div>
+            </More>
+          </Sect>
+        )}
+
         {/* ── Hazard Control (DEM: contingency) ── */}
         {show('ops') && <Sect label={IS_DEM ? 'Contingency' : 'Hazard Control'}>
           {/* Status banner */}
@@ -1148,7 +1173,8 @@ export default function RightPanel({
             <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)}
               assess={evaAssessments(routes[cuffMode], cuffWx, { mission, startMs: evaStartMs })}
               objective={science?.objectiveId ? findObjective(SITE.name, science.objectiveId) : null}
-              hazards={(() => { const hz = getHazardMap(); return hz ? routeHazards(routes[cuffMode].path, hz.cls, cellIdx) : null; })()} />
+              hazards={(() => { const hz = getHazardMap(); return hz ? routeHazards(routes[cuffMode].path, hz.cls, cellIdx) : null; })()}
+              science={science} />
           )}
         </Sect>}
 

@@ -400,7 +400,7 @@ export function evaSnapshot(pb) {
   const tl = pb.active, nom = pb.nominal, t = pb.t;
   const s = pb.pose(0);
   const meta = pb.meta, env = pb.env;
-  const back = env.toHomeAt(s.x, s.z);
+  const back = pb._toHome(s.x, s.z);                 // around a dust devil after a re-route
   const margin = Number.isFinite(back) ? meta.budgetS - t - back : -Infinity;
   const ms = Number.isFinite(meta.startMs) ? meta.startMs + t * 1000 : null;
   const stopNow = pb.aborted ? null : currentStop(nom, s);

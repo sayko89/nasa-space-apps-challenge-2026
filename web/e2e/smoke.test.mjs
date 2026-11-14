@@ -133,9 +133,25 @@ test('Jezero, desktop: plan → decision and three assessments → EVA HUD → o
   }
   await page.emulateMedia({ media: 'print' });
   const pdf = await page.pdf({ format: 'A4', printBackground: true });
-  assert.equal(pdfPages(pdf), 1, 'cuff card prints on one page');
+  assert.equal(pdfPages(pdf), 2, 'cuff card (page 1) + EVA backup checklist (page 2), one page each');
+  const backup = await page.innerText('body');
+  for (const re of [/EVA BACKUP CHECKLIST/, /EVA SEQUENCE/, /EQUIPMENT/, /EMERGENCY REFERENCE/, /Not modelled in this prototype/]) assert.match(backup, re);
   await page.emulateMedia({ media: 'screen' });
   await page.keyboard.press('Escape');
+
+  // MARTIAN EVA CUFF: wrist console follows the playback; EMER is one press from any screen
+  await workspace(page, 'OPERATIONS');
+  await click(page, 'OPEN WRIST CONSOLE');
+  await page.waitForSelector('[aria-label="Martian EVA Cuff"]');
+  const cuffTxt = await page.innerText('[aria-label="Martian EVA Cuff"]');
+  for (const re of [/MET/, /EVA LEFT/, /WALK-BACK MARGIN/, /O₂ LEFT/, /SIMULATED|PLANNED/, /not a manufactured, tested or flight-qualified device/]) assert.match(cuffTxt, re);
+  for (const k of ['MAP', 'TASKS', 'HAZARDS', 'RETURN']) {
+    await page.evaluate((lbl) => [...document.querySelectorAll('[aria-label="Martian EVA Cuff"] button')].find(b => b.innerText.includes(lbl)).click(), k);
+  }
+  await page.evaluate(() => [...document.querySelectorAll('[aria-label="Martian EVA Cuff"] button')].find(b => b.innerText.includes('EMER')).click());
+  assert.match(await page.innerText('[aria-label="Martian EVA Cuff"]'), /EMERGENCY REFERENCE[\s\S]*ABORT — WALK HOME[\s\S]*PROJECT RULE/);
+  await page.screenshot({ path: fileURLToPath(new URL('jezero-desktop-cuff.png', OUT)) });
+  await click(page, 'CLOSE WRIST CONSOLE');
 
   // EXPLORE: data catalog + inspector (map point from a terrain click, layer metadata from ⓘ)
   await workspace(page, 'EXPLORE');
