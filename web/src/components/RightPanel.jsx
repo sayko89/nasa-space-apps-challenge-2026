@@ -625,7 +625,7 @@ function RouteAnalysis({ routes, activeRoute, onSelect, onCuffCard, startMs, mis
               const st = [a?.payload?.status, a?.dust?.status, a?.mobility?.status].filter(Boolean);
               return (
                 <div onClick={e => e.stopPropagation()}>
-                  <More label="Payload, dust and terrain assessments (A · B · C)" badge={st.join(' · ') || null}>
+                  <More label="Assessments A · B · C (payload, dust, terrain)" badge={st.length ? `${st.length} results` : null}>
                     <EvaAssessment a={a} />
                   </More>
                 </div>
@@ -805,8 +805,8 @@ export default function RightPanel({
         .ws-plan > #route-modes { order: -8 }
         .ws-plan > #route-compare { order: -7 }
         .ws-ops > [aria-label="Mission workflow"] { order: -10 }
-        .ws-ops > #wf-decision { order: -9 }
-        .ws-ops > #eva-exec { order: -8 }
+        .ws-ops > #eva-exec { order: -9 }
+        .ws-ops > #wf-decision { order: -8 }
       `}</style>}
       <div className={ws ? `ws-${ws}` : undefined} style={{flex:1,padding:'6px 8px',display:'flex',flexDirection:'column',gap:8,overflowY:'auto'}}>
         {IS_DEM && show('plan', 'ops') && <WorkflowStrip steps={workflowSteps({ objectiveId, mission, visited, science, routes, activeRoute, evaStatus })}
@@ -1136,7 +1136,7 @@ export default function RightPanel({
         {/* Route Analysis */}
         {show('plan', 'ops') && <Sect label={ws === 'plan' ? 'Route comparison' : ws === 'ops' ? 'Mission summary & safety — GO / NO-GO' : 'Route Analysis — GO / NO-GO'} id={ws === 'plan' ? 'route-compare' : 'wf-decision'}>
           {IS_DEM && show('ops') && <MissionSummary routes={routes} activeRoute={activeRoute} science={science} mission={mission} startMs={evaStartMs} />}
-          <RouteAnalysis routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs} mission={mission} openDecision={ws === 'ops'}/>
+          <RouteAnalysis key={ws || 'all'} routes={routes} activeRoute={activeRoute} onSelect={setActiveRoute} onCuffCard={IS_DEM ? setCuffMode : null} startMs={evaStartMs} mission={mission} openDecision={ws === 'ops'}/>
           {cuffMode && routes?.[cuffMode]?.stats?.marginS && (
             <CuffCard mode={cuffMode} route={routes[cuffMode]} startMs={evaStartMs} mission={mission} onClose={() => setCuffMode(null)}
               assess={evaAssessments(routes[cuffMode], cuffWx, { mission, startMs: evaStartMs })}
