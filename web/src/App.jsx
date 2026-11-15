@@ -60,18 +60,18 @@ const WALL_REJECT_MSG = IS_DEM
 // ---- Toast System ----
 let _toastId = 0;
 
-function ToastContainer({ toasts, onDismiss }) {
+function ToastContainer({ toasts, onDismiss, top = 14 }) {
   return (
-    <div style={{
-      position:'fixed', top:14, left:'50%', transform:'translateX(-50%)',
+    <div role="status" aria-live="polite" style={{
+      position:'fixed', top, left:'50%', transform:'translateX(-50%)',
       zIndex:9999, display:'flex', flexDirection:'column', gap:6,
       alignItems:'center', pointerEvents:'none',
     }}>
       {toasts.map(t => (
         <div key={t.id} style={{
-          padding:'8px 18px', borderRadius:5, fontFamily:'monospace', fontSize:IS_DEM ? 12 : 10,
+          padding:'8px 18px', borderRadius:5, fontFamily:'monospace', fontSize:IS_DEM ? 15 : 10,
           fontWeight:'bold', letterSpacing:0.5, pointerEvents:'all',
-          cursor:'pointer', maxWidth:440, textAlign:'center',
+          cursor:'pointer', maxWidth:IS_DEM ? 560 : 440, textAlign:'center', lineHeight:1.35,
           animation:'slideDown 0.25s ease',
           ...(t.type === 'warning' ? {
             background:'rgba(80,40,0,0.95)', border:'1px solid #ff8800',
@@ -1082,7 +1082,7 @@ export default function App() {
       )}
 
       {/* Toasts */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} top={topH + 10} />
 
       {/* Right Panel */}
       <RightPanel
