@@ -41,7 +41,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 | **3D terrain** | 4 m mesh lit by the **1 m HiRISE DTM** relief shading (×1 true, ×2 / ×4 emphasised), HiRISE image or elevation colours, data layers draped on top |
 | **Interface** | four workspaces — **Explore · Analyze · Plan Mission · Operations** — with a data catalog, one inspector for every point / layer / stop / route, an EVA timeline band and a first-visit guide ([details](#the-interface--four-workspaces)) |
 | **Outputs** | 3D planning view, live EVA HUD, **Martian EVA Cuff** wrist console, printable **cuff card + EVA backup checklist** (2 × A4 / PDF), JSON export, share link; works on desktop, tablet and phone |
-| **Tests** | 174 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 11 Python + lint + README figure check on every push before deploy; browser tests (all four workspaces, desktop, tablet, phone, two-page cuff PDF, wrist console, Gale, Moon) in their own workflow; 12 Python tests for the segmentation pipeline in its own workflow |
+| **Tests** | 175 JavaScript (incl. real-data runs of every objective on both sites, and Moon mode) + 11 Python + lint + README figure check on every push before deploy; browser tests (all four workspaces, desktop, tablet, phone, two-page cuff PDF, wrist console, Gale, Moon) in their own workflow; 12 Python tests for the segmentation pipeline in its own workflow |
 
 ## Try it
 
@@ -89,7 +89,7 @@ The Mars sites open in four workspaces, one per stage of a mission. Switching ke
 | **04 OPERATIONS** — decide and run the EVA | — | 3D terrain + **EVA timeline** | **site map** → **dust devil drill** (SIMULATE DUST DEVIL, then click the map) → **START EVA** (the route chosen in Plan, not asked again) → **camera angle** (free / follow EV1 / overview) → **helmet camera** (image processing: elevation / slope view) → **Martian EVA Cuff** → mission summary & GO / NO-GO → telemetry, export, log |
 
 - **Data catalog** — built from what the site actually loaded, by category (imagery, topography, geology, mineralogy, thermal, AI terrain segmentation, hazards, atmospheric, radiation). Tick a layer to drape it on the 3D terrain; several layers can be draped at once, each with its opacity and draw order; ⓘ opens its description and source.
-- **Inspector** — one card for a map point (coordinates, elevation, slope, hazard, distance home, *add as waypoint*), a data layer, a science stop or a route, with tabs for overview, scientific evidence, data source, technical details and mission relevance.
+- **Inspector** — one card for a map point (coordinates, elevation, slope, hazard, distance home, *add as waypoint* — or, on a cell the crew cannot walk, the reason instead of the button), a data layer, a science stop or a route, with tabs for overview, scientific evidence, data source, technical details and mission relevance.
 - **EVA timeline** — walking legs, stops (S1, S2 …) and the walk home of the active route on one time axis, with the EVA budget, point of no return, sunset and oxygen limits; a cursor follows the EVA clock during playback, and a click on a stop opens it in the inspector.
 - **3D view** — the follow camera frames both astronauts, EV1 and EV2, side by side and full height, so their position and posture are clear from the first second; *Overview* shows the whole route from above. The astronauts carry the team's Periapsis patch on their backpacks.
 - **Readable on a screen across the room** — larger text across all panels, closed slots for long explanations, and status always written as a word next to its colour.
@@ -522,7 +522,7 @@ A second alarm for the same dust devil aborts the EVA. Details and tests: [`docs
 
 ## Verified, not just drawn
 
-`node --test web/tests/*.test.mjs` (174 tests) and `python -m unittest discover pipeline/tests` (11 tests), run on every push before the demo is deployed, together with:
+`node --test web/tests/*.test.mjs` (175 tests) and `python -m unittest discover pipeline/tests` (11 tests), run on every push before the demo is deployed, together with:
 
 - **Lint** (`pnpm --filter martian-map lint`): undefined names, JSX components that do not exist, rules of hooks.
 - **README figures** (`pnpm --filter martian-map readme:figures:check`): every route figure in this README is marked `<!--fig:…-->` and recomputed from the real site files by the planner. The deploy fails if one has drifted; `pnpm --filter martian-map readme:figures` rewrites them.
@@ -555,7 +555,7 @@ A second alarm for the same dust devil aborts the EVA. Details and tests: [`docs
 | Oxygen & mass | BVAD values; depletion per scenario; zero boundary; pause and speed multipliers; walking, stops and abort consume; rate change mid-EVA not retroactive; reserve and depletion warnings; mass without double counting; NO-GO / CONDITIONAL / INSUFFICIENT DATA; real Jezero and Gale routes; Moon mode unaffected |
 | Dust devil re-route | around a dust devil on the leg ahead (both stops kept, never inside the trigger radius, home, margin ≥ 0, restart); a dust devil on a stop skips it; budget too tight → abort and the walk home avoids it; strict "no path" when it closes home; a second alarm aborts; a one-way plan re-routes to the destination, and the fallback retraces the way they came |
 | Wrist console | PLANNED before and SIMULATED during the EVA; route mode, payload and decision changes reach it; stop states and live margin follow the playback; never GO with an unsafe return; equipment and sources; no invented suit procedures |
-| Workspaces | the catalog lists only what the site loaded, each item with a provenance record; route-mode explanations are the planner's own weights; timeline legs, stops and walk home tile the planned round trip; the point inspector reads the grids and follows the planner's thresholds (real Jezero) |
+| Workspaces | the catalog lists only what the site loaded, each item with a provenance record; route-mode explanations are the planner's own weights; timeline legs, stops and walk home tile the planned round trip; the point inspector reads the grids and follows the planner's thresholds; it offers *add as waypoint* only on cells the router can walk (real Jezero) |
 | 3D relief shading | the relief texture covers the site grid exactly; decoding (flat = straight up, 45° east face = 45°); emphasis changes only the shading, heights stay unchanged; Python tests for the normals from the 1 m DTM |
 | AI segmentation | AI4Mars class mapping and unknown pixels; mask colours and statistics; nearest prediction to a rover position; index and model card validation; both sites' prediction files present and linked to real rover positions |
 | Mobility & integration | no payload or dust penalty (real Jezero route and walking times identical with 0 and 40 kg); the Mars speed factor applies outbound and on the return; dust never changes the decision; an over-limit payload is NO-GO through the existing rule |

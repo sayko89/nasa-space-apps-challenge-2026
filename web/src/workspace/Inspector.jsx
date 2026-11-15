@@ -12,9 +12,9 @@ import { getHeightMap, getSlopeMap, getHazardMap } from '../utils/heatmaps';
 import { HAZARD_CLASSES } from '../utils/hazards';
 import { cellIdx } from '../utils/evaAssessments';
 import { localToLatLon } from '../terrain/siteData';
-import { peekHomeMaps } from '../utils/pathfinder';
+import { peekHomeMaps, isWallAt } from '../utils/pathfinder';
 import { param } from '../config/marswalkProfile';
-import { inspectPoint, pointRelevance } from '../utils/inspect';
+import { inspectPoint, pointRelevance, waypointBlockReason } from '../utils/inspect';
 import { routeModeExplanation } from '../utils/routeModes';
 import { missionTimeline } from '../utils/missionTimeline';
 import { fmtHM, fmtSignedHM } from '../utils/format';
@@ -141,8 +141,12 @@ export default function Inspector({ selection, onClose, provByKey = {}, catalogI
         <KV k="Slope" v={Number.isFinite(p.slopeDeg) ? `${p.slopeDeg.toFixed(1)}° (4 m cell; limit ${limits.maxSlopeDeg}°)` : null} />
         <KV k="Hazard" v={p.hazard ? p.hazard.name : 'none flagged'} mono={false} />
         <KV k="From home" v={Number.isFinite(p.homeDistM) ? `${p.homeDistM.toFixed(0)} m straight line` : null} />
-        {onAddWaypoint && <button type="button" onClick={() => onAddWaypoint({ x: p.x, z: p.z })} style={{ marginTop: 8, all: 'unset', cursor: 'pointer', fontSize: 12, color: T.text,
-          border: `1px solid ${T.ruleStrong}`, padding: '4px 8px', borderRadius: 2 }}>+ Add as waypoint</button>}
+        {onAddWaypoint && (waypointBlockReason(p, limits, isWallAt)
+          ? <div role="note" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.4, color: T.nogo, border: `1px solid ${T.nogo}`, padding: '5px 8px', borderRadius: 2 }}>
+              ✖ No waypoint here — {waypointBlockReason(p, limits, isWallAt)}. The crew cannot walk this cell; pick flatter ground.
+            </div>
+          : <button type="button" onClick={() => onAddWaypoint({ x: p.x, z: p.z })} style={{ marginTop: 8, all: 'unset', cursor: 'pointer', fontSize: 12, color: T.text,
+              border: `1px solid ${T.ruleStrong}`, padding: '4px 8px', borderRadius: 2 }}>+ Add as waypoint</button>)}
       </>
     );
     const ev = [];

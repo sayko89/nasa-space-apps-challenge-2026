@@ -71,3 +71,15 @@ export function pointRelevance(p, { maxSlopeDeg, maxRockReliefM } = {}) {
   else lines.push({ level: 'info', text: 'No rover images within 150 m: known from orbit only.' });
   return lines;
 }
+
+/**
+ * Why a waypoint cannot be placed on an inspected point, or null when it can.
+ * `isWall(x, z)` must be the router's wall map (pathfinder isWallAt), the same check addWaypoint applies,
+ * so the inspector never offers a point the planner would then reject.
+ */
+export function waypointBlockReason(p, limits, isWall) {
+  if (!p || !isWall(p.x, p.z)) return null;
+  if (Number.isFinite(p.slopeDeg) && p.slopeDeg > limits.maxSlopeDeg) return `steeper than the ${limits.maxSlopeDeg}° walkable limit`;
+  if (p.hazard?.hard) return p.hazard.name.toLowerCase();
+  return 'a rock or wall the route planner treats as impassable';
+}

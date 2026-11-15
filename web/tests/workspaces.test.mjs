@@ -8,7 +8,7 @@ const { site, PV, P, hm, sm, HZ, localToLatLon } = ctx;
 const { buildCatalog, filterCatalog, CATALOG_CATEGORIES } = await import('../src/config/catalog.js');
 const { routeModeExplanation, ROUTE_MODES } = await import('../src/utils/routeModes.js');
 const { missionTimeline } = await import('../src/utils/missionTimeline.js');
-const { inspectPoint, pointRelevance } = await import('../src/utils/inspect.js');
+const { inspectPoint, pointRelevance, waypointBlockReason } = await import('../src/utils/inspect.js');
 const { msAtLtst } = await import('../src/utils/marsTime.js');
 const { MODE_WEIGHTS } = await import('../src/config/marswalkProfile.js');
 const { oxygenConfig, planOxygenCheck } = await import('../src/utils/oxygen.js');
@@ -80,4 +80,26 @@ test('point inspector reads the grids; relevance follows the planner thresholds'
   assert.ok(rel.some(l => /walking limit/.test(l.text)));
   assert.equal(pointRelevance({ ...p, slopeDeg: 25 }, { maxSlopeDeg: 20 }).find(l => /Slope/.test(l.text)).level, 'block');
   assert.equal(inspectPoint(0, 0, { ...c, idxAt: () => -1 }), null);
+});
+
+test('inspector offers "Add as waypoint" only where the router can walk; a wall cell says why (real Jezero)', () => {
+  const T = ctx.T;
+  const idxAt = (x, z) => { const { col, row } = P.worldToGrid(x, z); return row * T.GRID_RES + col; };
+  const c = { site, n: T.GRID_RES, idxAt, heights: hm, slope: sm, hazard: null, hazardClasses: HZ.HAZARD_CLASSES,
+    latLon: localToLatLon, home: { x: 0, z: 0 }, stations: site.pov?.stations };
+  const limits = { maxSlopeDeg: 20, maxRockReliefM: 0.5 };
+  let wall = null, free = null;
+  for (let r = 20; r < 900 && !(wall && free); r += 4) {
+    for (let a = 0; a < 360 && !(wall && free); a += 5) {
+      const x = r * Math.cos(a * Math.PI / 180), z = r * Math.sin(a * Math.PI / 180);
+      if (P.isWallAt(x, z)) wall ??= { x, z }; else free ??= { x, z };
+    }
+  }
+  assert.ok(wall && free, 'the real site has both walkable and wall cells');
+  const pw = inspectPoint(wall.x, wall.z, c);
+  const why = waypointBlockReason(pw, limits, P.isWallAt);
+  assert.ok(why, 'a wall cell is never offered as a waypoint');
+  if (pw.slopeDeg > 20) assert.match(why, /20° walkable limit/);
+  assert.equal(waypointBlockReason(inspectPoint(free.x, free.z, c), limits, P.isWallAt), null);
+  assert.equal(waypointBlockReason(null, limits, P.isWallAt), null);
 });
