@@ -49,6 +49,7 @@ The first people to walk on Mars will want the best map possible. **Martian Map*
 |---|---|
 | **Online** | **[sayko89.github.io/nasa-space-apps-challenge-2026](https://sayko89.github.io/nasa-space-apps-challenge-2026/)** — nothing to install |
 | **Offline** | **Code → Download ZIP** → unzip → `MartianMap/Start-Windows.bat` (Windows) or `MartianMap/start-mac-linux.sh` (macOS / Linux). Needs only Python 3. |
+| **Jury deck** | [docs/Martian-Map-Jury-Deck.pdf](docs/Martian-Map-Jury-Deck.pdf) — the 7-slide project presentation |
 | **From source** | `pnpm install`, then `pnpm dev` (tests: `pnpm test`; lint: `pnpm --filter martian-map lint`; browser tests after a build: `pnpm --filter martian-map e2e`) |
 
 **First visit.** A short guide opens once: what Martian Map is, the four workspaces and a three-click quick start. It is always under **? GUIDE** in the top bar, and each workspace has a closed *How to use this screen* slot with its three steps. Long explanations (what a route mode optimises, why a decision is CONDITIONAL …) sit in closed slots that open with a click, so the screen stays readable.
